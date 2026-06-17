@@ -24,21 +24,25 @@ class Eotools_Menu {
 			__('EO Tools', 'eo-tools'),
 			__('EO Tools', 'eo-tools'),
 			'manage_options',
-			'eo-tools-landing-pages',
-			[ $this, 'landing_pages_page_view' ],
+			'eo-tools',
+			[ $this, 'main_page_view' ],
 			'dashicons-admin-tools',
 			81
 		);
 
 		// Submenu pointing to Landing Pages manager
 		add_submenu_page(
-			'eo-tools-landing-pages',
+			'eo-tools',
 			__('Pages d\'atterrissage', 'eo-tools'),
 			__('Pages d\'atterrissage', 'eo-tools'),
 			'manage_options',
 			'eo-tools-landing-pages',
 			[ $this, 'landing_pages_page_view' ]
 		);
+	}
+
+	public function main_page_view() {
+		echo '<div class="wrap"><h1>' . esc_html__( 'EO Tools', 'eo-tools' ) . '</h1><p>' . esc_html__( 'Bienvenue dans EO Tools. Sélectionnez un outil dans le menu de gauche.', 'eo-tools' ) . '</p></div>';
 	}
 
 	public function enqueue_admin_assets( $hook ) {
