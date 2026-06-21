@@ -164,7 +164,21 @@
 			const modal = document.createElement('div');
 			modal.id = 'eo-tools-cookie-modal';
 			
-			let categoriesHtml = '';
+			let categoriesHtml = `
+				<div class="eo-cookie-category eo-cookie-category-master" style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e2e8f0;">
+					<div class="eo-cookie-cat-info">
+						<h4 style="margin: 0 0 5px 0;">Tout accepter</h4>
+						<p style="margin: 0; font-size: 0.85rem; color: #64748b;">Activer ou désactiver tous les cookies optionnels en un seul clic.</p>
+					</div>
+					<div class="eo-cookie-toggle">
+						<label class="switch">
+							<input type="checkbox" id="eo-cookie-master-toggle">
+							<span class="slider round"></span>
+						</label>
+					</div>
+				</div>
+			`;
+			
 			Object.keys(this.categories).forEach(cat => {
 				const isStrict = cat === 'strictly-necessary';
 				categoriesHtml += `
@@ -239,11 +253,26 @@
 				} else if (e.target.closest('#eo-cookie-close-modal')) {
 					this.hideModal();
 				} else if (e.target.closest('#eo-cookie-save-custom')) {
-					const checkboxes = document.querySelectorAll('#eo-tools-cookie-modal input[type="checkbox"]');
+					const checkboxes = document.querySelectorAll('#eo-tools-cookie-modal input[type="checkbox"]:not(#eo-cookie-master-toggle)');
 					checkboxes.forEach(cb => {
 						this.consent[cb.dataset.category] = cb.checked;
 					});
 					this.saveConsent('custom');
+				}
+			});
+
+			document.addEventListener('change', (e) => {
+				if (e.target.id === 'eo-cookie-master-toggle') {
+					const isChecked = e.target.checked;
+					const checkboxes = document.querySelectorAll('#eo-tools-cookie-modal input[type="checkbox"]:not(#eo-cookie-master-toggle):not(:disabled)');
+					checkboxes.forEach(cb => {
+						cb.checked = isChecked;
+					});
+				} else if (e.target.matches('#eo-tools-cookie-modal input[type="checkbox"]:not(#eo-cookie-master-toggle):not(:disabled)')) {
+					const checkboxes = document.querySelectorAll('#eo-tools-cookie-modal input[type="checkbox"]:not(#eo-cookie-master-toggle):not(:disabled)');
+					const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+					const masterToggle = document.getElementById('eo-cookie-master-toggle');
+					if (masterToggle) masterToggle.checked = allChecked;
 				}
 			});
 		},
@@ -256,13 +285,20 @@
 		showModal: function() {
 			const modal = document.getElementById('eo-tools-cookie-modal');
 			if (modal) {
-				// Update checkboxes based on current consent
-				Object.keys(this.categories).forEach(cat => {
-					if (cat !== 'strictly-necessary') {
-						const cb = modal.querySelector('input[data-category="' + cat + '"]');
-						if (cb) cb.checked = !!this.consent[cat];
+				const checkboxes = document.querySelectorAll('#eo-tools-cookie-modal input[type="checkbox"]:not(#eo-cookie-master-toggle)');
+				checkboxes.forEach(cb => {
+					if (cb.dataset.category && cb.dataset.category !== 'strictly-necessary') {
+						cb.checked = !!this.consent[cb.dataset.category];
 					}
 				});
+
+				const masterToggle = document.getElementById('eo-cookie-master-toggle');
+				if (masterToggle) {
+					const optionalCheckboxes = document.querySelectorAll('#eo-tools-cookie-modal input[type="checkbox"]:not(#eo-cookie-master-toggle):not(:disabled)');
+					const allChecked = optionalCheckboxes.length > 0 && Array.from(optionalCheckboxes).every(cb => cb.checked);
+					masterToggle.checked = allChecked;
+				}
+
 				modal.style.display = 'flex';
 			}
 		},
