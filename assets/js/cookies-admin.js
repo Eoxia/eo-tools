@@ -169,6 +169,9 @@ jQuery(document).ready(function($) {
 			const $item = $(`
 				<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 15px; display: flex; justify-content: space-between;">
 					<div style="flex: 1;">
+						<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px;">
+							<div><span class="dashicons ${cookie.active !== false ? 'dashicons-visibility' : 'dashicons-hidden'}" style="color: ${cookie.active !== false ? '#46b450' : '#d63638'}; margin-top: 3px;"></span> <strong style="color: ${cookie.active !== false ? '#46b450' : '#d63638'};">${cookie.active !== false ? wp.i18n.__('Actif', 'eo-tools') : wp.i18n.__('Inactif', 'eo-tools')}</strong></div>
+						</div>
 						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
 							<div style="width: 150px;"><strong>Cookie</strong></div>
 							<div><code>${cookie.name}</code></div>
@@ -214,6 +217,7 @@ jQuery(document).ready(function($) {
 		$('#eo-cookie-id').val('');
 		$('#eo-cookie-old-cat').val('');
 		$('#eo-cookie-cat').val(currentCategory);
+		$('#eo-cookie-active').prop('checked', true);
 		$('#eo-cookie-domain').val('');
 		$('#eo-cookie-modal-title').text(wp.i18n.__('Ajouter un cookie', 'eo-tools'));
 		$('#eo-cookie-modal').css('display', 'flex');
@@ -232,12 +236,13 @@ jQuery(document).ready(function($) {
 		const id = $('#eo-cookie-id').val() || generateId();
 		const oldCat = $('#eo-cookie-old-cat').val();
 		const newCat = $('#eo-cookie-cat').val();
+		const active = $('#eo-cookie-active').is(':checked');
 		const name = $('#eo-cookie-name').val();
 		const domain = $('#eo-cookie-domain').val();
 		const date = $('#eo-cookie-duration').val();
 		const comment = $('#eo-cookie-desc').val();
 
-		const cookieData = { id, name, domain, date, comment };
+		const cookieData = { id, name, domain, date, comment, active };
 
 		// If editing and category changed, remove from old category
 		if (oldCat && oldCat !== newCat && cookieRegistry[oldCat]) {
@@ -270,6 +275,7 @@ jQuery(document).ready(function($) {
 			$('#eo-cookie-id').val(cookie.id);
 			$('#eo-cookie-old-cat').val(currentCategory);
 			$('#eo-cookie-cat').val(currentCategory);
+			$('#eo-cookie-active').prop('checked', cookie.active !== false);
 			$('#eo-cookie-name').val(cookie.name);
 			$('#eo-cookie-domain').val(cookie.domain || '');
 			$('#eo-cookie-duration').val(cookie.date || cookie.duration);
@@ -285,6 +291,150 @@ jQuery(document).ready(function($) {
 			const id = $(this).data('id');
 			cookieRegistry[currentCategory] = cookieRegistry[currentCategory].filter(c => c.id !== id);
 			saveRegistry();
+		}
+	});
+
+	// --- Open Cookie Database & Scanner Logic ---
+	let openCookieDB = [];
+	
+	// Load the database
+	$.getJSON(eoToolsCookiesAdmin.pluginUrl + 'assets/data/open-cookie-database.json', function(data) {
+		if (data && data[0] && data[0].knowledges) {
+			openCookieDB = data[0].knowledges;
+		}
+	});
+
+	// Helper to map DB category to our category
+	function mapCategory(dbCat) {
+		const mapping = {
+			'functional': 'functional',
+			'analytics': 'analytics',
+			'marketing': 'marketing',
+			'social_media': 'social',
+			'performance': 'performance'
+		};
+		return mapping[dbCat] || 'others';
+	}
+
+	// Helper to parse Retention text to days
+	function parseRetention(text) {
+		text = (text || '').toLowerCase();
+		if (text.includes('session')) return 0;
+		if (text.includes('year')) {
+			const match = text.match(/(\d+)/);
+			return match ? parseInt(match[1], 10) * 365 : 365;
+		}
+		if (text.includes('month')) {
+			const match = text.match(/(\d+)/);
+			return match ? parseInt(match[1], 10) * 30 : 30;
+		}
+		if (text.includes('day')) {
+			const match = text.match(/(\d+)/);
+			return match ? parseInt(match[1], 10) : 1;
+		}
+		return 365; // default
+	}
+
+	// Autocomplete Search
+	$('#eo-cookie-search-db').on('input', function() {
+		const query = $(this).val().trim().toLowerCase();
+		$('.eo-cookie-autocomplete-list').remove();
+		
+		if (query.length < 2 || openCookieDB.length === 0) return;
+		
+		const results = openCookieDB.filter(c => c.name.toLowerCase().includes(query)).slice(0, 10);
+		if (results.length === 0) return;
+		
+		const $list = $('<div class="eo-cookie-autocomplete-list" style="position: absolute; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-top: 5px; width: 300px; max-height: 250px; overflow-y: auto;"></div>');
+		
+		results.forEach(res => {
+			const $item = $(`<div style="padding: 10px; border-bottom: 1px solid #f1f1f1; cursor: pointer;">
+				<strong>${res.name}</strong> <span style="color: #64748b; font-size: 11px;">(${res.domain || '1st party'})</span>
+				<div style="font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${res.comment || ''}</div>
+			</div>`);
+			
+			$item.on('mouseover', function() { $(this).css('background', '#f8fafc'); });
+			$item.on('mouseout', function() { $(this).css('background', 'transparent'); });
+			
+			$item.on('click', function() {
+				// Pre-fill modal
+				currentCategory = mapCategory(res.category);
+				$('.eo-cookie-cat-item').removeClass('active').css('background', 'transparent');
+				$(`.eo-cookie-cat-item[data-cat="${currentCategory}"]`).addClass('active').css('background', '#f8fafc');
+				renderCookieList();
+				
+				$('#eo-cookie-form')[0].reset();
+				$('#eo-cookie-id').val('');
+				$('#eo-cookie-old-cat').val('');
+				$('#eo-cookie-cat').val(currentCategory);
+				$('#eo-cookie-active').prop('checked', true);
+				$('#eo-cookie-name').val(res.name);
+				$('#eo-cookie-domain').val(res.domain || '');
+				$('#eo-cookie-duration').val(parseRetention(res.date));
+				$('#eo-cookie-desc').val(res.comment || '');
+				$('#eo-cookie-modal-title').text(wp.i18n.__('Ajouter un cookie (depuis la base)', 'eo-tools'));
+				$('#eo-cookie-modal').css('display', 'flex');
+				
+				$('#eo-cookie-search-db').val('');
+				$('.eo-cookie-autocomplete-list').remove();
+			});
+			$list.append($item);
+		});
+		
+		// Insert absolute relative to parent
+		$(this).parent().css('position', 'relative').append($list);
+		$list.css({ top: '100%', left: 0, right: 0, width: 'auto' });
+	});
+	
+	// Close autocomplete on outside click
+	$(document).on('click', function(e) {
+		if (!$(e.target).closest('#eo-cookie-search-db, .eo-cookie-autocomplete-list').length) {
+			$('.eo-cookie-autocomplete-list').remove();
+		}
+	});
+
+	// Local Scanner
+	$('#eo-scan-cookies-btn').on('click', function() {
+		const localCookies = document.cookie.split(';');
+		let addedCount = 0;
+		
+		localCookies.forEach(cookieStr => {
+			const parts = cookieStr.trim().split('=');
+			if (parts.length < 2) return;
+			const name = parts[0];
+			
+			// Check if already in registry
+			let exists = false;
+			for (const cat in cookieRegistry) {
+				if (cookieRegistry[cat] && cookieRegistry[cat].some(c => c.name === name)) {
+					exists = true;
+					break;
+				}
+			}
+			if (exists) return; // Skip already registered
+			
+			// Lookup in DB
+			const dbMatch = openCookieDB.find(c => c.name === name);
+			const cat = dbMatch ? mapCategory(dbMatch.category) : 'others';
+			
+			if (!cookieRegistry[cat]) cookieRegistry[cat] = [];
+			cookieRegistry[cat].push({
+				id: generateId(),
+				name: name,
+				domain: dbMatch ? dbMatch.domain : '',
+				date: dbMatch ? parseRetention(dbMatch.date) : 365,
+				comment: dbMatch ? dbMatch.comment : wp.i18n.__('Détecté automatiquement lors du scan.', 'eo-tools'),
+				active: true
+			});
+			addedCount++;
+		});
+		
+		if (addedCount > 0) {
+			saveRegistry(() => {
+				alert(wp.i18n.sprintf(wp.i18n.__('Scan terminé. %d nouveaux cookies détectés et ajoutés.', 'eo-tools'), addedCount));
+			});
+		} else {
+			alert(wp.i18n.__('Scan terminé. Aucun nouveau cookie détecté.', 'eo-tools'));
 		}
 	});
 

@@ -126,9 +126,21 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 	<div class="eo-card" style="margin-top: 20px;">
 		<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
 			<h2 style="margin: 0;"><?php esc_html_e( 'Liste des cookies', 'eo-tools' ); ?></h2>
-			<button type="button" class="button button-primary" id="eo-add-cookie-btn"><?php esc_html_e( '+ Ajouter un cookie', 'eo-tools' ); ?></button>
 		</div>
-
+			
+		<div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
+			<div style="flex: 1; min-width: 300px; display: flex; align-items: center; border: 1px solid #2271b1; border-radius: 4px; padding: 0 10px; background: #fff;">
+				<span class="dashicons dashicons-search" style="color: #2271b1;"></span>
+				<input type="text" id="eo-cookie-search-db" placeholder="<?php esc_attr_e( 'Recherchez vos cookies (ex: _ga) pour les pré-remplir...', 'eo-tools' ); ?>" style="border: none; box-shadow: none; flex: 1; padding: 8px; outline: none; background: transparent;">
+			</div>
+			<button type="button" id="eo-scan-cookies-btn" class="button button-secondary">
+				<span class="dashicons dashicons-search" style="margin-top: 3px;"></span> <?php esc_html_e( 'Scanner automatique', 'eo-tools' ); ?>
+			</button>
+			<button type="button" id="eo-add-cookie-btn" class="button button-primary">
+				+ <?php esc_html_e( 'Ajouter un cookie', 'eo-tools' ); ?>
+			</button>
+		</div>
+			
 		<div style="display: flex; gap: 20px;">
 			<!-- Sidebar Categories -->
 			<div style="width: 250px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">
@@ -200,6 +212,15 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 								<option value="social"><?php esc_html_e( 'Réseaux sociaux', 'eo-tools' ); ?></option>
 								<option value="others"><?php esc_html_e( 'Autres', 'eo-tools' ); ?></option>
 							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="eo-cookie-active"><?php esc_html_e( 'Statut', 'eo-tools' ); ?></label></th>
+						<td>
+							<label>
+								<input type="checkbox" id="eo-cookie-active" checked>
+								<?php esc_html_e( 'Actif (affiché sur le site et soumis au consentement)', 'eo-tools' ); ?>
+							</label>
 						</td>
 					</tr>
 					<tr>

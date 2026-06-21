@@ -201,11 +201,17 @@
 				let cookieListHtml = '';
 				if (registry[cat] && registry[cat].length > 0) {
 					cookieListHtml = '<div class="eo-cookie-details" style="margin-top: 10px; font-size: 0.85rem; color: #475569; background: #f8fafc; padding: 10px; border-radius: 4px; border: 1px solid #e2e8f0; display: none;">';
-					cookieListHtml += '<table style="width: 100%; border-collapse: collapse; text-align: left;"><thead><tr><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Cookie</th><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Domaine</th><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Durée</th><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Description</th></tr></thead><tbody>';
-					registry[cat].forEach(cookie => {
-						cookieListHtml += `<tr><td style="padding: 8px 5px 8px 0; border-bottom: 1px solid #e2e8f0;"><code>${cookie.name}</code></td><td style="padding: 8px 5px; border-bottom: 1px solid #e2e8f0;">${cookie.domain || ''}</td><td style="padding: 8px 5px; border-bottom: 1px solid #e2e8f0;">${cookie.date || cookie.duration} jours</td><td style="padding: 8px 0 8px 5px; border-bottom: 1px solid #e2e8f0;">${cookie.comment || cookie.description}</td></tr>`;
-					});
-					cookieListHtml += '</tbody></table></div>';
+					const activeCookies = registry[cat].filter(cookie => cookie.active !== false);
+					if (activeCookies.length > 0) {
+						cookieListHtml += '<table style="width: 100%; border-collapse: collapse; text-align: left;"><thead><tr><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Cookie</th><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Domaine</th><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Durée</th><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Description</th></tr></thead><tbody>';
+						activeCookies.forEach(cookie => {
+							cookieListHtml += `<tr><td style="padding: 8px 5px 8px 0; border-bottom: 1px solid #e2e8f0;"><code>${cookie.name}</code></td><td style="padding: 8px 5px; border-bottom: 1px solid #e2e8f0;">${cookie.domain || ''}</td><td style="padding: 8px 5px; border-bottom: 1px solid #e2e8f0;">${cookie.date || cookie.duration} jours</td><td style="padding: 8px 0 8px 5px; border-bottom: 1px solid #e2e8f0;">${cookie.comment || cookie.description}</td></tr>`;
+						});
+						cookieListHtml += '</tbody></table>';
+					} else {
+						cookieListHtml += '<p style="font-style: italic; color: #94a3b8; margin: 0;">' + wp.i18n.__('Aucun cookie soumis pour le moment.', 'eo-tools') + '</p>';
+					}
+					cookieListHtml += '</div>';
 					cookieListHtml += '<a href="#" class="eo-cookie-toggle-details" style="font-size: 0.85rem; color: #3b82f6; text-decoration: none; display: inline-block; margin-top: 5px;">Voir les cookies</a>';
 				}
 
