@@ -287,11 +287,9 @@ jQuery(document).ready(function($) {
 
 	// Delete Cookie
 	$(document).on('click', '.eo-delete-cookie', function() {
-		if (confirm(wp.i18n.__('Êtes-vous sûr de vouloir supprimer ce cookie ?', 'eo-tools'))) {
-			const id = $(this).data('id');
-			cookieRegistry[currentCategory] = cookieRegistry[currentCategory].filter(c => c.id !== id);
-			saveRegistry();
-		}
+		const id = $(this).data('id');
+		cookieRegistry[currentCategory] = cookieRegistry[currentCategory].filter(c => c.id !== id);
+		saveRegistry();
 	});
 
 	// --- Open Cookie Database & Scanner Logic ---
