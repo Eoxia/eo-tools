@@ -187,11 +187,11 @@ jQuery(document).ready(function($) {
 						</div>
 					</div>
 					<div style="display: flex; gap: 10px; align-items: flex-start;">
-						<button type="button" class="button button-small eo-edit-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}">
-							<span class="dashicons dashicons-edit" style="margin-top: 2px;"></span> ${wp.i18n.__('Modifier', 'eo-tools')}
+						<button type="button" class="button button-small eo-edit-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}" style="padding: 0 5px;">
+							<span class="dashicons dashicons-edit" style="margin-top: 2px;"></span>
 						</button>
-						<button type="button" class="button button-small eo-delete-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Supprimer', 'eo-tools')}" style="color: #d63638;">
-							<span class="dashicons dashicons-trash" style="margin-top: 2px;"></span> ${wp.i18n.__('Supprimer', 'eo-tools')}
+						<button type="button" class="button button-small eo-delete-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Supprimer', 'eo-tools')}" style="color: #d63638; padding: 0 5px;">
+							<span class="dashicons dashicons-trash" style="margin-top: 2px;"></span>
 						</button>
 					</div>
 				</div>
