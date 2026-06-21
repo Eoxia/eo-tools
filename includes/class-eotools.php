@@ -23,6 +23,9 @@ class Eotools {
 
 		add_action( 'init', array( $this, 'eo_tools_create_tables' ) );
 		
+		// Cookie Interceptor
+		\EoTools\Includes\Eotools_Cookie_Interceptor::init();
+		
 		// Landing pages hooks
 		add_action( 'template_redirect', array( $this, 'intercept_frontend' ) );
 		add_action( 'template_redirect', array( $this, 'intercept_404' ) );
@@ -367,13 +370,14 @@ class Eotools {
 	 */
 	public function eo_tools_create_tables() {
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'eo_login_attempts';
+		$table_login = $wpdb->prefix . 'eo_login_attempts';
+		$table_cookies = $wpdb->prefix . 'eotools_cookie_stats';
 		$db_version = get_option( 'eo_tools_db_version', '0' );
 		
-		if ( $db_version !== '1.0.0' || $wpdb->get_var( "SHOW TABLES LIKE '$table_name'" ) !== $table_name ) {
+		if ( version_compare( $db_version, '1.1.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
 			$charset_collate = $wpdb->get_charset_collate();
 			
-			$sql = "CREATE TABLE $table_name (
+			$sql = "CREATE TABLE $table_login (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 				ip varchar(100) NOT NULL,
@@ -383,12 +387,22 @@ class Eotools {
 				PRIMARY KEY  (id),
 				KEY ip (ip),
 				KEY time (time)
+			) $charset_collate;
+			CREATE TABLE $table_cookies (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				stat_date date NOT NULL,
+				views int(11) DEFAULT 0 NOT NULL,
+				accepts int(11) DEFAULT 0 NOT NULL,
+				refusals int(11) DEFAULT 0 NOT NULL,
+				customs int(11) DEFAULT 0 NOT NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY stat_date (stat_date)
 			) $charset_collate;";
 			
 			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 			dbDelta( $sql );
 			
-			update_option( 'eo_tools_db_version', '1.0.0' );
+			update_option( 'eo_tools_db_version', '1.1.0' );
 		}
 	}
 

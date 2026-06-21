@@ -30,6 +30,7 @@ require_once EO_TOOLS_PATH . 'includes/autoload.php';
 
 // Load AJAX API endpoints
 require_once EO_TOOLS_PATH . 'includes/api-eo-landing-pages.php';
+require_once EO_TOOLS_PATH . 'includes/api-eo-cookies.php';
 
 use EoTools\Includes\Eotools;
 
