@@ -214,15 +214,15 @@
 
 		bindEvents: function() {
 			document.addEventListener('click', (e) => {
-				if (e.target.id === 'eo-cookie-accept-all') {
+				if (e.target.closest('#eo-cookie-accept-all')) {
 					this.saveConsent('accept_all');
-				} else if (e.target.id === 'eo-cookie-refuse-all') {
+				} else if (e.target.closest('#eo-cookie-refuse-all')) {
 					this.saveConsent('refuse_all');
-				} else if (e.target.id === 'eo-cookie-customize' || e.target.id === 'eo-tools-cookie-revoke') {
+				} else if (e.target.closest('#eo-cookie-customize') || e.target.closest('#eo-tools-cookie-revoke')) {
 					this.showModal();
-				} else if (e.target.id === 'eo-cookie-close-modal') {
+				} else if (e.target.closest('#eo-cookie-close-modal')) {
 					this.hideModal();
-				} else if (e.target.id === 'eo-cookie-save-custom') {
+				} else if (e.target.closest('#eo-cookie-save-custom')) {
 					const checkboxes = document.querySelectorAll('#eo-tools-cookie-modal input[type="checkbox"]');
 					checkboxes.forEach(cb => {
 						this.consent[cb.dataset.category] = cb.checked;
