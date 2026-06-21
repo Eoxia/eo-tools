@@ -419,71 +419,78 @@ jQuery(document).ready(function($) {
 		
 		// Fake delay for UX (1.5 seconds)
 		setTimeout(function() {
-			const localCookies = document.cookie.split(';');
-			let foundCount = 0;
-			let addedCount = 0;
-			
-			localCookies.forEach(cookieStr => {
-				const parts = cookieStr.trim().split('=');
-				if (parts.length < 2) return;
-				const name = parts[0];
+			try {
+				const localCookies = document.cookie.split(';');
+				let foundCount = 0;
+				let addedCount = 0;
 				
-				// Check if already in registry
-				let exists = false;
-				for (const cat in cookieRegistry) {
-					if (cookieRegistry[cat] && cookieRegistry[cat].some(c => c.name === name)) {
-						exists = true;
-						break;
+				localCookies.forEach(cookieStr => {
+					const parts = cookieStr.trim().split('=');
+					if (parts.length < 2) return;
+					const name = parts[0];
+					
+					// Check if already in registry
+					let exists = false;
+					for (const cat in cookieRegistry) {
+						if (cookieRegistry[cat] && cookieRegistry[cat].some(c => c.name === name)) {
+							exists = true;
+							break;
+						}
 					}
-				}
-				
-				foundCount++;
-				if (exists) return; // Skip already registered
-				
-				// Lookup in DB
-				const dbMatch = openCookieDB.find(c => c.name === name);
-				const cat = dbMatch ? mapCategory(dbMatch.category) : 'others';
-				
-				if (!cookieRegistry[cat]) cookieRegistry[cat] = [];
-				cookieRegistry[cat].push({
-					id: generateId(),
-					name: name,
-					domain: dbMatch ? dbMatch.domain : '',
-					date: dbMatch ? parseRetention(dbMatch.date) : 365,
-					comment: dbMatch ? dbMatch.comment : wp.i18n.__('Détecté automatiquement lors du scan.', 'eo-tools'),
-					active: true
+					
+					foundCount++;
+					if (exists) return; // Skip already registered
+					
+					// Lookup in DB
+					const dbMatch = (openCookieDB && openCookieDB.length > 0) ? openCookieDB.find(c => c.name === name) : null;
+					const cat = dbMatch ? mapCategory(dbMatch.category) : 'others';
+					
+					if (!cookieRegistry[cat] || !Array.isArray(cookieRegistry[cat])) {
+						cookieRegistry[cat] = [];
+					}
+					
+					cookieRegistry[cat].push({
+						id: generateId(),
+						name: name,
+						domain: dbMatch ? dbMatch.domain : '',
+						date: dbMatch ? parseRetention(dbMatch.date) : 365,
+						comment: dbMatch ? dbMatch.comment : wp.i18n.__('Détecté automatiquement lors du scan.', 'eo-tools'),
+						active: true
+					});
+					addedCount++;
 				});
-				addedCount++;
-			});
-			
-			// Save Scan History
-			const scanResult = {
-				date: new Date().toLocaleString(),
-				status: 'COMPLETED',
-				found: foundCount,
-				added: addedCount
-			};
-			
-			$.post(eoToolsCookiesAdmin.ajaxUrl, {
-				action: 'eo_tools_save_scan_result',
-				security: eoToolsCookiesAdmin.nonce,
-				result: JSON.stringify(scanResult)
-			}, function(res) {
-				if (res.success) {
-					renderScanHistory(res.data);
-				}
-			});
-			
-			if (addedCount > 0) {
-				saveRegistry(() => {
-					// restore button
+				
+				// Save Scan History
+				const scanResult = {
+					date: new Date().toLocaleString(),
+					status: 'COMPLETED',
+					found: foundCount,
+					added: addedCount
+				};
+				
+				$.post(eoToolsCookiesAdmin.ajaxUrl, {
+					action: 'eo_tools_save_scan_result',
+					security: eoToolsCookiesAdmin.nonce,
+					result: JSON.stringify(scanResult)
+				}, function(res) {
+					if (res.success) {
+						renderScanHistory(res.data);
+					}
+				});
+				
+				if (addedCount > 0) {
+					saveRegistry(() => {
+						$btn.prop('disabled', false).html(originalHtml);
+						alert(wp.i18n.__('Scan terminé.', 'eo-tools') + ' ' + addedCount + ' ' + wp.i18n.__('nouveaux cookies détectés et ajoutés.', 'eo-tools'));
+					});
+				} else {
 					$btn.prop('disabled', false).html(originalHtml);
-					alert(wp.i18n.sprintf(wp.i18n.__('Scan terminé. %d nouveaux cookies détectés et ajoutés.', 'eo-tools'), addedCount));
-				});
-			} else {
-				// restore button
+					alert(wp.i18n.__('Scan terminé. Aucun nouveau cookie détecté.', 'eo-tools'));
+				}
+			} catch (e) {
+				console.error('Scan error:', e);
 				$btn.prop('disabled', false).html(originalHtml);
-				alert(wp.i18n.__('Scan terminé. Aucun nouveau cookie détecté.', 'eo-tools'));
+				alert('Erreur lors du scan : ' + e.message);
 			}
 		}, 1500);
 	});
