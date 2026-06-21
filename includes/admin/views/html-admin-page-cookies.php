@@ -107,14 +107,24 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		$days_since_scan = floor( ( time() - $last_scan_timestamp ) / DAY_IN_SECONDS );
 	}
 	
+	$show_alert = true;
 	if ( $days_since_scan > 365 ) {
 		$alert_class = 'notice-error';
 		$alert_message = esc_html__( 'Attention : Votre dernier scan a plus d\'un an (ou n\'a jamais été effectué).', 'eo-tools' );
+	} elseif ( $days_since_scan >= 335 ) { // 30 days remaining
+		$alert_class = 'notice-error';
+		$alert_message = sprintf( esc_html__( 'Alerte : Votre dernier scan date du %s. Il expire dans moins de 30 jours !', 'eo-tools' ), $last_scan_date );
+	} elseif ( $days_since_scan >= 305 ) { // 60 days remaining
+		$alert_class = 'notice-warning';
+		$alert_message = sprintf( esc_html__( 'Attention : Votre dernier scan date du %s. Pensez à le mettre à jour prochainement.', 'eo-tools' ), $last_scan_date );
 	} else {
 		$alert_class = 'notice-info';
 		$alert_message = sprintf( esc_html__( 'Votre dernier scan date du %s.', 'eo-tools' ), $last_scan_date );
+		// Si on veut le masquer totalement quand tout va bien, on peut mettre $show_alert = false; 
+		// Mais il est préférable de toujours afficher la date pour rassurer.
 	}
 	?>
+	<?php if ( $show_alert ) : ?>
 	<div class="notice <?php echo esc_attr( $alert_class ); ?>" style="background: #fff; padding: 10px 15px; margin-bottom: 20px; display: block !important;">
 		<p style="margin: 0; font-size: 14px;">
 			<strong><?php echo esc_html( $alert_message ); ?></strong>
@@ -123,6 +133,7 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 			<a href="https://www.cnil.fr/fr/cookies-et-autres-traceurs" target="_blank"><?php esc_html_e( 'En savoir plus sur le site de la CNIL', 'eo-tools' ); ?></a>.
 		</p>
 	</div>
+	<?php endif; ?>
 
 	<form method="post" action="">
 		<?php wp_nonce_field( 'eo_tools_cookies_settings' ); ?>
