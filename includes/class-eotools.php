@@ -23,6 +23,10 @@ class Eotools {
 
 		add_action( 'init', array( $this, 'eo_tools_create_tables' ) );
 		
+		// Cookie Interceptor
+		\EoTools\Includes\Eotools_Cookie_Interceptor::init();
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_scripts' ) );
+		
 		// Landing pages hooks
 		add_action( 'template_redirect', array( $this, 'intercept_frontend' ) );
 		add_action( 'template_redirect', array( $this, 'intercept_404' ) );
@@ -34,6 +38,26 @@ class Eotools {
 		add_filter( 'authenticate', array( $this, 'check_email_login_filter' ), 25, 3 );
 		add_action( 'admin_head', array( $this, 'enqueue_admin_bar_styles' ) );
 		add_action( 'wp_head', array( $this, 'enqueue_admin_bar_styles' ) );
+	}
+
+	public function enqueue_frontend_scripts() {
+		$settings = get_option( 'eo_tools_cookies_settings', array( 'active' => false, 'duration' => 12 ) );
+		if ( ! empty( $settings['active'] ) ) {
+			wp_enqueue_style( 'eo-tools-cookies', EO_TOOLS_URL . 'assets/css/eo-tools-cookies.css', array(), EO_TOOLS_VERSION );
+			wp_enqueue_script( 'eo-tools-cookies', EO_TOOLS_URL . 'assets/js/eo-tools-cookies.js', array( 'wp-i18n' ), EO_TOOLS_VERSION, true );
+			wp_set_script_translations( 'eo-tools-cookies', 'eo-tools' );
+			
+			$registry = get_option( 'eo_tools_cookie_registry', array() );
+			
+			wp_localize_script( 'eo-tools-cookies', 'eoToolsCookieData', array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'eo_tools_cookie_nonce' ),
+				'durationDays' => intval( $settings['duration'] ) * 30,
+				'iconFull'    => ! empty( $settings['icon_full'] ) ? $settings['icon_full'] : '',
+				'iconPartial' => ! empty( $settings['icon_partial'] ) ? $settings['icon_partial'] : '',
+				'cookieRegistry' => $registry
+			) );
+		}
 	}
 
 	/**
@@ -367,13 +391,15 @@ class Eotools {
 	 */
 	public function eo_tools_create_tables() {
 		global $wpdb;
-		$table_name = $wpdb->prefix . 'eo_login_attempts';
+		$table_login = $wpdb->prefix . 'eo_login_attempts';
+		$table_cookies = $wpdb->prefix . 'eotools_cookie_stats';
+		$table_log = $wpdb->prefix . 'eotools_cookie_log';
 		$db_version = get_option( 'eo_tools_db_version', '0' );
 		
-		if ( $db_version !== '1.0.0' || $wpdb->get_var( "SHOW TABLES LIKE '$table_name'" ) !== $table_name ) {
+		if ( version_compare( $db_version, '1.2.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
 			$charset_collate = $wpdb->get_charset_collate();
 			
-			$sql = "CREATE TABLE $table_name (
+			$sql = "CREATE TABLE $table_login (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 				ip varchar(100) NOT NULL,
@@ -383,12 +409,31 @@ class Eotools {
 				PRIMARY KEY  (id),
 				KEY ip (ip),
 				KEY time (time)
+			) $charset_collate;
+			CREATE TABLE $table_cookies (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				stat_date date NOT NULL,
+				views int(11) DEFAULT 0 NOT NULL,
+				accepts int(11) DEFAULT 0 NOT NULL,
+				refusals int(11) DEFAULT 0 NOT NULL,
+				customs int(11) DEFAULT 0 NOT NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY stat_date (stat_date)
+			) $charset_collate;
+			CREATE TABLE $table_log (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				consent_id varchar(100) NOT NULL,
+				consent_status varchar(50) NOT NULL,
+				time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+				PRIMARY KEY  (id),
+				KEY consent_id (consent_id),
+				KEY time (time)
 			) $charset_collate;";
 			
 			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 			dbDelta( $sql );
 			
-			update_option( 'eo_tools_db_version', '1.0.0' );
+			update_option( 'eo_tools_db_version', '1.2.0' );
 		}
 	}
 

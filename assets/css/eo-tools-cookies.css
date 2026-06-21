@@ -1,0 +1,161 @@
+/* eo-tools-cookies.css */
+#eo-tools-cookie-banner {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	background: rgba(15, 23, 42, 0.95);
+	backdrop-filter: blur(10px);
+	color: #fff;
+	z-index: 999999;
+	padding: 20px;
+	box-sizing: border-box;
+	box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.eo-tools-cookie-content {
+	max-width: 1200px;
+	margin: 0 auto;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+}
+
+.eo-tools-cookie-text h3 {
+	margin: 0 0 10px 0;
+	font-size: 1.2rem;
+	color: #fff;
+}
+
+.eo-tools-cookie-text p {
+	margin: 0;
+	font-size: 0.9rem;
+	color: #cbd5e1;
+	line-height: 1.5;
+	max-width: 700px;
+}
+
+.eo-tools-cookie-actions {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+}
+
+.eo-cookie-btn {
+	padding: 10px 20px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font-weight: 600;
+	font-size: 0.9rem;
+	transition: all 0.2s ease;
+	background: #334155;
+	color: #fff;
+}
+.eo-cookie-btn:hover { background: #475569; }
+
+.eo-cookie-btn-primary { background: #10b981; color: #fff; }
+.eo-cookie-btn-primary:hover { background: #059669; }
+
+.eo-cookie-btn-outline { background: transparent; border: 1px solid #94a3b8; color: #f8fafc; }
+.eo-cookie-btn-outline:hover { background: rgba(255,255,255,0.1); }
+
+/* Modal */
+#eo-tools-cookie-modal {
+	position: fixed;
+	top: 0; left: 0; width: 100%; height: 100%;
+	background: rgba(0,0,0,0.6);
+	z-index: 9999999;
+	display: none;
+	align-items: center;
+	justify-content: center;
+}
+
+.eo-tools-cookie-modal-content {
+	background: #fff;
+	color: #1e293b;
+	width: 90%;
+	max-width: 600px;
+	border-radius: 8px;
+	display: flex;
+	flex-direction: column;
+	max-height: 90vh;
+}
+
+.eo-tools-cookie-modal-header {
+	padding: 20px;
+	border-bottom: 1px solid #e2e8f0;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.eo-tools-cookie-modal-header h3 { margin: 0; }
+#eo-cookie-close-modal { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; }
+#eo-cookie-close-modal:hover { color: #0f172a; }
+
+.eo-tools-cookie-modal-body {
+	padding: 20px;
+	overflow-y: auto;
+}
+
+.eo-cookie-category {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 15px 0;
+	border-bottom: 1px solid #f1f5f9;
+}
+.eo-cookie-category:last-child { border-bottom: none; }
+
+.eo-cookie-cat-info h4 { margin: 0 0 5px 0; font-size: 1rem; }
+.eo-cookie-cat-info p { margin: 0; font-size: 0.85rem; color: #64748b; }
+
+.eo-tools-cookie-modal-footer {
+	padding: 20px;
+	border-top: 1px solid #e2e8f0;
+	text-align: right;
+}
+
+/* Toggle Switch */
+.switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 24px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: #10b981; }
+input:checked + .slider:before { transform: translateX(26px); }
+input:disabled + .slider { background-color: #94a3b8; cursor: not-allowed; opacity: 0.7; }
+
+/* Revoke button */
+#eo-tools-cookie-revoke {
+	position: fixed;
+	bottom: 20px;
+	left: 20px;
+	width: 44px; height: 44px;
+	border-radius: 50%;
+	background: #fff;
+	color: #1e293b;
+	border: 1px solid #e2e8f0;
+	box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+	font-size: 20px;
+	cursor: pointer;
+	z-index: 999998;
+	display: flex; align-items: center; justify-content: center;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+#eo-tools-cookie-revoke:hover { transform: scale(1.1); box-shadow: 0 6px 14px rgba(0,0,0,0.15); }
+
+.eo-tools-cookie-placeholder {
+	background: #f1f5f9;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	text-align: center;
+	border: 1px dashed #cbd5e1;
+	border-radius: 4px;
+	color: #64748b;
+}
