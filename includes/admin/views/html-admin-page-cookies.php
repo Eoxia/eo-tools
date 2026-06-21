@@ -204,7 +204,10 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 					</tr>
 					<tr>
 						<th scope="row"><label for="eo-cookie-name"><?php esc_html_e( 'Nom du Cookie', 'eo-tools' ); ?></label></th>
-						<td><input type="text" id="eo-cookie-name" class="regular-text" required placeholder="_ga" style="width: 100%;"></td>
+						<td>
+							<input type="text" id="eo-cookie-name" class="regular-text" required placeholder="_ga" style="width: 100%;" pattern="^[!#$%&'*+\-\.^_`|~a-zA-Z0-9]+$" title="<?php esc_attr_e( 'Uniquement des lettres, chiffres et caractères spéciaux autorisés selon la norme RFC 6265.', 'eo-tools' ); ?>">
+							<p class="description"><?php esc_html_e( 'Autorise toutes les lettres (majuscules/minuscules), les chiffres, et une liste très précise de caractères spéciaux autorisés (!, #, $, %, &, \', *, +, -, ., ^, _, `, |, ~).', 'eo-tools' ); ?></p>
+						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="eo-cookie-domain"><?php esc_html_e( 'Domaine', 'eo-tools' ); ?></label></th>
