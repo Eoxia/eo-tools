@@ -94,6 +94,64 @@ $stats_month = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as acce
 					</ul>
 				</div>
 			</div>
+			
+			<h3 style="margin-top: 30px;"><?php esc_html_e( 'Évolution sur 30 jours', 'eo-tools' ); ?></h3>
+			<div style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; position: relative;">
+				<canvas id="eoCookieStatsChart" height="100"></canvas>
+				<button type="button" id="eoCookieExportCsv" class="button" style="margin-top: 15px; background: #4b5563; color: white; border-color: #374151;"><?php esc_html_e( 'export (.csv)', 'eo-tools' ); ?></button>
+			</div>
+
+			<?php
+			// Prepare data for Chart.js
+			$chart_data = $wpdb->get_results( "SELECT stat_date, views, accepts, refusals, customs FROM $table_name WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) ORDER BY stat_date ASC" );
+			
+			$labels = array();
+			$views_data = array();
+			$consent_data = array(); // % of consent
+
+			// Fill missing days with 0
+			$end_date = new DateTime();
+			$start_date = (new DateTime())->modify('-29 days');
+			$interval = new DateInterval('P1D');
+			$daterange = new DatePeriod($start_date, $interval, $end_date->modify('+1 day'));
+
+			$data_map = array();
+			foreach ( $chart_data as $row ) {
+				$data_map[$row->stat_date] = $row;
+			}
+
+			foreach ( $daterange as $date ) {
+				$d = $date->format('Y-m-d');
+				$labels[] = $date->format('d/m');
+				
+				if ( isset( $data_map[$d] ) ) {
+					$v = intval( $data_map[$d]->views );
+					$a = intval( $data_map[$d]->accepts );
+					$c = intval( $data_map[$d]->customs );
+					
+					$views_data[] = $v;
+					
+					// Calculate consent % : (accepts + custom) / views
+					// We can just use accepts / views as purely "Consentement" or accepts+customs. Let's use accepts.
+					if ( $v > 0 ) {
+						$percent = round( ( $a / $v ) * 100 );
+					} else {
+						$percent = 0;
+					}
+					$consent_data[] = $percent;
+				} else {
+					$views_data[] = 0;
+					$consent_data[] = 0;
+				}
+			}
+			?>
+			<script>
+				window.eoCookieChartData = {
+					labels: <?php echo json_encode( $labels ); ?>,
+					views: <?php echo json_encode( $views_data ); ?>,
+					consent: <?php echo json_encode( $consent_data ); ?>
+				};
+			</script>
 		</div>
 
 	</form>

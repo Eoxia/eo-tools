@@ -25,6 +25,7 @@ class Eotools {
 		
 		// Cookie Interceptor
 		\EoTools\Includes\Eotools_Cookie_Interceptor::init();
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_scripts' ) );
 		
 		// Landing pages hooks
 		add_action( 'template_redirect', array( $this, 'intercept_frontend' ) );
@@ -37,6 +38,20 @@ class Eotools {
 		add_filter( 'authenticate', array( $this, 'check_email_login_filter' ), 25, 3 );
 		add_action( 'admin_head', array( $this, 'enqueue_admin_bar_styles' ) );
 		add_action( 'wp_head', array( $this, 'enqueue_admin_bar_styles' ) );
+	}
+
+	public function enqueue_frontend_scripts() {
+		$settings = get_option( 'eo_tools_cookies_settings', array( 'active' => false, 'duration' => 12 ) );
+		if ( ! empty( $settings['active'] ) ) {
+			wp_enqueue_style( 'eo-tools-cookies', EO_TOOLS_URL . 'assets/css/eo-tools-cookies.css', array(), EO_TOOLS_VERSION );
+			wp_enqueue_script( 'eo-tools-cookies', EO_TOOLS_URL . 'assets/js/eo-tools-cookies.js', array( 'wp-i18n' ), EO_TOOLS_VERSION, true );
+			wp_set_script_translations( 'eo-tools-cookies', 'eo-tools' );
+			wp_localize_script( 'eo-tools-cookies', 'eoToolsCookieData', array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'eo_tools_cookie_nonce' ),
+				'durationDays' => intval( $settings['duration'] ) * 30
+			) );
+		}
 	}
 
 	/**

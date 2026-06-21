@@ -74,7 +74,8 @@ class Eotools_Menu {
 
 		if ( strpos( $hook, 'eo-tools-cookies' ) !== false ) {
 			wp_enqueue_style( 'eo-tools-cookies-admin-css', EO_TOOLS_URL . 'assets/css/cookies-admin.css', array(), time() );
-			wp_enqueue_script( 'eo-tools-cookies-admin-js', EO_TOOLS_URL . 'assets/js/cookies-admin.js', array( 'jquery', 'wp-i18n' ), time(), true );
+			wp_enqueue_script( 'chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', array(), '4.0.0', true );
+			wp_enqueue_script( 'eo-tools-cookies-admin-js', EO_TOOLS_URL . 'assets/js/cookies-admin.js', array( 'jquery', 'wp-i18n', 'chart-js' ), time(), true );
 			wp_set_script_translations( 'eo-tools-cookies-admin-js', 'eo-tools' );
 		}
 	}
