@@ -34,6 +34,10 @@
 			}
 		},
 
+		generateId: function() {
+			return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+		},
+
 		saveConsent: function(type) {
 			const durationDays = window.eoToolsCookieData ? window.eoToolsCookieData.durationDays : 365;
 			const date = new Date();
@@ -45,6 +49,10 @@
 				Object.keys(this.categories).forEach(cat => this.consent[cat] = (cat === 'strictly-necessary'));
 			}
 			// custom is already modified in this.consent object
+
+			if (!this.consent.id) {
+				this.consent.id = this.generateId();
+			}
 
 			document.cookie = "eotools_consent=" + encodeURIComponent(JSON.stringify(this.consent)) + "; expires=" + date.toUTCString() + "; path=/; SameSite=Lax";
 			
@@ -65,6 +73,9 @@
 			data.append('action', 'eo_tools_cookie_stats');
 			data.append('security', window.eoToolsCookieData.nonce);
 			data.append('type', type);
+			if (this.consent && this.consent.id) {
+				data.append('consent_id', this.consent.id);
+			}
 
 			fetch(window.eoToolsCookieData.ajaxUrl, {
 				method: 'POST',
@@ -147,31 +158,8 @@
 			document.body.appendChild(revokeBtn);
 		},
 
-		renderBanner: function() {
-			this.renderRevokeButton();
-
-			// Don't show if already consented (at least one choice made, strictly-necessary is always there if they saved custom)
-			if (Object.keys(this.consent).length > 0) return;
-
-			// Send view stat
-			this.sendStats('view');
-
-			const banner = document.createElement('div');
-			banner.id = 'eo-tools-cookie-banner';
-			banner.innerHTML = `
-				<div class="eo-tools-cookie-content">
-					<div class="eo-tools-cookie-text">
-						<h3>Gestion de vos préférences sur les cookies</h3>
-						<p>Nous utilisons des cookies pour assurer le bon fonctionnement du site, mesurer l'audience et vous proposer des publicités personnalisées. Vous pouvez tous les accepter, tous les refuser ou choisir vos préférences.</p>
-					</div>
-					<div class="eo-tools-cookie-actions">
-						<button id="eo-cookie-refuse-all" class="eo-cookie-btn">Tout refuser</button>
-						<button id="eo-cookie-customize" class="eo-cookie-btn eo-cookie-btn-outline">Personnaliser</button>
-						<button id="eo-cookie-accept-all" class="eo-cookie-btn eo-cookie-btn-primary">Tout accepter</button>
-					</div>
-				</div>
-			`;
-			document.body.appendChild(banner);
+		renderModal: function() {
+			if (document.getElementById('eo-tools-cookie-modal')) return;
 
 			const modal = document.createElement('div');
 			modal.id = 'eo-tools-cookie-modal';
@@ -210,6 +198,34 @@
 				</div>
 			`;
 			document.body.appendChild(modal);
+		},
+
+		renderBanner: function() {
+			this.renderRevokeButton();
+			this.renderModal();
+
+			// Don't show if already consented (at least one choice made, strictly-necessary is always there if they saved custom)
+			if (Object.keys(this.consent).length > 0) return;
+
+			// Send view stat
+			this.sendStats('view');
+
+			const banner = document.createElement('div');
+			banner.id = 'eo-tools-cookie-banner';
+			banner.innerHTML = `
+				<div class="eo-tools-cookie-content">
+					<div class="eo-tools-cookie-text">
+						<h3>Gestion de vos préférences sur les cookies</h3>
+						<p>Nous utilisons des cookies pour assurer le bon fonctionnement du site, mesurer l'audience et vous proposer des publicités personnalisées. Vous pouvez tous les accepter, tous les refuser ou choisir vos préférences.</p>
+					</div>
+					<div class="eo-tools-cookie-actions">
+						<button id="eo-cookie-refuse-all" class="eo-cookie-btn">Tout refuser</button>
+						<button id="eo-cookie-customize" class="eo-cookie-btn eo-cookie-btn-outline">Personnaliser</button>
+						<button id="eo-cookie-accept-all" class="eo-cookie-btn eo-cookie-btn-primary">Tout accepter</button>
+					</div>
+				</div>
+			`;
+			document.body.appendChild(banner);
 		},
 
 		bindEvents: function() {

@@ -389,9 +389,10 @@ class Eotools {
 		global $wpdb;
 		$table_login = $wpdb->prefix . 'eo_login_attempts';
 		$table_cookies = $wpdb->prefix . 'eotools_cookie_stats';
+		$table_log = $wpdb->prefix . 'eotools_cookie_log';
 		$db_version = get_option( 'eo_tools_db_version', '0' );
 		
-		if ( version_compare( $db_version, '1.1.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
+		if ( version_compare( $db_version, '1.2.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
 			$charset_collate = $wpdb->get_charset_collate();
 			
 			$sql = "CREATE TABLE $table_login (
@@ -414,12 +415,21 @@ class Eotools {
 				customs int(11) DEFAULT 0 NOT NULL,
 				PRIMARY KEY  (id),
 				UNIQUE KEY stat_date (stat_date)
+			) $charset_collate;
+			CREATE TABLE $table_log (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				consent_id varchar(100) NOT NULL,
+				consent_status varchar(50) NOT NULL,
+				time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+				PRIMARY KEY  (id),
+				KEY consent_id (consent_id),
+				KEY time (time)
 			) $charset_collate;";
 			
 			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 			dbDelta( $sql );
 			
-			update_option( 'eo_tools_db_version', '1.1.0' );
+			update_option( 'eo_tools_db_version', '1.2.0' );
 		}
 	}
 

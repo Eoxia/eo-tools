@@ -22,9 +22,8 @@ class Eotools_Cookies_API {
 
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'eotools_cookie_stats';
+		// Update aggregate stats
 		$today = current_time( 'Y-m-d' );
-
-		// Ensure record exists for today
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id FROM $table_name WHERE stat_date = %s", $today ) );
 
 		if ( ! $row ) {
@@ -57,6 +56,28 @@ class Eotools_Cookies_API {
 			
 			if ( $column ) {
 				$wpdb->query( $wpdb->prepare( "UPDATE $table_name SET $column = $column + 1 WHERE stat_date = %s", $today ) );
+			}
+		}
+
+		// Log detailed history
+		if ( 'view' !== $type ) {
+			$consent_id = isset( $_POST['consent_id'] ) ? sanitize_text_field( $_POST['consent_id'] ) : '';
+			if ( ! empty( $consent_id ) ) {
+				$table_log = $wpdb->prefix . 'eotools_cookie_log';
+				$status = 'PARTIAL';
+				if ( 'accept_all' === $type ) {
+					$status = 'ACCEPTED';
+				} elseif ( 'refuse_all' === $type ) {
+					$status = 'REJECTED';
+				}
+				$wpdb->insert(
+					$table_log,
+					array(
+						'consent_id'     => $consent_id,
+						'consent_status' => $status,
+						'time'           => current_time( 'mysql' )
+					)
+				);
 			}
 		}
 

@@ -171,4 +171,47 @@ $stats_month = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as acce
 		</div>
 
 	</form>
+
+	<div class="wrap" style="margin-top: 40px;">
+		<h2><?php esc_html_e( 'Historique des consentements', 'eo-tools' ); ?></h2>
+		<table class="wp-list-table widefat fixed striped">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Consent ID', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Statut', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Date & Heure', 'eo-tools' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php
+				$table_log = $wpdb->prefix . 'eotools_cookie_log';
+				$logs = $wpdb->get_results( "SELECT * FROM $table_log ORDER BY time DESC LIMIT 50" );
+				if ( ! empty( $logs ) ) {
+					foreach ( $logs as $log ) {
+						$status_color = '#d32f2f'; // Red
+						if ( 'ACCEPTED' === $log->consent_status ) {
+							$status_color = '#388e3c'; // Green
+						} elseif ( 'PARTIAL' === $log->consent_status ) {
+							$status_color = '#f57c00'; // Orange
+						}
+						?>
+						<tr>
+							<td><code><?php echo esc_html( $log->consent_id ); ?></code></td>
+							<td><span style="color: <?php echo $status_color; ?>; font-weight: bold;"><?php echo esc_html( $log->consent_status ); ?></span></td>
+							<td><?php echo esc_html( wp_date( 'M j, Y H:i:s', strtotime( $log->time ) ) ); ?></td>
+						</tr>
+						<?php
+					}
+				} else {
+					?>
+					<tr>
+						<td colspan="3"><?php esc_html_e( 'Aucun historique pour le moment.', 'eo-tools' ); ?></td>
+					</tr>
+					<?php
+				}
+				?>
+			</tbody>
+		</table>
+		<p class="description"><?php esc_html_e( 'Seuls les 50 derniers événements sont affichés ici.', 'eo-tools' ); ?></p>
+	</div>
 </div>

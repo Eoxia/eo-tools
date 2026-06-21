@@ -134,17 +134,19 @@ input:disabled + .slider { background-color: #94a3b8; cursor: not-allowed; opaci
 	position: fixed;
 	bottom: 20px;
 	left: 20px;
-	width: 40px; height: 40px;
+	width: 44px; height: 44px;
 	border-radius: 50%;
 	background: #fff;
+	color: #1e293b;
 	border: 1px solid #e2e8f0;
-	box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+	box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 	font-size: 20px;
 	cursor: pointer;
 	z-index: 999998;
 	display: flex; align-items: center; justify-content: center;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-#eo-tools-cookie-revoke:hover { transform: scale(1.1); }
+#eo-tools-cookie-revoke:hover { transform: scale(1.1); box-shadow: 0 6px 14px rgba(0,0,0,0.15); }
 
 .eo-tools-cookie-placeholder {
 	background: #f1f5f9;
