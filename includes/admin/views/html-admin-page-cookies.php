@@ -207,8 +207,11 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 						<td><input type="text" id="eo-cookie-name" class="regular-text" required placeholder="_ga" style="width: 100%;"></td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="eo-cookie-duration"><?php esc_html_e( 'Durée', 'eo-tools' ); ?></label></th>
-						<td><input type="text" id="eo-cookie-duration" class="regular-text" required placeholder="1 an" style="width: 100%;"></td>
+						<th scope="row"><label for="eo-cookie-duration"><?php esc_html_e( 'Durée (en jours)', 'eo-tools' ); ?></label></th>
+						<td>
+							<input type="number" id="eo-cookie-duration" class="regular-text" required placeholder="365" min="1" max="365" style="width: 100%;">
+							<p class="description"><?php esc_html_e( 'Maximum 365 jours selon les recommandations de la CNIL.', 'eo-tools' ); ?></p>
+						</td>
 					</tr>
 					<tr>
 						<th scope="row"><label for="eo-cookie-desc"><?php esc_html_e( 'Description', 'eo-tools' ); ?></label></th>

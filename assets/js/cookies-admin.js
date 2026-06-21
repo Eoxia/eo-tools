@@ -175,7 +175,7 @@ jQuery(document).ready(function($) {
 						</div>
 						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
 							<div style="width: 150px;"><strong>${wp.i18n.__('Durée', 'eo-tools')}</strong></div>
-							<div>${cookie.duration}</div>
+							<div>${cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</div>
 						</div>
 						<div style="display: flex; gap: 20px;">
 							<div style="width: 150px;"><strong>Description</strong></div>
@@ -211,7 +211,8 @@ jQuery(document).ready(function($) {
 	});
 
 	// Close Modal
-	$('#eo-cookie-modal-cancel').on('click', function() {
+	$('#eo-cookie-modal-cancel').on('click', function(e) {
+		e.preventDefault();
 		$('#eo-cookie-modal').hide();
 	});
 
