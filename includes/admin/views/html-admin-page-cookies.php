@@ -18,26 +18,72 @@ if ( isset( $_POST['submit'] ) && check_admin_referer( 'eo_tools_cookies_setting
 	echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Réglages enregistrés.', 'eo-tools' ) . '</p></div>';
 }
 
-$settings = get_option( 'eo_tools_cookies_settings', array( 'active' => false, 'duration' => 12 ) );
-
 global $wpdb;
+$table_log = $wpdb->prefix . 'eotools_cookie_log';
+
+if ( isset( $_POST['clear_cookie_log'] ) && check_admin_referer( 'eo_tools_clear_log' ) ) {
+	$wpdb->query( "TRUNCATE TABLE $table_log" );
+	echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'L\'historique des consentements a été vidé avec succès.', 'eo-tools' ) . '</p></div>';
+}
+
+$settings = get_option( 'eo_tools_cookies_settings', array( 'active' => false, 'duration' => 12 ) );
 $table_name = $wpdb->prefix . 'eotools_cookie_stats';
 
 // Fetch stats
 $today = current_time( 'Y-m-d' );
 $stats_today = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE stat_date = %s", $today ) );
-
 $stats_week = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as accepts, SUM(refusals) as refusals, SUM(customs) as customs FROM $table_name WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)" );
-
 $stats_month = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as accepts, SUM(refusals) as refusals, SUM(customs) as customs FROM $table_name WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)" );
+
+// Fetch GitHub Release
+$release_transient = get_transient( 'eo_tools_latest_release' );
+if ( false === $release_transient ) {
+	$response = wp_remote_get( 'https://api.github.com/repos/Eoxia/eo-tools/releases/latest', array(
+		'headers' => array( 'User-Agent' => 'WordPress/EOTools' )
+	) );
+	if ( ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response ) ) {
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( isset( $body['name'] ) && isset( $body['html_url'] ) ) {
+			$release_transient = array(
+				'name' => $body['name'],
+				'url'  => $body['html_url'],
+			);
+			set_transient( 'eo_tools_latest_release', $release_transient, DAY_IN_SECONDS );
+		}
+	} else {
+		$release_transient = 'error';
+		set_transient( 'eo_tools_latest_release', $release_transient, HOUR_IN_SECONDS );
+	}
+}
+
+$active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'dashboard';
 ?>
 <div class="wrap eo-admin-wrap">
 	<h1><?php esc_html_e( 'Gestion des Cookies', 'eo-tools' ); ?></h1>
 
+	<?php if ( is_array( $release_transient ) && ! empty( $release_transient['name'] ) ) : ?>
+	<div class="notice notice-info is-dismissible" style="background: #eff6ff; border-left-color: #3b82f6; padding: 10px 15px; margin-bottom: 20px;">
+		<p style="margin: 0; font-size: 14px;">
+			<strong style="color: #1e3a8a;">🚀 <?php esc_html_e( 'Nouvelle version d\'EO Tools disponible :', 'eo-tools' ); ?> <?php echo esc_html( $release_transient['name'] ); ?> !</strong>
+			<br />
+			<?php esc_html_e( 'Découvrez les dernières nouveautés et améliorations.', 'eo-tools' ); ?>
+		</p>
+		<p style="margin: 10px 0 0;">
+			<a href="<?php echo esc_url( $release_transient['url'] ); ?>" target="_blank" class="button button-primary"><?php esc_html_e( 'Voir la release', 'eo-tools' ); ?></a>
+		</p>
+	</div>
+	<?php endif; ?>
+
+	<h2 class="nav-tab-wrapper">
+		<a href="?page=eo-tools-cookies&tab=dashboard" class="nav-tab <?php echo $active_tab === 'dashboard' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Tableau de bord', 'eo-tools' ); ?></a>
+		<a href="?page=eo-tools-cookies&tab=report" class="nav-tab <?php echo $active_tab === 'report' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Rapport de consentements', 'eo-tools' ); ?></a>
+	</h2>
+
+	<?php if ( 'dashboard' === $active_tab ) : ?>
 	<form method="post" action="">
 		<?php wp_nonce_field( 'eo_tools_cookies_settings' ); ?>
 
-		<div class="eo-card">
+		<div class="eo-card" style="margin-top: 20px;">
 			<h2><?php esc_html_e( 'Réglages Principaux', 'eo-tools' ); ?></h2>
 			<table class="form-table">
 				<tr>
@@ -118,14 +164,12 @@ $stats_month = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as acce
 			</div>
 
 			<?php
-			// Prepare data for Chart.js
 			$chart_data = $wpdb->get_results( "SELECT stat_date, views, accepts, refusals, customs FROM $table_name WHERE stat_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) ORDER BY stat_date ASC" );
 			
 			$labels = array();
 			$views_data = array();
-			$consent_data = array(); // % of consent
+			$consent_data = array();
 
-			// Fill missing days with 0
 			$end_date = new DateTime();
 			$start_date = (new DateTime())->modify('-29 days');
 			$interval = new DateInterval('P1D');
@@ -143,18 +187,9 @@ $stats_month = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as acce
 				if ( isset( $data_map[$d] ) ) {
 					$v = intval( $data_map[$d]->views );
 					$a = intval( $data_map[$d]->accepts );
-					$c = intval( $data_map[$d]->customs );
 					
 					$views_data[] = $v;
-					
-					// Calculate consent % : (accepts + custom) / views
-					// We can just use accepts / views as purely "Consentement" or accepts+customs. Let's use accepts.
-					if ( $v > 0 ) {
-						$percent = round( ( $a / $v ) * 100 );
-					} else {
-						$percent = 0;
-					}
-					$consent_data[] = $percent;
+					$consent_data[] = $v > 0 ? round( ( $a / $v ) * 100 ) : 0;
 				} else {
 					$views_data[] = 0;
 					$consent_data[] = 0;
@@ -172,8 +207,17 @@ $stats_month = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as acce
 
 	</form>
 
-	<div class="wrap" style="margin-top: 40px;">
-		<h2><?php esc_html_e( 'Historique des consentements', 'eo-tools' ); ?></h2>
+	<?php elseif ( 'report' === $active_tab ) : ?>
+
+	<div class="eo-card" style="margin-top: 20px;">
+		<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+			<h2 style="margin: 0;"><?php esc_html_e( 'Historique des consentements', 'eo-tools' ); ?></h2>
+			<form method="post" action="" onsubmit="return confirm('<?php esc_attr_e( 'Êtes-vous sûr de vouloir supprimer tout l\'historique des consentements ? Cette action est irréversible.', 'eo-tools' ); ?>');">
+				<?php wp_nonce_field( 'eo_tools_clear_log' ); ?>
+				<button type="submit" name="clear_cookie_log" class="button button-secondary" style="color: #dc3232; border-color: #dc3232;"><?php esc_html_e( 'Vider l\'historique', 'eo-tools' ); ?></button>
+			</form>
+		</div>
+		
 		<table class="wp-list-table widefat fixed striped">
 			<thead>
 				<tr>
@@ -184,8 +228,7 @@ $stats_month = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as acce
 			</thead>
 			<tbody>
 				<?php
-				$table_log = $wpdb->prefix . 'eotools_cookie_log';
-				$logs = $wpdb->get_results( "SELECT * FROM $table_log ORDER BY time DESC LIMIT 50" );
+				$logs = $wpdb->get_results( "SELECT * FROM $table_log ORDER BY time DESC LIMIT 100" );
 				if ( ! empty( $logs ) ) {
 					foreach ( $logs as $log ) {
 						$status_color = '#d32f2f'; // Red
@@ -212,6 +255,7 @@ $stats_month = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as acce
 				?>
 			</tbody>
 		</table>
-		<p class="description"><?php esc_html_e( 'Seuls les 50 derniers événements sont affichés ici.', 'eo-tools' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Seuls les 100 derniers événements sont affichés ici.', 'eo-tools' ); ?></p>
 	</div>
-</div>
+
+	<?php endif; ?>
