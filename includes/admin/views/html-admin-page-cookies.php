@@ -207,6 +207,10 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 						<td><input type="text" id="eo-cookie-name" class="regular-text" required placeholder="_ga" style="width: 100%;"></td>
 					</tr>
 					<tr>
+						<th scope="row"><label for="eo-cookie-domain"><?php esc_html_e( 'Domaine', 'eo-tools' ); ?></label></th>
+						<td><input type="text" id="eo-cookie-domain" class="regular-text" required placeholder=".domaine.com" style="width: 100%;"></td>
+					</tr>
+					<tr>
 						<th scope="row"><label for="eo-cookie-duration"><?php esc_html_e( 'Durée (en jours)', 'eo-tools' ); ?></label></th>
 						<td>
 							<input type="number" id="eo-cookie-duration" class="regular-text" required placeholder="365" min="1" max="365" style="width: 100%;">

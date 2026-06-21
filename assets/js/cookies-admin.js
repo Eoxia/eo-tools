@@ -174,6 +174,10 @@ jQuery(document).ready(function($) {
 							<div><code>${cookie.name}</code></div>
 						</div>
 						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
+							<div style="width: 150px;"><strong>${wp.i18n.__('Domaine', 'eo-tools')}</strong></div>
+							<div>${cookie.domain || ''}</div>
+						</div>
+						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
 							<div style="width: 150px;"><strong>${wp.i18n.__('Durée', 'eo-tools')}</strong></div>
 							<div>${cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</div>
 						</div>
@@ -210,6 +214,7 @@ jQuery(document).ready(function($) {
 		$('#eo-cookie-id').val('');
 		$('#eo-cookie-old-cat').val('');
 		$('#eo-cookie-cat').val(currentCategory);
+		$('#eo-cookie-domain').val('');
 		$('#eo-cookie-modal-title').text(wp.i18n.__('Ajouter un cookie', 'eo-tools'));
 		$('#eo-cookie-modal').css('display', 'flex');
 	});
@@ -228,10 +233,11 @@ jQuery(document).ready(function($) {
 		const oldCat = $('#eo-cookie-old-cat').val();
 		const newCat = $('#eo-cookie-cat').val();
 		const name = $('#eo-cookie-name').val();
+		const domain = $('#eo-cookie-domain').val();
 		const duration = $('#eo-cookie-duration').val();
 		const description = $('#eo-cookie-desc').val();
 
-		const cookieData = { id, name, duration, description };
+		const cookieData = { id, name, domain, duration, description };
 
 		// If editing and category changed, remove from old category
 		if (oldCat && oldCat !== newCat && cookieRegistry[oldCat]) {
@@ -265,6 +271,7 @@ jQuery(document).ready(function($) {
 			$('#eo-cookie-old-cat').val(currentCategory);
 			$('#eo-cookie-cat').val(currentCategory);
 			$('#eo-cookie-name').val(cookie.name);
+			$('#eo-cookie-domain').val(cookie.domain || '');
 			$('#eo-cookie-duration').val(cookie.duration);
 			$('#eo-cookie-desc').val(cookie.description);
 			$('#eo-cookie-modal-title').text(wp.i18n.__('Modifier un cookie', 'eo-tools'));
