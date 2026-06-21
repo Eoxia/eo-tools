@@ -335,16 +335,20 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 				$logs = $wpdb->get_results( "SELECT * FROM $table_log ORDER BY time DESC LIMIT 100" );
 				if ( ! empty( $logs ) ) {
 					foreach ( $logs as $log ) {
-						$status_style = 'color: #d32f2f; background: #fef2f2; padding: 4px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #fecaca; box-shadow: 1px 1px 0px rgba(0,0,0,0.1);'; // Default REJECTED
+						$status_label = esc_html__( 'REFUSÉ', 'eo-tools' );
+						$status_style = 'color: #b91c1c; background: #fef2f2; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #fca5a5; font-size: 13px; letter-spacing: 0.5px;';
+						
 						if ( 'ACCEPTED' === $log->consent_status ) {
-							$status_style = 'color: #047857; background: #ecfdf5; padding: 4px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #a7f3d0; box-shadow: 1px 1px 0px rgba(0,0,0,0.1);';
+							$status_label = esc_html__( 'ACCEPTÉ', 'eo-tools' );
+							$status_style = 'color: #047857; background: #f0fdf4; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #86efac; font-size: 13px; letter-spacing: 0.5px;';
 						} elseif ( 'PARTIAL' === $log->consent_status ) {
-							$status_style = 'color: #c2410c; background: #fff7ed; padding: 4px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #fed7aa; box-shadow: 1px 1px 0px rgba(0,0,0,0.1);';
+							$status_label = esc_html__( 'PARTIEL', 'eo-tools' );
+							$status_style = 'color: #c2410c; background: #fff7ed; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #fdba74; font-size: 13px; letter-spacing: 0.5px;';
 						}
 						?>
 						<tr>
 							<td><code><?php echo esc_html( $log->consent_id ); ?></code></td>
-							<td><span style="display: inline-block; <?php echo $status_style; ?>"><?php echo esc_html( $log->consent_status ); ?></span></td>
+							<td><span style="display: inline-block; <?php echo $status_style; ?>"><?php echo $status_label; ?></span></td>
 							<td><?php echo esc_html( wp_date( 'M j, Y H:i:s', strtotime( $log->time ) ) ); ?></td>
 						</tr>
 						<?php
