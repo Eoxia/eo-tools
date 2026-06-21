@@ -183,8 +183,12 @@ jQuery(document).ready(function($) {
 						</div>
 					</div>
 					<div style="display: flex; gap: 10px; align-items: flex-start;">
-						<button type="button" class="button eo-edit-cookie" data-id="${cookie.id}" style="display: flex; align-items: center; justify-content: center;"><span class="dashicons dashicons-edit"></span></button>
-						<button type="button" class="button eo-delete-cookie" data-id="${cookie.id}" style="color: #dc3232; border-color: #dc3232; display: flex; align-items: center; justify-content: center;"><span class="dashicons dashicons-trash"></span></button>
+						<button type="button" class="button button-small eo-edit-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}">
+							<span class="dashicons dashicons-edit" style="margin-top: 2px;"></span> ${wp.i18n.__('Modifier', 'eo-tools')}
+						</button>
+						<button type="button" class="button button-small eo-delete-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Supprimer', 'eo-tools')}" style="color: #d63638;">
+							<span class="dashicons dashicons-trash" style="margin-top: 2px;"></span> ${wp.i18n.__('Supprimer', 'eo-tools')}
+						</button>
 					</div>
 				</div>
 			`);
