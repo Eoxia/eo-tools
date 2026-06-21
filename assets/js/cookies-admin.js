@@ -179,11 +179,11 @@ jQuery(document).ready(function($) {
 						</div>
 						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
 							<div style="width: 150px;"><strong>${wp.i18n.__('Durée', 'eo-tools')}</strong></div>
-							<div>${cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</div>
+							<div>${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</div>
 						</div>
-						<div style="display: flex; gap: 20px;">
-							<div style="width: 150px;"><strong>Description</strong></div>
-							<div style="color: #475569;">${cookie.description}</div>
+						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
+							<div style="width: 150px;"><strong>${wp.i18n.__('Description', 'eo-tools')}</strong></div>
+							<div style="flex: 1;">${cookie.comment || cookie.description}</div>
 						</div>
 					</div>
 					<div style="display: flex; gap: 10px; align-items: flex-start;">
@@ -234,10 +234,10 @@ jQuery(document).ready(function($) {
 		const newCat = $('#eo-cookie-cat').val();
 		const name = $('#eo-cookie-name').val();
 		const domain = $('#eo-cookie-domain').val();
-		const duration = $('#eo-cookie-duration').val();
-		const description = $('#eo-cookie-desc').val();
+		const date = $('#eo-cookie-duration').val();
+		const comment = $('#eo-cookie-desc').val();
 
-		const cookieData = { id, name, domain, duration, description };
+		const cookieData = { id, name, domain, date, comment };
 
 		// If editing and category changed, remove from old category
 		if (oldCat && oldCat !== newCat && cookieRegistry[oldCat]) {
@@ -272,8 +272,8 @@ jQuery(document).ready(function($) {
 			$('#eo-cookie-cat').val(currentCategory);
 			$('#eo-cookie-name').val(cookie.name);
 			$('#eo-cookie-domain').val(cookie.domain || '');
-			$('#eo-cookie-duration').val(cookie.duration);
-			$('#eo-cookie-desc').val(cookie.description);
+			$('#eo-cookie-duration').val(cookie.date || cookie.duration);
+			$('#eo-cookie-desc').val(cookie.comment || cookie.description);
 			$('#eo-cookie-modal-title').text(wp.i18n.__('Modifier un cookie', 'eo-tools'));
 			$('#eo-cookie-modal').css('display', 'flex');
 		}
