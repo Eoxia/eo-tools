@@ -134,7 +134,7 @@ jQuery(document).ready(function($) {
 				renderCookieList();
 				if (callback) callback();
 			} else {
-				alert(wp.i18n.__('Erreur lors de l\'enregistrement.', 'eo-tools'));
+				showNotice(wp.i18n.__('Erreur lors de l\'enregistrement.', 'eo-tools'), 'error');
 			}
 		});
 	}
@@ -414,9 +414,28 @@ jQuery(document).ready(function($) {
 		const $btn = $(this);
 		const originalHtml = $btn.html();
 		
-		// 1. Loading UI
+		// 1. Loading UI on button
 		$btn.prop('disabled', true).html('<span class="dashicons dashicons-update" style="animation: dashicons-spin 1s infinite linear; margin-top: 3px;"></span> ' + wp.i18n.__('Analyse en cours...', 'eo-tools'));
 		
+		// 2. Add temporary line in History table
+		const scanDate = new Date().toLocaleString();
+		const tempId = 'scan-' + Date.now();
+		const $tbody = $('#eo-scan-history-list');
+		
+		// Remove empty state if present
+		if ($tbody.find('td[colspan="4"]').text().includes(wp.i18n.__('Aucun scan effectué', 'eo-tools')) || $tbody.find('td[colspan="4"]').text().includes(wp.i18n.__('Chargement', 'eo-tools'))) {
+			$tbody.empty();
+		}
+		
+		$tbody.prepend(`
+			<tr id="${tempId}" style="background-color: #f8fafc;">
+				<td><strong>${scanDate}</strong></td>
+				<td><span style="background: #e2e8f0; color: #475569; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;"><span class="dashicons dashicons-update" style="animation: dashicons-spin 1s infinite linear; font-size: 14px; width: 14px; height: 14px; margin-right: 4px; vertical-align: text-top;"></span>${wp.i18n.__('EN COURS', 'eo-tools')}</span></td>
+				<td>-</td>
+				<td>-</td>
+			</tr>
+		`);
+
 		// Fake delay for UX (1.5 seconds)
 		setTimeout(function() {
 			try {
@@ -432,9 +451,12 @@ jQuery(document).ready(function($) {
 					// Check if already in registry
 					let exists = false;
 					for (const cat in cookieRegistry) {
-						if (cookieRegistry[cat] && cookieRegistry[cat].some(c => c.name === name)) {
-							exists = true;
-							break;
+						if (cookieRegistry[cat]) {
+							const arr = Array.isArray(cookieRegistry[cat]) ? cookieRegistry[cat] : Object.values(cookieRegistry[cat]);
+							if (arr.some(c => c.name === name)) {
+								exists = true;
+								break;
+							}
 						}
 					}
 					
@@ -445,8 +467,10 @@ jQuery(document).ready(function($) {
 					const dbMatch = (openCookieDB && openCookieDB.length > 0) ? openCookieDB.find(c => c.name === name) : null;
 					const cat = dbMatch ? mapCategory(dbMatch.category) : 'others';
 					
-					if (!cookieRegistry[cat] || !Array.isArray(cookieRegistry[cat])) {
+					if (!cookieRegistry[cat]) {
 						cookieRegistry[cat] = [];
+					} else if (!Array.isArray(cookieRegistry[cat])) {
+						cookieRegistry[cat] = Object.values(cookieRegistry[cat]);
 					}
 					
 					cookieRegistry[cat].push({
@@ -462,7 +486,7 @@ jQuery(document).ready(function($) {
 				
 				// Save Scan History
 				const scanResult = {
-					date: new Date().toLocaleString(),
+					date: scanDate,
 					status: 'COMPLETED',
 					found: foundCount,
 					added: addedCount
@@ -481,16 +505,32 @@ jQuery(document).ready(function($) {
 				if (addedCount > 0) {
 					saveRegistry(() => {
 						$btn.prop('disabled', false).html(originalHtml);
-						alert(wp.i18n.__('Scan terminé.', 'eo-tools') + ' ' + addedCount + ' ' + wp.i18n.__('nouveaux cookies détectés et ajoutés.', 'eo-tools'));
 					});
 				} else {
 					$btn.prop('disabled', false).html(originalHtml);
-					alert(wp.i18n.__('Scan terminé. Aucun nouveau cookie détecté.', 'eo-tools'));
 				}
 			} catch (e) {
 				console.error('Scan error:', e);
 				$btn.prop('disabled', false).html(originalHtml);
-				alert('Erreur lors du scan : ' + e.message);
+				
+				const errorResult = {
+					date: scanDate,
+					status: 'FAILED',
+					found: 0,
+					added: 0,
+					error: e.message
+				};
+				
+				// Optional: Save failed scan to DB to persist the error in history
+				$.post(eoToolsCookiesAdmin.ajaxUrl, {
+					action: 'eo_tools_save_scan_result',
+					security: eoToolsCookiesAdmin.nonce,
+					result: JSON.stringify(errorResult)
+				}, function(res) {
+					if (res.success) {
+						renderScanHistory(res.data);
+					}
+				});
 			}
 		}, 1500);
 	});
@@ -519,14 +559,24 @@ jQuery(document).ready(function($) {
 		}
 		
 		historyArray.forEach(item => {
-			$tbody.append(`
-				<tr>
-					<td><strong>${item.date}</strong></td>
-					<td><span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${item.status}</span></td>
-					<td>${item.found}</td>
-					<td>${item.added}</td>
-				</tr>
-			`);
+			if (item.status === 'FAILED' || item.status === 'ERREUR') {
+				$tbody.append(`
+					<tr>
+						<td><strong>${item.date}</strong></td>
+						<td><span style="background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${wp.i18n.__('ERREUR', 'eo-tools')}</span></td>
+						<td colspan="2" style="color: #dc2626;">${item.error || wp.i18n.__('Erreur inconnue', 'eo-tools')}</td>
+					</tr>
+				`);
+			} else {
+				$tbody.append(`
+					<tr>
+						<td><strong>${item.date}</strong></td>
+						<td><span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${item.status}</span></td>
+						<td>${item.found}</td>
+						<td>${item.added}</td>
+					</tr>
+				`);
+			}
 		});
 	}
 
