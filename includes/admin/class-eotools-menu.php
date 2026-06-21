@@ -35,9 +35,15 @@ class Eotools_Menu {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Unauthorized' );
 		}
-		$registry = isset( $_POST['registry'] ) ? json_decode( stripslashes( $_POST['registry'] ), true ) : array();
+		
+		$registry = isset( $_POST['registry'] ) ? wp_unslash( $_POST['registry'] ) : array();
+		
+		if ( ! is_array( $registry ) ) {
+			$registry = array();
+		}
+		
 		update_option( 'eo_tools_cookie_registry', $registry );
-		wp_send_json_success();
+		wp_send_json_success( $registry );
 	}
 
 

@@ -127,7 +127,7 @@ jQuery(document).ready(function($) {
 		$.post(eoToolsCookiesAdmin.ajaxUrl, {
 			action: 'eo_tools_save_cookie_registry',
 			security: eoToolsCookiesAdmin.nonce,
-			registry: JSON.stringify(cookieRegistry)
+			registry: cookieRegistry
 		}, function(response) {
 			if (response.success) {
 				renderSidebarCounts();
