@@ -47,8 +47,22 @@
 				Object.keys(this.categories).forEach(cat => this.consent[cat] = true);
 			} else if (type === 'refuse_all') {
 				Object.keys(this.categories).forEach(cat => this.consent[cat] = (cat === 'strictly-necessary'));
+			} else if (type === 'custom') {
+				// Check if they actually accepted all or refused all manually
+				let allAccepted = true;
+				let allRefused = true;
+				Object.keys(this.categories).forEach(cat => {
+					if (cat !== 'strictly-necessary') {
+						if (!this.consent[cat]) allAccepted = false;
+						if (this.consent[cat]) allRefused = false;
+					}
+				});
+				if (allAccepted) {
+					type = 'accept_all';
+				} else if (allRefused) {
+					type = 'refuse_all';
+				}
 			}
-			// custom is already modified in this.consent object
 
 			if (!this.consent.id) {
 				this.consent.id = this.generateId();
