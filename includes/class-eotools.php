@@ -46,12 +46,16 @@ class Eotools {
 			wp_enqueue_style( 'eo-tools-cookies', EO_TOOLS_URL . 'assets/css/eo-tools-cookies.css', array(), EO_TOOLS_VERSION );
 			wp_enqueue_script( 'eo-tools-cookies', EO_TOOLS_URL . 'assets/js/eo-tools-cookies.js', array( 'wp-i18n' ), EO_TOOLS_VERSION, true );
 			wp_set_script_translations( 'eo-tools-cookies', 'eo-tools' );
+			
+			$registry = get_option( 'eo_tools_cookie_registry', array() );
+			
 			wp_localize_script( 'eo-tools-cookies', 'eoToolsCookieData', array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'eo_tools_cookie_nonce' ),
 				'durationDays' => intval( $settings['duration'] ) * 30,
 				'iconFull'    => ! empty( $settings['icon_full'] ) ? $settings['icon_full'] : '',
-				'iconPartial' => ! empty( $settings['icon_partial'] ) ? $settings['icon_partial'] : ''
+				'iconPartial' => ! empty( $settings['icon_partial'] ) ? $settings['icon_partial'] : '',
+				'cookieRegistry' => $registry
 			) );
 		}
 	}

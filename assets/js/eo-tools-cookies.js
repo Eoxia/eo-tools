@@ -193,13 +193,28 @@
 				</div>
 			`;
 			
+			const registry = (window.eoToolsCookieData && window.eoToolsCookieData.cookieRegistry) ? window.eoToolsCookieData.cookieRegistry : {};
+			
 			Object.keys(this.categories).forEach(cat => {
 				const isStrict = cat === 'strictly-necessary';
+				
+				let cookieListHtml = '';
+				if (registry[cat] && registry[cat].length > 0) {
+					cookieListHtml = '<div class="eo-cookie-details" style="margin-top: 10px; font-size: 0.85rem; color: #475569; background: #f8fafc; padding: 10px; border-radius: 4px; border: 1px solid #e2e8f0; display: none;">';
+					cookieListHtml += '<table style="width: 100%; border-collapse: collapse; text-align: left;"><thead><tr><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Cookie</th><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Durée</th><th style="padding-bottom: 5px; border-bottom: 1px solid #cbd5e1;">Description</th></tr></thead><tbody>';
+					registry[cat].forEach(cookie => {
+						cookieListHtml += `<tr><td style="padding: 8px 5px 8px 0; border-bottom: 1px solid #e2e8f0;"><code>${cookie.name}</code></td><td style="padding: 8px 5px; border-bottom: 1px solid #e2e8f0;">${cookie.duration}</td><td style="padding: 8px 0 8px 5px; border-bottom: 1px solid #e2e8f0;">${cookie.description}</td></tr>`;
+					});
+					cookieListHtml += '</tbody></table></div>';
+					cookieListHtml += '<a href="#" class="eo-cookie-toggle-details" style="font-size: 0.85rem; color: #3b82f6; text-decoration: none; display: inline-block; margin-top: 5px;">Voir les cookies</a>';
+				}
+
 				categoriesHtml += `
 					<div class="eo-cookie-category">
-						<div class="eo-cookie-cat-info">
-							<h4>${this.categories[cat].name}</h4>
-							<p>${this.categories[cat].description}</p>
+						<div class="eo-cookie-cat-info" style="flex: 1; padding-right: 20px;">
+							<h4 style="margin: 0 0 5px 0;">${this.categories[cat].name}</h4>
+							<p style="margin: 0; font-size: 0.85rem; color: #64748b;">${this.categories[cat].description}</p>
+							${cookieListHtml}
 						</div>
 						<div class="eo-cookie-toggle">
 							<label class="switch">
@@ -272,6 +287,17 @@
 						this.consent[cb.dataset.category] = cb.checked;
 					});
 					this.saveConsent('custom');
+				} else if (e.target.closest('.eo-cookie-toggle-details')) {
+					e.preventDefault();
+					const link = e.target.closest('.eo-cookie-toggle-details');
+					const details = link.previousElementSibling;
+					if (details.style.display === 'none') {
+						details.style.display = 'block';
+						link.innerText = wp.i18n.__('Masquer les cookies', 'eo-tools');
+					} else {
+						details.style.display = 'none';
+						link.innerText = wp.i18n.__('Voir les cookies', 'eo-tools');
+					}
 				}
 			});
 

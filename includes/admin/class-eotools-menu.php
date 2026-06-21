@@ -16,7 +16,31 @@ class Eotools_Menu {
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		
+		add_action( 'wp_ajax_eo_tools_get_cookie_registry', array( $this, 'ajax_get_registry' ) );
+		add_action( 'wp_ajax_eo_tools_save_cookie_registry', array( $this, 'ajax_save_registry' ) );
 	}
+
+	public function ajax_get_registry() {
+		check_ajax_referer( 'eo_tools_cookie_registry_nonce', 'security' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
+		}
+		$registry = get_option( 'eo_tools_cookie_registry', array() );
+		wp_send_json_success( $registry );
+	}
+
+	public function ajax_save_registry() {
+		check_ajax_referer( 'eo_tools_cookie_registry_nonce', 'security' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
+		}
+		$registry = isset( $_POST['registry'] ) ? json_decode( stripslashes( $_POST['registry'] ), true ) : array();
+		update_option( 'eo_tools_cookie_registry', $registry );
+		wp_send_json_success();
+	}
+
+
 
 	public function add_admin_menu() {
 		// Parent top-level menu
@@ -77,6 +101,10 @@ class Eotools_Menu {
 			wp_enqueue_script( 'chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', array(), '4.0.0', true );
 			wp_enqueue_script( 'eo-tools-cookies-admin-js', EO_TOOLS_URL . 'assets/js/cookies-admin.js', array( 'jquery', 'wp-i18n', 'chart-js' ), time(), true );
 			wp_set_script_translations( 'eo-tools-cookies-admin-js', 'eo-tools' );
+			wp_localize_script( 'eo-tools-cookies-admin-js', 'eoToolsCookiesAdmin', array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'eo_tools_cookie_registry_nonce' )
+			) );
 		}
 	}
 

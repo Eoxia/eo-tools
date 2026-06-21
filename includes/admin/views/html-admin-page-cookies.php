@@ -76,6 +76,7 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 
 	<h2 class="nav-tab-wrapper">
 		<a href="?page=eo-tools-cookies&tab=dashboard" class="nav-tab <?php echo $active_tab === 'dashboard' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Tableau de bord', 'eo-tools' ); ?></a>
+		<a href="?page=eo-tools-cookies&tab=manage" class="nav-tab <?php echo $active_tab === 'manage' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Gérer les cookies', 'eo-tools' ); ?></a>
 		<a href="?page=eo-tools-cookies&tab=statistics" class="nav-tab <?php echo $active_tab === 'statistics' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Statistiques', 'eo-tools' ); ?></a>
 		<a href="?page=eo-tools-cookies&tab=report" class="nav-tab <?php echo $active_tab === 'report' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Rapport de consentements', 'eo-tools' ); ?></a>
 	</h2>
@@ -119,6 +120,108 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 			<?php submit_button(); ?>
 		</div>
 	</form>
+
+	<?php elseif ( 'manage' === $active_tab ) : ?>
+
+	<div class="eo-card" style="margin-top: 20px;">
+		<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+			<h2 style="margin: 0;"><?php esc_html_e( 'Liste des cookies', 'eo-tools' ); ?></h2>
+			<button type="button" class="button button-primary" id="eo-add-cookie-btn"><?php esc_html_e( '+ Ajouter un cookie', 'eo-tools' ); ?></button>
+		</div>
+
+		<div style="display: flex; gap: 20px;">
+			<!-- Sidebar Categories -->
+			<div style="width: 250px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">
+				<ul id="eo-cookie-categories-list" style="margin: 0; padding: 0; list-style: none;">
+					<li class="eo-cookie-cat-item active" data-cat="strictly-necessary" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+						<span><?php esc_html_e( 'Nécessaire', 'eo-tools' ); ?></span>
+						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
+					</li>
+					<li class="eo-cookie-cat-item" data-cat="functional" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+						<span><?php esc_html_e( 'Fonctionnelle', 'eo-tools' ); ?></span>
+						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
+					</li>
+					<li class="eo-cookie-cat-item" data-cat="analytics" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+						<span><?php esc_html_e( 'Analytique', 'eo-tools' ); ?></span>
+						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
+					</li>
+					<li class="eo-cookie-cat-item" data-cat="performance" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+						<span><?php esc_html_e( 'Performance', 'eo-tools' ); ?></span>
+						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
+					</li>
+					<li class="eo-cookie-cat-item" data-cat="marketing" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+						<span><?php esc_html_e( 'Publicité', 'eo-tools' ); ?></span>
+						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
+					</li>
+					<li class="eo-cookie-cat-item" data-cat="social" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+						<span><?php esc_html_e( 'Réseaux sociaux', 'eo-tools' ); ?></span>
+						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
+					</li>
+					<li class="eo-cookie-cat-item" data-cat="others" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+						<span><?php esc_html_e( 'Autres', 'eo-tools' ); ?></span>
+						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
+					</li>
+				</ul>
+			</div>
+
+			<!-- Main Content -->
+			<div style="flex: 1;">
+				<div id="eo-cookie-list-container" style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 20px; min-height: 300px;">
+					<h3 id="eo-cookie-current-cat-title" style="margin-top: 0; font-size: 1.2rem;"><?php esc_html_e( 'Nécessaire', 'eo-tools' ); ?></h3>
+					<p id="eo-cookie-current-cat-desc" class="description" style="margin-bottom: 20px;"><?php esc_html_e( 'Ces cookies sont indispensables au bon fonctionnement du site.', 'eo-tools' ); ?></p>
+					
+					<div id="eo-cookie-items" style="display: flex; flex-direction: column; gap: 15px;">
+						<!-- Filled via JS -->
+						<p><?php esc_html_e( 'Chargement...', 'eo-tools' ); ?></p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Modal Add/Edit Cookie -->
+	<div id="eo-cookie-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000; justify-content: center; align-items: center;">
+		<div style="background: #fff; padding: 20px; border-radius: 8px; width: 500px; max-width: 90%;">
+			<h3 id="eo-cookie-modal-title" style="margin-top: 0;"><?php esc_html_e( 'Ajouter un cookie', 'eo-tools' ); ?></h3>
+			<form id="eo-cookie-form">
+				<input type="hidden" id="eo-cookie-id">
+				<input type="hidden" id="eo-cookie-old-cat">
+				
+				<table class="form-table">
+					<tr>
+						<th scope="row"><label for="eo-cookie-cat"><?php esc_html_e( 'Catégorie', 'eo-tools' ); ?></label></th>
+						<td>
+							<select id="eo-cookie-cat" required style="width: 100%;">
+								<option value="strictly-necessary"><?php esc_html_e( 'Nécessaire', 'eo-tools' ); ?></option>
+								<option value="functional"><?php esc_html_e( 'Fonctionnelle', 'eo-tools' ); ?></option>
+								<option value="analytics"><?php esc_html_e( 'Analytique', 'eo-tools' ); ?></option>
+								<option value="performance"><?php esc_html_e( 'Performance', 'eo-tools' ); ?></option>
+								<option value="marketing"><?php esc_html_e( 'Publicité', 'eo-tools' ); ?></option>
+								<option value="social"><?php esc_html_e( 'Réseaux sociaux', 'eo-tools' ); ?></option>
+								<option value="others"><?php esc_html_e( 'Autres', 'eo-tools' ); ?></option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="eo-cookie-name"><?php esc_html_e( 'Nom du Cookie', 'eo-tools' ); ?></label></th>
+						<td><input type="text" id="eo-cookie-name" class="regular-text" required placeholder="_ga" style="width: 100%;"></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="eo-cookie-duration"><?php esc_html_e( 'Durée', 'eo-tools' ); ?></label></th>
+						<td><input type="text" id="eo-cookie-duration" class="regular-text" required placeholder="1 an" style="width: 100%;"></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="eo-cookie-desc"><?php esc_html_e( 'Description', 'eo-tools' ); ?></label></th>
+						<td><textarea id="eo-cookie-desc" class="regular-text" rows="3" required style="width: 100%;"></textarea></td>
+					</tr>
+				</table>
+				<div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+					<button type="button" class="button" id="eo-cookie-modal-cancel"><?php esc_html_e( 'Annuler', 'eo-tools' ); ?></button>
+					<button type="submit" class="button button-primary"><?php esc_html_e( 'Enregistrer', 'eo-tools' ); ?></button>
+				</div>
+			</form>
+		</div>
+	</div>
 
 	<?php elseif ( 'statistics' === $active_tab ) : ?>
 		<div class="eo-card" style="margin-top: 20px;">
