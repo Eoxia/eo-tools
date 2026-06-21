@@ -11,6 +11,8 @@ if ( isset( $_POST['submit'] ) && check_admin_referer( 'eo_tools_cookies_setting
 	$settings = array();
 	$settings['active'] = ! empty( $_POST['eotools_cookies']['active'] );
 	$settings['duration'] = isset( $_POST['eotools_cookies']['duration'] ) ? min( 12, max( 1, intval( $_POST['eotools_cookies']['duration'] ) ) ) : 12;
+	$settings['icon_full'] = isset( $_POST['eotools_cookies']['icon_full'] ) ? sanitize_url( $_POST['eotools_cookies']['icon_full'] ) : '';
+	$settings['icon_partial'] = isset( $_POST['eotools_cookies']['icon_partial'] ) ? sanitize_url( $_POST['eotools_cookies']['icon_partial'] ) : '';
 
 	update_option( 'eo_tools_cookies_settings', $settings );
 	echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Réglages enregistrés.', 'eo-tools' ) . '</p></div>';
@@ -50,6 +52,20 @@ $stats_month = $wpdb->get_row( "SELECT SUM(views) as views, SUM(accepts) as acce
 					<td>
 						<input type="number" id="eotools_cookies_duration" name="eotools_cookies[duration]" value="<?php echo esc_attr( $settings['duration'] ); ?>" min="1" max="12" />
 						<p class="description"><?php esc_html_e( 'Conformément aux recommandations de la CNIL, la durée maximale est fixée à 12 mois.', 'eo-tools' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="eotools_cookies_icon_full"><?php esc_html_e( 'Icône d\'acceptation totale (URL)', 'eo-tools' ); ?></label></th>
+					<td>
+						<input type="url" id="eotools_cookies_icon_full" class="regular-text" name="eotools_cookies[icon_full]" value="<?php echo esc_attr( $settings['icon_full'] ?? '' ); ?>" placeholder="https://..." />
+						<p class="description"><?php esc_html_e( 'Laissez vide pour utiliser l\'icône par défaut (cookie plein).', 'eo-tools' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="eotools_cookies_icon_partial"><?php esc_html_e( 'Icône d\'acceptation partielle/refus (URL)', 'eo-tools' ); ?></label></th>
+					<td>
+						<input type="url" id="eotools_cookies_icon_partial" class="regular-text" name="eotools_cookies[icon_partial]" value="<?php echo esc_attr( $settings['icon_partial'] ?? '' ); ?>" placeholder="https://..." />
+						<p class="description"><?php esc_html_e( 'Laissez vide pour utiliser l\'icône par défaut (cookie croqué).', 'eo-tools' ); ?></p>
 					</td>
 				</tr>
 			</table>

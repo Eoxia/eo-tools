@@ -49,7 +49,9 @@ class Eotools {
 			wp_localize_script( 'eo-tools-cookies', 'eoToolsCookieData', array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'eo_tools_cookie_nonce' ),
-				'durationDays' => intval( $settings['duration'] ) * 30
+				'durationDays' => intval( $settings['duration'] ) * 30,
+				'iconFull'    => ! empty( $settings['icon_full'] ) ? $settings['icon_full'] : '',
+				'iconPartial' => ! empty( $settings['icon_partial'] ) ? $settings['icon_partial'] : ''
 			) );
 		}
 	}
