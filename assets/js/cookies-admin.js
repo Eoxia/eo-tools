@@ -182,15 +182,23 @@ jQuery(document).ready(function($) {
 							<div style="width: 150px; color: #64748b; font-weight: 500;">${wp.i18n.__('Durée', 'eo-tools')}</div>
 							<div style="color: #334155;">${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</div>
 						</div>
-						<div style="display: flex; gap: 20px;">
-							<div style="width: 150px; color: #64748b; font-weight: 500;">${wp.i18n.__('Description', 'eo-tools')}</div>
-							<div style="flex: 1; color: #475569; line-height: 1.5;">${cookie.comment || cookie.description}</div>
+						<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+							<h4 style="margin: 0; font-size: 1rem;">${cookie.name}</h4>
+							<label class="eo-toggle" style="display: inline-block; position: relative; width: 44px; height: 24px; flex-shrink: 0;" title="${cookie.active ? wp.i18n.__('Désactiver ce cookie', 'eo-tools') : wp.i18n.__('Activer ce cookie', 'eo-tools')}">
+								<input type="checkbox" class="eo-cookie-active-toggle" data-cat="${currentCategory}" data-id="${cookie.id}" ${cookie.active ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
+								<span class="eo-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${cookie.active ? '#10b981' : '#cbd5e1'}; transition: .3s; border-radius: 34px;">
+									<span class="eo-knob" style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; transform: ${cookie.active ? 'translateX(20px)' : 'translateX(0)'}; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
+								</span>
+							</label>
 						</div>
+						<div style="font-size: 12px; color: #64748b; margin-bottom: 8px; display: grid; grid-template-columns: 100px 1fr; gap: 4px;">
+							<strong>${wp.i18n.__('Domaine', 'eo-tools')}</strong> <span>${cookie.domain || wp.i18n.__('Géré localement', 'eo-tools')}</span>
+							<strong>${wp.i18n.__('Durée', 'eo-tools')}</strong> <span>${cookie.date} ${wp.i18n.__('jours', 'eo-tools')}</span>
+							${cookie.date > 395 ? `<div style="grid-column: 1 / -1; margin-top: 5px; color: #dc2626; background: #fef2f2; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;"><span class="dashicons dashicons-warning" style="font-size: 14px; width: 14px; height: 14px; margin-top: 1px;"></span> ${wp.i18n.__('Attention : ce cookie dépasse la limite légale de conservation des 13 mois dictée par la CNIL.', 'eo-tools')}</div>` : ''}
+						</div>
+						<p style="margin: 0; font-size: 13px; color: #334155;">${cookie.comment}</p>
 					</div>
-					<div style="display: flex; gap: 15px; align-items: center;">
-						<div class="eo-toggle-active" data-id="${cookie.id}" style="cursor: pointer; width: 44px; height: 24px; background: ${cookie.active !== false ? '#10b981' : '#cbd5e1'}; border-radius: 12px; position: relative; transition: background 0.3s; margin-right: 10px;" title="${cookie.active !== false ? wp.i18n.__('Désactiver', 'eo-tools') : wp.i18n.__('Activer', 'eo-tools')}">
-							<div style="position: absolute; top: 2px; left: ${cookie.active !== false ? '22px' : '2px'}; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: left 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
-						</div>
+					<div style="display: flex; gap: 15px; align-items: center; margin-left: 20px;">
 						<button type="button" class="button-link eo-edit-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}" style="color: #64748b; padding: 0;">
 							<span class="dashicons dashicons-edit" style="font-size: 22px; width: 22px; height: 22px;"></span>
 						</button>
@@ -442,6 +450,7 @@ jQuery(document).ready(function($) {
 				const localCookies = document.cookie.split(';');
 				let foundCount = 0;
 				let addedCount = 0;
+				let addedNames = [];
 				
 				localCookies.forEach(cookieStr => {
 					const parts = cookieStr.trim().split('=');
@@ -482,14 +491,17 @@ jQuery(document).ready(function($) {
 						active: true
 					});
 					addedCount++;
+					addedNames.push(name);
 				});
 				
 				// Save Scan History
 				const scanResult = {
 					date: scanDate,
+					timestamp: Date.now(),
 					status: 'COMPLETED',
 					found: foundCount,
-					added: addedCount
+					added: addedCount,
+					addedNames: addedNames
 				};
 				
 				$.post(eoToolsCookiesAdmin.ajaxUrl, {
@@ -515,9 +527,11 @@ jQuery(document).ready(function($) {
 				
 				const errorResult = {
 					date: scanDate,
+					timestamp: Date.now(),
 					status: 'FAILED',
 					found: 0,
 					added: 0,
+					addedNames: [],
 					error: e.message
 				};
 				
@@ -568,14 +582,31 @@ jQuery(document).ready(function($) {
 					</tr>
 				`);
 			} else {
+				let addedHtml = item.added;
+				if (item.added > 0 && item.addedNames && item.addedNames.length > 0) {
+					addedHtml = `<span title="${item.addedNames.join(', ')}" style="cursor: help; border-bottom: 1px dotted #64748b;">${item.added}</span>`;
+				}
+				
 				$tbody.append(`
 					<tr>
 						<td><strong>${item.date}</strong></td>
 						<td><span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${item.status}</span></td>
 						<td>${item.found}</td>
-						<td>${item.added}</td>
+						<td>${addedHtml}</td>
 					</tr>
 				`);
+				
+				// Show moderation notice if cookies were added
+				if (item.added > 0 && item === historyArray[0]) { // Only for the most recent scan
+					$tbody.append(`
+						<tr style="background: #fefce8;">
+							<td colspan="4" style="color: #854d0e; padding: 10px 15px; font-size: 13px; font-style: italic;">
+								<span class="dashicons dashicons-warning" style="color: #eab308; font-size: 16px; margin-top: 1px; width: 16px; height: 16px;"></span>
+								<strong>${wp.i18n.__('Modération requise :', 'eo-tools')}</strong> ${wp.i18n.sprintf(wp.i18n.__('Le scanner Eoxia a détecté %d nouveaux cookies. Veuillez valider leur catégorie et utilité avant publication.', 'eo-tools'), item.added)}
+							</td>
+						</tr>
+					`);
+				}
 			}
 		});
 	}
