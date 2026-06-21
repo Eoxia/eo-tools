@@ -166,36 +166,43 @@ jQuery(document).ready(function($) {
 		}
 
 		cookies.forEach(cookie => {
+			const isStandard = openCookieDB.some(c => c.name === cookie.name);
 			const $item = $(`
-				<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 15px; display: flex; justify-content: space-between;">
+				<div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
 					<div style="flex: 1;">
-						<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px;">
-							<div><span class="dashicons ${cookie.active !== false ? 'dashicons-visibility' : 'dashicons-hidden'}" style="color: ${cookie.active !== false ? '#46b450' : '#d63638'}; margin-top: 3px;"></span> <strong style="color: ${cookie.active !== false ? '#46b450' : '#d63638'};">${cookie.active !== false ? wp.i18n.__('Actif', 'eo-tools') : wp.i18n.__('Inactif', 'eo-tools')}</strong></div>
+						<div style="display: flex; gap: 20px; margin-bottom: 15px;">
+							<div style="width: 150px; color: #64748b; font-weight: 500;">Cookie</div>
+							<div style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #334155;">${cookie.name}</div>
 						</div>
-						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
-							<div style="width: 150px;"><strong>Cookie</strong></div>
-							<div><code>${cookie.name}</code></div>
+						<div style="display: flex; gap: 20px; margin-bottom: 15px;">
+							<div style="width: 150px; color: #64748b; font-weight: 500;">${wp.i18n.__('Domaine', 'eo-tools')}</div>
+							<div style="color: #334155;">${cookie.domain || ''}</div>
 						</div>
-						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
-							<div style="width: 150px;"><strong>${wp.i18n.__('Domaine', 'eo-tools')}</strong></div>
-							<div>${cookie.domain || ''}</div>
+						<div style="display: flex; gap: 20px; margin-bottom: 15px;">
+							<div style="width: 150px; color: #64748b; font-weight: 500;">${wp.i18n.__('Durée', 'eo-tools')}</div>
+							<div style="color: #334155;">${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</div>
 						</div>
-						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
-							<div style="width: 150px;"><strong>${wp.i18n.__('Durée', 'eo-tools')}</strong></div>
-							<div>${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</div>
-						</div>
-						<div style="display: flex; gap: 20px; margin-bottom: 10px;">
-							<div style="width: 150px;"><strong>${wp.i18n.__('Description', 'eo-tools')}</strong></div>
-							<div style="flex: 1;">${cookie.comment || cookie.description}</div>
+						<div style="display: flex; gap: 20px;">
+							<div style="width: 150px; color: #64748b; font-weight: 500;">${wp.i18n.__('Description', 'eo-tools')}</div>
+							<div style="flex: 1; color: #475569; line-height: 1.5;">${cookie.comment || cookie.description}</div>
 						</div>
 					</div>
-					<div style="display: flex; gap: 10px; align-items: flex-start;">
-						<button type="button" class="button button-small eo-edit-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}" style="padding: 0 5px;">
-							<span class="dashicons dashicons-edit" style="margin-top: 2px;"></span>
+					<div style="display: flex; gap: 15px; align-items: center;">
+						<div class="eo-toggle-active" data-id="${cookie.id}" style="cursor: pointer; width: 44px; height: 24px; background: ${cookie.active !== false ? '#10b981' : '#cbd5e1'}; border-radius: 12px; position: relative; transition: background 0.3s; margin-right: 10px;" title="${cookie.active !== false ? wp.i18n.__('Désactiver', 'eo-tools') : wp.i18n.__('Activer', 'eo-tools')}">
+							<div style="position: absolute; top: 2px; left: ${cookie.active !== false ? '22px' : '2px'}; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: left 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>
+						</div>
+						<button type="button" class="button-link eo-edit-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}" style="color: #64748b; padding: 0;">
+							<span class="dashicons dashicons-edit" style="font-size: 22px; width: 22px; height: 22px;"></span>
 						</button>
-						<button type="button" class="button button-small eo-delete-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Supprimer', 'eo-tools')}" style="color: #d63638; padding: 0 5px;">
-							<span class="dashicons dashicons-trash" style="margin-top: 2px;"></span>
+						${isStandard ? `
+						<button type="button" class="button-link" title="${wp.i18n.__('Cookie standard (suppression impossible)', 'eo-tools')}" style="color: #e2e8f0; padding: 0; cursor: not-allowed;">
+							<span class="dashicons dashicons-trash" style="font-size: 22px; width: 22px; height: 22px;"></span>
 						</button>
+						` : `
+						<button type="button" class="button-link eo-delete-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Supprimer', 'eo-tools')}" style="color: #ef4444; padding: 0;">
+							<span class="dashicons dashicons-trash" style="font-size: 22px; width: 22px; height: 22px;"></span>
+						</button>
+						`}
 					</div>
 				</div>
 			`);
@@ -290,6 +297,17 @@ jQuery(document).ready(function($) {
 		const id = $(this).data('id');
 		cookieRegistry[currentCategory] = cookieRegistry[currentCategory].filter(c => c.id !== id);
 		saveRegistry();
+	});
+
+	// Toggle Active status inline
+	$(document).on('click', '.eo-toggle-active', function() {
+		const id = $(this).data('id');
+		const cookies = cookieRegistry[currentCategory] || [];
+		const cookie = cookies.find(c => c.id === id);
+		if (cookie) {
+			cookie.active = (cookie.active === false) ? true : false;
+			saveRegistry();
+		}
 	});
 
 	// --- Open Cookie Database & Scanner Logic ---
