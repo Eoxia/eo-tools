@@ -36,7 +36,13 @@ class Eotools_Menu {
 			wp_send_json_error( 'Unauthorized' );
 		}
 		
-		$registry = isset( $_POST['registry'] ) ? wp_unslash( $_POST['registry'] ) : array();
+		$registry_post = isset( $_POST['registry'] ) ? wp_unslash( $_POST['registry'] ) : array();
+		
+		if ( is_string( $registry_post ) ) {
+			$registry = json_decode( $registry_post, true );
+		} else {
+			$registry = $registry_post;
+		}
 		
 		if ( ! is_array( $registry ) ) {
 			$registry = array();
