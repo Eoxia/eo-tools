@@ -153,10 +153,12 @@ jQuery(document).ready(function($) {
 
 	// --- Validation Modal Logic ---
 	let currentValidationTimestamp = 0;
+	let currentValidationDate = '';
 	let currentValidationNames = [];
 	
 	$(document).on('click', '.eo-validate-scan-btn', function() {
-		currentValidationTimestamp = $(this).data('timestamp');
+		currentValidationTimestamp = $(this).data('timestamp') || 0;
+		currentValidationDate = $(this).data('date') || '';
 		const namesStr = $(this).data('names');
 		currentValidationNames = namesStr ? namesStr.split(',') : [];
 		
@@ -188,6 +190,7 @@ jQuery(document).ready(function($) {
 			action: 'eo_tools_validate_scan',
 			security: eoToolsCookiesAdmin.nonce,
 			timestamp: currentValidationTimestamp,
+			date: currentValidationDate,
 			names: currentValidationNames
 		}, function(response) {
 			if (response.success) {
@@ -196,10 +199,18 @@ jQuery(document).ready(function($) {
 				if (typeof showNotice !== 'undefined') showNotice(wp.i18n.__('Cookies validés avec succès et journalisés dans le rapport de consentements.', 'eo-tools'));
 				if (typeof renderScanHistory !== 'undefined') renderScanHistory(response.data);
 			} else {
-				alert(wp.i18n.__('Erreur lors de la validation.', 'eo-tools'));
+				if (typeof showNotice !== 'undefined') {
+					showNotice(wp.i18n.__('Erreur lors de la validation : ', 'eo-tools') + (response.data || ''), 'error');
+				} else {
+					alert(wp.i18n.__('Erreur lors de la validation.', 'eo-tools'));
+				}
 			}
 		}).fail(function() {
-			alert(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'));
+			if (typeof showNotice !== 'undefined') {
+				showNotice(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'), 'error');
+			} else {
+				alert(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'));
+			}
 		}).always(function() {
 			$btn.prop('disabled', false).text(originalText);
 		});
@@ -670,7 +681,7 @@ jQuery(document).ready(function($) {
 										<span class="dashicons dashicons-warning" style="color: #eab308; font-size: 16px; margin-top: 1px; width: 16px; height: 16px;"></span>
 										<strong>${wp.i18n.__('Modération requise :', 'eo-tools')}</strong> ${wp.i18n.sprintf(wp.i18n.__('Le scanner Eoxia a détecté %d nouveaux cookies. Veuillez valider leur catégorie et utilité avant publication.', 'eo-tools'), item.added)}
 									</div>
-									<button type="button" class="button button-primary eo-validate-scan-btn" data-timestamp="${item.timestamp}" data-names="${namesData}" style="font-size: 12px; padding: 0 10px; min-height: 26px; line-height: 24px;">${wp.i18n.__('Valider ces cookies', 'eo-tools')}</button>
+									<button type="button" class="button button-primary eo-validate-scan-btn" data-timestamp="${item.timestamp || 0}" data-date="${item.date}" data-names="${namesData}" style="font-size: 12px; padding: 0 10px; min-height: 26px; line-height: 24px;">${wp.i18n.__('Valider ces cookies', 'eo-tools')}</button>
 								</td>
 							</tr>
 						`);

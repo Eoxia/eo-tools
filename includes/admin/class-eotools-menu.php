@@ -32,17 +32,23 @@ class Eotools_Menu {
 		}
 		
 		$timestamp = isset( $_POST['timestamp'] ) ? floatval( $_POST['timestamp'] ) : 0;
+		$date = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '';
 		$names = isset( $_POST['names'] ) ? array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['names'] ) ) : array();
 		
-		if ( ! $timestamp ) {
-			wp_send_json_error( 'Missing timestamp' );
+		if ( ! $timestamp && empty( $date ) ) {
+			wp_send_json_error( 'Missing timestamp or date' );
 		}
 		
 		// 1. Update the scan in history to validated
 		$history = get_option( 'eo_tools_scan_history', array() );
 		$updated = false;
 		foreach ( $history as &$scan ) {
-			if ( isset( $scan['timestamp'] ) && floatval( $scan['timestamp'] ) === $timestamp ) {
+			if ( $timestamp && isset( $scan['timestamp'] ) && floatval( $scan['timestamp'] ) === $timestamp ) {
+				$scan['validated'] = true;
+				$scan['validatedDate'] = current_time( 'Y-m-d H:i:s' );
+				$updated = true;
+				break;
+			} elseif ( ! empty( $date ) && isset( $scan['date'] ) && $scan['date'] === $date ) {
 				$scan['validated'] = true;
 				$scan['validatedDate'] = current_time( 'Y-m-d H:i:s' );
 				$updated = true;
