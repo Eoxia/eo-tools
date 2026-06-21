@@ -76,6 +76,7 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 
 	<h2 class="nav-tab-wrapper">
 		<a href="?page=eo-tools-cookies&tab=dashboard" class="nav-tab <?php echo $active_tab === 'dashboard' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Tableau de bord', 'eo-tools' ); ?></a>
+		<a href="?page=eo-tools-cookies&tab=statistics" class="nav-tab <?php echo $active_tab === 'statistics' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Statistiques', 'eo-tools' ); ?></a>
 		<a href="?page=eo-tools-cookies&tab=report" class="nav-tab <?php echo $active_tab === 'report' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Rapport de consentements', 'eo-tools' ); ?></a>
 	</h2>
 
@@ -117,7 +118,9 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 			</table>
 			<?php submit_button(); ?>
 		</div>
+	</form>
 
+	<?php elseif ( 'statistics' === $active_tab ) : ?>
 		<div class="eo-card" style="margin-top: 20px;">
 			<h2><?php esc_html_e( 'Statistiques de Consentement', 'eo-tools' ); ?></h2>
 			<p class="description"><?php esc_html_e( 'Vue d\'ensemble anonymisée des choix de vos visiteurs.', 'eo-tools' ); ?></p>
@@ -205,8 +208,6 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 			</script>
 		</div>
 
-	</form>
-
 	<?php elseif ( 'report' === $active_tab ) : ?>
 
 	<div class="eo-card" style="margin-top: 20px;">
@@ -231,16 +232,16 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 				$logs = $wpdb->get_results( "SELECT * FROM $table_log ORDER BY time DESC LIMIT 100" );
 				if ( ! empty( $logs ) ) {
 					foreach ( $logs as $log ) {
-						$status_color = '#d32f2f'; // Red
+						$status_style = 'color: #d32f2f; background: #fef2f2; padding: 4px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #fecaca; box-shadow: 1px 1px 0px rgba(0,0,0,0.1);'; // Default REJECTED
 						if ( 'ACCEPTED' === $log->consent_status ) {
-							$status_color = '#388e3c'; // Green
+							$status_style = 'color: #047857; background: #ecfdf5; padding: 4px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #a7f3d0; box-shadow: 1px 1px 0px rgba(0,0,0,0.1);';
 						} elseif ( 'PARTIAL' === $log->consent_status ) {
-							$status_color = '#f57c00'; // Orange
+							$status_style = 'color: #c2410c; background: #fff7ed; padding: 4px 8px; border-radius: 4px; font-weight: bold; border: 1px solid #fed7aa; box-shadow: 1px 1px 0px rgba(0,0,0,0.1);';
 						}
 						?>
 						<tr>
 							<td><code><?php echo esc_html( $log->consent_id ); ?></code></td>
-							<td><span style="color: <?php echo $status_color; ?>; font-weight: bold;"><?php echo esc_html( $log->consent_status ); ?></span></td>
+							<td><span style="display: inline-block; <?php echo $status_style; ?>"><?php echo esc_html( $log->consent_status ); ?></span></td>
 							<td><?php echo esc_html( wp_date( 'M j, Y H:i:s', strtotime( $log->time ) ) ); ?></td>
 						</tr>
 						<?php
