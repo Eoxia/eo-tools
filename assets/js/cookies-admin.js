@@ -411,49 +411,124 @@ jQuery(document).ready(function($) {
 
 	// Local Scanner
 	$('#eo-scan-cookies-btn').on('click', function() {
-		const localCookies = document.cookie.split(';');
-		let addedCount = 0;
+		const $btn = $(this);
+		const originalHtml = $btn.html();
 		
-		localCookies.forEach(cookieStr => {
-			const parts = cookieStr.trim().split('=');
-			if (parts.length < 2) return;
-			const name = parts[0];
+		// 1. Loading UI
+		$btn.prop('disabled', true).html('<span class="dashicons dashicons-update" style="animation: dashicons-spin 1s infinite linear; margin-top: 3px;"></span> ' + wp.i18n.__('Analyse en cours...', 'eo-tools'));
+		
+		// Fake delay for UX (1.5 seconds)
+		setTimeout(function() {
+			const localCookies = document.cookie.split(';');
+			let foundCount = 0;
+			let addedCount = 0;
 			
-			// Check if already in registry
-			let exists = false;
-			for (const cat in cookieRegistry) {
-				if (cookieRegistry[cat] && cookieRegistry[cat].some(c => c.name === name)) {
-					exists = true;
-					break;
+			localCookies.forEach(cookieStr => {
+				const parts = cookieStr.trim().split('=');
+				if (parts.length < 2) return;
+				const name = parts[0];
+				
+				// Check if already in registry
+				let exists = false;
+				for (const cat in cookieRegistry) {
+					if (cookieRegistry[cat] && cookieRegistry[cat].some(c => c.name === name)) {
+						exists = true;
+						break;
+					}
 				}
+				
+				foundCount++;
+				if (exists) return; // Skip already registered
+				
+				// Lookup in DB
+				const dbMatch = openCookieDB.find(c => c.name === name);
+				const cat = dbMatch ? mapCategory(dbMatch.category) : 'others';
+				
+				if (!cookieRegistry[cat]) cookieRegistry[cat] = [];
+				cookieRegistry[cat].push({
+					id: generateId(),
+					name: name,
+					domain: dbMatch ? dbMatch.domain : '',
+					date: dbMatch ? parseRetention(dbMatch.date) : 365,
+					comment: dbMatch ? dbMatch.comment : wp.i18n.__('Détecté automatiquement lors du scan.', 'eo-tools'),
+					active: true
+				});
+				addedCount++;
+			});
+			
+			// Save Scan History
+			const scanResult = {
+				date: new Date().toLocaleString(),
+				status: 'COMPLETED',
+				found: foundCount,
+				added: addedCount
+			};
+			
+			$.post(eoToolsCookiesAdmin.ajaxUrl, {
+				action: 'eo_tools_save_scan_result',
+				security: eoToolsCookiesAdmin.nonce,
+				result: JSON.stringify(scanResult)
+			}, function(res) {
+				if (res.success) {
+					renderScanHistory(res.data);
+				}
+			});
+			
+			if (addedCount > 0) {
+				saveRegistry(() => {
+					// restore button
+					$btn.prop('disabled', false).html(originalHtml);
+					alert(wp.i18n.sprintf(wp.i18n.__('Scan terminé. %d nouveaux cookies détectés et ajoutés.', 'eo-tools'), addedCount));
+				});
+			} else {
+				// restore button
+				$btn.prop('disabled', false).html(originalHtml);
+				alert(wp.i18n.__('Scan terminé. Aucun nouveau cookie détecté.', 'eo-tools'));
 			}
-			if (exists) return; // Skip already registered
-			
-			// Lookup in DB
-			const dbMatch = openCookieDB.find(c => c.name === name);
-			const cat = dbMatch ? mapCategory(dbMatch.category) : 'others';
-			
-			if (!cookieRegistry[cat]) cookieRegistry[cat] = [];
-			cookieRegistry[cat].push({
-				id: generateId(),
-				name: name,
-				domain: dbMatch ? dbMatch.domain : '',
-				date: dbMatch ? parseRetention(dbMatch.date) : 365,
-				comment: dbMatch ? dbMatch.comment : wp.i18n.__('Détecté automatiquement lors du scan.', 'eo-tools'),
-				active: true
-			});
-			addedCount++;
-		});
-		
-		if (addedCount > 0) {
-			saveRegistry(() => {
-				alert(wp.i18n.sprintf(wp.i18n.__('Scan terminé. %d nouveaux cookies détectés et ajoutés.', 'eo-tools'), addedCount));
-			});
-		} else {
-			alert(wp.i18n.__('Scan terminé. Aucun nouveau cookie détecté.', 'eo-tools'));
-		}
+		}, 1500);
 	});
+
+	// Scan History Loading
+	function loadScanHistory() {
+		$.post(eoToolsCookiesAdmin.ajaxUrl, {
+			action: 'eo_tools_get_scan_history',
+			security: eoToolsCookiesAdmin.nonce
+		}, function(response) {
+			if (response.success) {
+				renderScanHistory(response.data);
+			}
+		});
+	}
+	
+	function renderScanHistory(historyArray) {
+		const $tbody = $('#eo-scan-history-list');
+		if (!$tbody.length) return; // If we are not on the cookies tab
+		
+		$tbody.empty();
+		
+		if (!historyArray || historyArray.length === 0) {
+			$tbody.html(`<tr><td colspan="4" style="text-align: center; color: #64748b; font-style: italic; padding: 15px;">${wp.i18n.__('Aucun scan effectué.', 'eo-tools')}</td></tr>`);
+			return;
+		}
+		
+		historyArray.forEach(item => {
+			$tbody.append(`
+				<tr>
+					<td><strong>${item.date}</strong></td>
+					<td><span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${item.status}</span></td>
+					<td>${item.found}</td>
+					<td>${item.added}</td>
+				</tr>
+			`);
+		});
+	}
+
+	// Add basic CSS animation for the spinner
+	if (!$('#eo-spin-style').length) {
+		$('head').append('<style id="eo-spin-style">@keyframes dashicons-spin { 100% { transform: rotate(360deg); } }</style>');
+	}
 
 	// Initial load
 	loadRegistry();
+	loadScanHistory();
 });

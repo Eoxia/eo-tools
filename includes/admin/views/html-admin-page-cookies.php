@@ -254,6 +254,28 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		</div>
 	</div>
 
+	<!-- Scan History Section -->
+	<div class="eo-card" style="margin-top: 30px;">
+		<h2 style="margin: 0 0 20px 0;"><?php esc_html_e( 'Historique des Scans', 'eo-tools' ); ?></h2>
+		<table class="wp-list-table widefat fixed striped" style="border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Date du scan', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Statut', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Cookies trouvés', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Nouveaux ajoutés', 'eo-tools' ); ?></th>
+				</tr>
+			</thead>
+			<tbody id="eo-scan-history-list">
+				<tr>
+					<td colspan="4" style="text-align: center; color: #64748b; font-style: italic; padding: 15px;">
+						<?php esc_html_e( 'Chargement de l\'historique...', 'eo-tools' ); ?>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+
 	<?php elseif ( 'statistics' === $active_tab ) : ?>
 		<div class="eo-card" style="margin-top: 20px;">
 			<h2><?php esc_html_e( 'Statistiques de Consentement', 'eo-tools' ); ?></h2>

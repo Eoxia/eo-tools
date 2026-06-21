@@ -19,6 +19,9 @@ class Eotools_Menu {
 		
 		add_action( 'wp_ajax_eo_tools_get_cookie_registry', array( $this, 'ajax_get_registry' ) );
 		add_action( 'wp_ajax_eo_tools_save_cookie_registry', array( $this, 'ajax_save_registry' ) );
+		
+		add_action( 'wp_ajax_eo_tools_get_scan_history', array( $this, 'ajax_get_scan_history' ) );
+		add_action( 'wp_ajax_eo_tools_save_scan_result', array( $this, 'ajax_save_scan_result' ) );
 	}
 
 	public function ajax_get_registry() {
@@ -28,6 +31,43 @@ class Eotools_Menu {
 		}
 		$registry = get_option( 'eo_tools_cookie_registry', array() );
 		wp_send_json_success( $registry );
+	}
+
+	public function ajax_get_scan_history() {
+		check_ajax_referer( 'eo_tools_cookie_registry_nonce', 'security' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
+		}
+		$history = get_option( 'eo_tools_scan_history', array() );
+		wp_send_json_success( $history );
+	}
+
+	public function ajax_save_scan_result() {
+		check_ajax_referer( 'eo_tools_cookie_registry_nonce', 'security' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
+		}
+		
+		$result_post = isset( $_POST['result'] ) ? wp_unslash( $_POST['result'] ) : '';
+		
+		if ( is_string( $result_post ) ) {
+			$result = json_decode( $result_post, true );
+		} else {
+			$result = $result_post;
+		}
+		
+		if ( ! is_array( $result ) ) {
+			wp_send_json_error( 'Invalid data' );
+		}
+		
+		$history = get_option( 'eo_tools_scan_history', array() );
+		array_unshift( $history, $result );
+		
+		// Keep last 20
+		$history = array_slice( $history, 0, 20 );
+		
+		update_option( 'eo_tools_scan_history', $history );
+		wp_send_json_success( $history );
 	}
 
 	public function ajax_save_registry() {
