@@ -307,6 +307,19 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		</div>
 	</div>
 
+	<!-- Modal Validation Scan -->
+	<div id="eo-scan-validation-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000; justify-content: center; align-items: center;">
+		<div style="background: #fff; padding: 20px; border-radius: 8px; width: 500px; max-width: 90%; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+			<h3 style="margin-top: 0; color: #1e293b;"><?php esc_html_e( 'Validation des nouveaux cookies', 'eo-tools' ); ?></h3>
+			<p style="color: #475569;"><?php esc_html_e( 'Veuillez vérifier et confirmer l\'utilisation de ces nouveaux cookies ajoutés lors du dernier scan :', 'eo-tools' ); ?></p>
+			<ul id="eo-scan-validation-list" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px 15px; max-height: 200px; overflow-y: auto; list-style: disc inside; color: #0f172a; font-weight: 500;"></ul>
+			<div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+				<button type="button" class="button" id="eo-scan-validation-cancel"><?php esc_html_e( 'Annuler', 'eo-tools' ); ?></button>
+				<button type="button" class="button button-primary" id="eo-scan-validation-confirm" style="background: #10b981; border-color: #059669;"><?php esc_html_e( 'Je confirme la validation', 'eo-tools' ); ?></button>
+			</div>
+		</div>
+	</div>
+
 	<!-- Scan History Section -->
 	<div class="eo-card" style="margin-top: 30px;">
 		<h2 style="margin: 0 0 20px 0;"><?php esc_html_e( 'Historique des Scans', 'eo-tools' ); ?></h2>
@@ -450,6 +463,9 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 						} elseif ( 'PARTIAL' === $log->consent_status ) {
 							$status_label = esc_html__( 'PARTIEL', 'eo-tools' );
 							$status_style = 'color: #c2410c; background: #fff7ed; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #fdba74; font-size: 13px; letter-spacing: 0.5px;';
+						} elseif ( 'ADMIN_VALIDATION' === $log->consent_status ) {
+							$status_label = esc_html__( 'VALIDATION ADMIN', 'eo-tools' );
+							$status_style = 'color: #1d4ed8; background: #eff6ff; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #bfdbfe; font-size: 13px; letter-spacing: 0.5px;';
 						}
 						?>
 						<tr>

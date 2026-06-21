@@ -22,6 +22,52 @@ class Eotools_Menu {
 		
 		add_action( 'wp_ajax_eo_tools_get_scan_history', array( $this, 'ajax_get_scan_history' ) );
 		add_action( 'wp_ajax_eo_tools_save_scan_result', array( $this, 'ajax_save_scan_result' ) );
+		add_action( 'wp_ajax_eo_tools_validate_scan', array( $this, 'ajax_validate_scan' ) );
+	}
+
+	public function ajax_validate_scan() {
+		check_ajax_referer( 'eo_tools_cookie_registry_nonce', 'security' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
+		}
+		
+		$timestamp = isset( $_POST['timestamp'] ) ? floatval( $_POST['timestamp'] ) : 0;
+		$names = isset( $_POST['names'] ) ? array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['names'] ) ) : array();
+		
+		if ( ! $timestamp ) {
+			wp_send_json_error( 'Missing timestamp' );
+		}
+		
+		// 1. Update the scan in history to validated
+		$history = get_option( 'eo_tools_scan_history', array() );
+		$updated = false;
+		foreach ( $history as &$scan ) {
+			if ( isset( $scan['timestamp'] ) && floatval( $scan['timestamp'] ) === $timestamp ) {
+				$scan['validated'] = true;
+				$scan['validatedDate'] = current_time( 'Y-m-d H:i:s' );
+				$updated = true;
+				break;
+			}
+		}
+		
+		if ( $updated ) {
+			update_option( 'eo_tools_scan_history', $history );
+		}
+		
+		// 2. Insert into log table
+		global $wpdb;
+		$table_log = $wpdb->prefix . 'eotools_cookie_log';
+		$wpdb->insert(
+			$table_log,
+			array(
+				'consent_id'     => 'Validation Admin : ' . implode( ', ', array_slice( $names, 0, 10 ) ) . ( count( $names ) > 10 ? '...' : '' ),
+				'consent_status' => 'ADMIN_VALIDATION',
+				'time'           => current_time( 'mysql' ),
+			),
+			array( '%s', '%s', '%s' )
+		);
+		
+		wp_send_json_success( $history );
 	}
 
 	public function ajax_get_registry() {
