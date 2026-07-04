@@ -424,6 +424,7 @@ class Eotools {
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				consent_id varchar(100) NOT NULL,
 				consent_status varchar(50) NOT NULL,
+				comments text NULL,
 				time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 				PRIMARY KEY  (id),
 				KEY consent_id (consent_id),

@@ -155,12 +155,16 @@ jQuery(document).ready(function($) {
 	let currentValidationTimestamp = 0;
 	let currentValidationDate = '';
 	let currentValidationNames = [];
+	let globalHistoryArray = [];
 	
 	$(document).on('click', '.eo-validate-scan-btn', function() {
 		currentValidationTimestamp = $(this).data('timestamp') || 0;
 		currentValidationDate = $(this).data('date') || '';
-		const namesStr = $(this).data('names');
-		currentValidationNames = namesStr ? namesStr.split(',') : [];
+		const addNamesStr = $(this).data('added-names') || '';
+		const delNamesStr = $(this).data('deleted-names') || '';
+		currentValidationNames = [];
+		if (addNamesStr) addNamesStr.split(',').forEach(n => currentValidationNames.push('+ ' + n));
+		if (delNamesStr) delNamesStr.split(',').forEach(n => currentValidationNames.push('- ' + n));
 		
 		const $list = $('#eo-scan-validation-list');
 		$list.empty();
@@ -186,33 +190,60 @@ jQuery(document).ready(function($) {
 		
 		$btn.prop('disabled', true).text(wp.i18n.__('Validation...', 'eo-tools'));
 		
-		$.post(eoToolsCookiesAdmin.ajaxUrl, {
-			action: 'eo_tools_validate_scan',
-			security: eoToolsCookiesAdmin.nonce,
-			timestamp: currentValidationTimestamp,
-			date: currentValidationDate,
-			names: currentValidationNames
-		}, function(response) {
-			if (response.success) {
-				$('#eo-scan-validation-modal').hide();
-				// Assume showNotice is defined elsewhere or replaces existing message
-				if (typeof showNotice !== 'undefined') showNotice(wp.i18n.__('Cookies validés avec succès et journalisés dans le rapport de consentements.', 'eo-tools'));
-				if (typeof renderScanHistory !== 'undefined') renderScanHistory(response.data);
-			} else {
-				if (typeof showNotice !== 'undefined') {
-					showNotice(wp.i18n.__('Erreur lors de la validation : ', 'eo-tools') + (response.data || ''), 'error');
+		// Apply modifications to registry
+		const scanToValidate = globalHistoryArray.find(item => item.timestamp == currentValidationTimestamp);
+		if (scanToValidate) {
+			if (scanToValidate.deletedNames && scanToValidate.deletedNames.length > 0) {
+				scanToValidate.deletedNames.forEach(dName => {
+					for (const cat in cookieRegistry) {
+						if (cookieRegistry[cat]) {
+							const arr = Array.isArray(cookieRegistry[cat]) ? cookieRegistry[cat] : Object.values(cookieRegistry[cat]);
+							cookieRegistry[cat] = arr.filter(c => c.name !== dName);
+						}
+					}
+				});
+			}
+			if (scanToValidate.addedCookies && scanToValidate.addedCookies.length > 0) {
+				scanToValidate.addedCookies.forEach(item => {
+					if (!cookieRegistry[item.cat]) cookieRegistry[item.cat] = [];
+					else if (!Array.isArray(cookieRegistry[item.cat])) cookieRegistry[item.cat] = Object.values(cookieRegistry[item.cat]);
+					
+					// Avoid duplicates
+					if (!cookieRegistry[item.cat].some(c => c.name === item.cookie.name)) {
+						cookieRegistry[item.cat].push(item.cookie);
+					}
+				});
+			}
+		}
+
+		saveRegistry(() => {
+			$.post(eoToolsCookiesAdmin.ajaxUrl, {
+				action: 'eo_tools_validate_scan',
+				security: eoToolsCookiesAdmin.nonce,
+				timestamp: currentValidationTimestamp,
+				date: currentValidationDate,
+				names: currentValidationNames
+			}, function(response) {
+				if (response.success) {
+					$('#eo-scan-validation-modal').hide();
+					if (typeof showNotice !== 'undefined') showNotice(wp.i18n.__('Cookies validés avec succès et journalisés dans le rapport de consentements.', 'eo-tools'));
+					if (typeof renderScanHistory !== 'undefined') renderScanHistory(response.data);
 				} else {
-					alert(wp.i18n.__('Erreur lors de la validation.', 'eo-tools'));
+					if (typeof showNotice !== 'undefined') {
+						showNotice(wp.i18n.__('Erreur lors de la validation : ', 'eo-tools') + (response.data || ''), 'error');
+					} else {
+						alert(wp.i18n.__('Erreur lors de la validation.', 'eo-tools'));
+					}
 				}
-			}
-		}).fail(function() {
-			if (typeof showNotice !== 'undefined') {
-				showNotice(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'), 'error');
-			} else {
-				alert(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'));
-			}
-		}).always(function() {
-			$btn.prop('disabled', false).text(originalText);
+			}).fail(function() {
+				if (typeof showNotice !== 'undefined') {
+					showNotice(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'), 'error');
+				} else {
+					alert(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'));
+				}
+			}).always(function() {
+				$btn.prop('disabled', false).text(originalText);
+			});
 		});
 	});
 
@@ -496,7 +527,7 @@ jQuery(document).ready(function($) {
 		const $tbody = $('#eo-scan-history-list');
 		
 		// Remove empty state if present
-		if ($tbody.find('td[colspan="4"]').text().includes(wp.i18n.__('Aucun scan effectué', 'eo-tools')) || $tbody.find('td[colspan="4"]').text().includes(wp.i18n.__('Chargement', 'eo-tools'))) {
+		if ($tbody.find('td[colspan="7"]').text().includes(wp.i18n.__('Aucun scan effectué', 'eo-tools')) || $tbody.find('td[colspan="7"]').text().includes(wp.i18n.__('Chargement', 'eo-tools'))) {
 			$tbody.empty();
 		}
 		
@@ -506,22 +537,35 @@ jQuery(document).ready(function($) {
 				<td><span style="background: #e2e8f0; color: #475569; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;"><span class="dashicons dashicons-update" style="animation: dashicons-spin 1s infinite linear; font-size: 14px; width: 14px; height: 14px; margin-right: 4px; vertical-align: text-top;"></span>${wp.i18n.__('EN COURS', 'eo-tools')}</span></td>
 				<td>-</td>
 				<td>-</td>
+				<td>-</td>
+				<td>-</td>
+				<td>-</td>
 			</tr>
 		`);
 
-		// Fake delay for UX (1.5 seconds)
-		setTimeout(function() {
+		// Fetch frontend cookies first
+		$.post(eoToolsCookiesAdmin.ajaxUrl, {
+			action: 'eo_tools_scan_frontend_cookies',
+			security: eoToolsCookiesAdmin.nonce
+		}).done(function(backendResponse) {
+			let backendCookies = [];
+			if (backendResponse.success && backendResponse.data && backendResponse.data.cookies) {
+				backendCookies = backendResponse.data.cookies;
+			}
+			
 			try {
-				const localCookies = document.cookie.split(';');
+				const localCookiesStr = document.cookie ? document.cookie.split(';') : [];
+				const localCookies = localCookiesStr.map(c => c.trim().split('=')[0]).filter(c => c);
+				
+				// Combine and deduplicate
+				const allCookies = [...new Set([...backendCookies, ...localCookies])];
+				
 				let foundCount = 0;
 				let addedCount = 0;
 				let addedNames = [];
+				let addedCookiesObj = [];
 				
-				localCookies.forEach(cookieStr => {
-					const parts = cookieStr.trim().split('=');
-					if (parts.length < 2) return;
-					const name = parts[0];
-					
+				allCookies.forEach(name => {
 					// Check if already in registry
 					let exists = false;
 					for (const cat in cookieRegistry) {
@@ -541,23 +585,39 @@ jQuery(document).ready(function($) {
 					const dbMatch = (openCookieDB && openCookieDB.length > 0) ? openCookieDB.find(c => c.name === name) : null;
 					const cat = dbMatch ? mapCategory(dbMatch.category) : 'others';
 					
-					if (!cookieRegistry[cat]) {
-						cookieRegistry[cat] = [];
-					} else if (!Array.isArray(cookieRegistry[cat])) {
-						cookieRegistry[cat] = Object.values(cookieRegistry[cat]);
-					}
-					
-					cookieRegistry[cat].push({
-						id: generateId(),
-						name: name,
-						domain: dbMatch ? dbMatch.domain : '',
-						date: dbMatch ? parseRetention(dbMatch.date) : 365,
-						comment: dbMatch ? dbMatch.comment : wp.i18n.__('Détecté automatiquement lors du scan.', 'eo-tools'),
-						active: true
+					addedCookiesObj.push({
+						cat: cat,
+						cookie: {
+							id: generateId(),
+							name: name,
+							domain: dbMatch ? dbMatch.domain : '',
+							date: dbMatch ? parseRetention(dbMatch.date) : 365,
+							comment: dbMatch ? dbMatch.comment : wp.i18n.__('Détecté automatiquement lors du scan.', 'eo-tools'),
+							active: true
+						}
 					});
+					
 					addedCount++;
 					addedNames.push(name);
 				});
+				
+				// Find deleted cookies
+				const registryNames = [];
+				for (const cat in cookieRegistry) {
+					if (cookieRegistry[cat]) {
+						const arr = Array.isArray(cookieRegistry[cat]) ? cookieRegistry[cat] : Object.values(cookieRegistry[cat]);
+						arr.forEach(c => {
+							if (c && typeof c === 'object' && c.name && c.name.trim() !== '') {
+								registryNames.push(c.name);
+							} else if (typeof c === 'string' && c.trim() !== '') {
+								registryNames.push(c);
+							}
+						});
+					}
+				}
+				
+				const deletedNames = registryNames.filter(name => !allCookies.includes(name));
+				const deletedCount = deletedNames.length;
 				
 				// Save Scan History
 				const scanResult = {
@@ -565,8 +625,12 @@ jQuery(document).ready(function($) {
 					timestamp: Date.now(),
 					status: 'COMPLETED',
 					found: foundCount,
+					foundNames: allCookies,
 					added: addedCount,
-					addedNames: addedNames
+					addedNames: addedNames,
+					addedCookies: addedCookiesObj,
+					deleted: deletedCount,
+					deletedNames: deletedNames
 				};
 				
 				$.post(eoToolsCookiesAdmin.ajaxUrl, {
@@ -576,16 +640,26 @@ jQuery(document).ready(function($) {
 				}, function(res) {
 					if (res.success) {
 						renderScanHistory(res.data);
+						if (addedCount > 0 || deletedCount > 0) {
+							// Trigger modal automatically
+							currentValidationTimestamp = scanResult.timestamp;
+							currentValidationDate = scanResult.date;
+							currentValidationNames = [];
+							if (scanResult.addedNames) scanResult.addedNames.forEach(n => currentValidationNames.push('+ ' + n));
+							if (scanResult.deletedNames) scanResult.deletedNames.forEach(n => currentValidationNames.push('- ' + n));
+							
+							const $list = $('#eo-scan-validation-list');
+							$list.empty();
+							currentValidationNames.forEach(name => {
+								const color = name.startsWith('+') ? '#10b981' : '#ef4444';
+								$list.append(`<li style="color: ${color}; font-weight: bold;">${name}</li>`);
+							});
+							$('#eo-scan-validation-modal').css('display', 'flex');
+						}
 					}
-				});
-				
-				if (addedCount > 0) {
-					saveRegistry(() => {
-						$btn.prop('disabled', false).html(originalHtml);
-					});
-				} else {
+				}).always(function() {
 					$btn.prop('disabled', false).html(originalHtml);
-				}
+				});
 			} catch (e) {
 				console.error('Scan error:', e);
 				$btn.prop('disabled', false).html(originalHtml);
@@ -597,6 +671,8 @@ jQuery(document).ready(function($) {
 					found: 0,
 					added: 0,
 					addedNames: [],
+					deleted: 0,
+					deletedNames: [],
 					error: e.message
 				};
 				
@@ -611,7 +687,10 @@ jQuery(document).ready(function($) {
 					}
 				});
 			}
-		}, 1500);
+		}).fail(function() {
+			$btn.prop('disabled', false).html(originalHtml);
+			alert(wp.i18n.__('Erreur lors du scan backend.', 'eo-tools'));
+		});
 	});
 
 	// Scan History Loading
@@ -627,13 +706,14 @@ jQuery(document).ready(function($) {
 	}
 	
 	function renderScanHistory(historyArray) {
+		globalHistoryArray = historyArray;
 		const $tbody = $('#eo-scan-history-list');
 		if (!$tbody.length) return; // If we are not on the cookies tab
 		
 		$tbody.empty();
 		
 		if (!historyArray || historyArray.length === 0) {
-			$tbody.html(`<tr><td colspan="4" style="text-align: center; color: #64748b; font-style: italic; padding: 15px;">${wp.i18n.__('Aucun scan effectué.', 'eo-tools')}</td></tr>`);
+			$tbody.html(`<tr><td colspan="7" style="text-align: center; color: #64748b; font-style: italic; padding: 15px;">${wp.i18n.__('Aucun scan effectué.', 'eo-tools')}</td></tr>`);
 			return;
 		}
 		
@@ -643,50 +723,62 @@ jQuery(document).ready(function($) {
 					<tr>
 						<td><strong>${item.date}</strong></td>
 						<td><span style="background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${wp.i18n.__('ERREUR', 'eo-tools')}</span></td>
-						<td colspan="2" style="color: #dc2626;">${item.error || wp.i18n.__('Erreur inconnue', 'eo-tools')}</td>
+						<td colspan="5" style="color: #dc2626;">${item.error || wp.i18n.__('Erreur inconnue', 'eo-tools')}</td>
 					</tr>
 				`);
 			} else {
-				let addedHtml = item.added;
-				if (item.added > 0 && item.addedNames && item.addedNames.length > 0) {
-					addedHtml = `<span title="${item.addedNames.join(', ')}" style="cursor: help; border-bottom: 1px dotted #64748b;">${item.added}</span>`;
+				let addedHtml = '-';
+				if ((item.added > 0 || item.deleted > 0) || (item.addedNames && item.addedNames.length > 0) || (item.deletedNames && item.deletedNames.length > 0)) {
+					const countDel = item.deleted || (item.deletedNames ? item.deletedNames.length : 0);
+					const countAdd = item.added || (item.addedNames ? item.addedNames.length : 0);
+					addedHtml = `<span style="color: #ef4444; font-weight: bold;">- ${countDel}</span> <span style="color: #cbd5e1; margin: 0 4px;">|</span> <span style="color: #10b981; font-weight: bold;">+ ${countAdd}</span>`;
+				}
+				
+				let addedNamesHtml = '-';
+				let changesArr = [];
+				if (item.deletedNames && item.deletedNames.length > 0) {
+					item.deletedNames.forEach(name => {
+						changesArr.push(`<span style="color: #ef4444;">- ${name}</span>`);
+					});
+				}
+				if (item.addedNames && item.addedNames.length > 0) {
+					item.addedNames.forEach(name => {
+						changesArr.push(`<span style="color: #10b981;">+ ${name}</span>`);
+					});
+				}
+				if (changesArr.length > 0) {
+					addedNamesHtml = changesArr.join('<span style="color: #cbd5e1;">, </span>');
+				}
+				
+				let actionHtml = '-';
+				
+				let foundHtml = item.found;
+				let foundNamesHtml = '-';
+				if (item.found > 0 && item.foundNames && item.foundNames.length > 0) {
+					foundNamesHtml = item.foundNames.join(', ');
+				}
+
+				if (item.added > 0 || item.deleted > 0) {
+					if (item.validated) {
+						actionHtml = `<span style="color: #166534; font-size: 11px;"><span class="dashicons dashicons-yes-alt" style="color: #10b981; font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span> ${wp.i18n.sprintf(wp.i18n.__('Validé le %s', 'eo-tools'), item.validatedDate || item.date)} - <a href="?page=eo-tools-cookies&tab=report" style="color: #166534; text-decoration: underline;">${wp.i18n.__('Voir le rapport', 'eo-tools')}</a></span>`;
+					} else {
+						const addNamesData = (item.addedNames && item.addedNames.length > 0) ? item.addedNames.join(',') : '';
+						const delNamesData = (item.deletedNames && item.deletedNames.length > 0) ? item.deletedNames.join(',') : '';
+						actionHtml = `<button type="button" class="button button-primary eo-validate-scan-btn" data-timestamp="${item.timestamp || 0}" data-date="${item.date}" data-added-names="${addNamesData}" data-deleted-names="${delNamesData}" style="font-size: 11px; padding: 0 8px; min-height: 24px; line-height: 22px; background: #eab308; border-color: #ca8a04; color: #fff;">${wp.i18n.__('Valider ces modifications', 'eo-tools')}</button>`;
+					}
 				}
 				
 				$tbody.append(`
 					<tr>
 						<td><strong>${item.date}</strong></td>
 						<td><span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${item.status}</span></td>
-						<td>${item.found}</td>
+						<td><strong>${item.found}</strong></td>
+						<td><span style="font-size: 10px; color: #64748b; background: #f1f5f9; padding: 2px 4px; border-radius: 3px; cursor: text; user-select: all;" title="Copier la liste" onclick="navigator.clipboard.writeText('${foundNamesHtml.replace(/'/g, "\\'")}');">${foundNamesHtml}</span></td>
 						<td>${addedHtml}</td>
+						<td><span style="font-size: 10px; font-weight: bold;">${addedNamesHtml}</span></td>
+						<td>${actionHtml}</td>
 					</tr>
 				`);
-				
-				// Show moderation notice if cookies were added
-				if (item.added > 0 && item === historyArray[0]) { // Only for the most recent scan
-					if (item.validated) {
-						$tbody.append(`
-							<tr style="background: #f0fdf4;">
-								<td colspan="4" style="color: #166534; padding: 10px 15px; font-size: 13px; font-style: italic;">
-									<span class="dashicons dashicons-yes-alt" style="color: #10b981; font-size: 16px; margin-top: 1px; width: 16px; height: 16px;"></span>
-									<strong>${wp.i18n.sprintf(wp.i18n.__('Validé le %s', 'eo-tools'), item.validatedDate || item.date)}</strong> - <a href="?page=eo-tools-cookies&tab=report" style="color: #166534; text-decoration: underline;">${wp.i18n.__('Voir le rapport de consentements', 'eo-tools')}</a>
-								</td>
-							</tr>
-						`);
-					} else {
-						const namesData = (item.addedNames && item.addedNames.length > 0) ? item.addedNames.join(',') : '';
-						$tbody.append(`
-							<tr style="background: #fefce8;">
-								<td colspan="4" style="color: #854d0e; padding: 10px 15px; font-size: 13px; font-style: italic; display: flex; justify-content: space-between; align-items: center;">
-									<div>
-										<span class="dashicons dashicons-warning" style="color: #eab308; font-size: 16px; margin-top: 1px; width: 16px; height: 16px;"></span>
-										<strong>${wp.i18n.__('Modération requise :', 'eo-tools')}</strong> ${wp.i18n.sprintf(wp.i18n.__('Le scanner Eoxia a détecté %d nouveaux cookies. Veuillez valider leur catégorie et utilité avant publication.', 'eo-tools'), item.added)}
-									</div>
-									<button type="button" class="button button-primary eo-validate-scan-btn" data-timestamp="${item.timestamp || 0}" data-date="${item.date}" data-names="${namesData}" style="font-size: 12px; padding: 0 10px; min-height: 26px; line-height: 24px;">${wp.i18n.__('Valider ces cookies', 'eo-tools')}</button>
-								</td>
-							</tr>
-						`);
-					}
-				}
 			}
 		});
 	}
