@@ -308,10 +308,10 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 	</div>
 
 	<!-- Modal Validation Scan -->
-	<div id="eo-scan-validation-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100000; justify-content: center; align-items: center;">
-		<div style="background: #fff; padding: 20px; border-radius: 8px; width: 500px; max-width: 90%; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-			<h3 style="margin-top: 0; color: #1e293b;"><?php esc_html_e( 'Validation des nouveaux cookies', 'eo-tools' ); ?></h3>
-			<p style="color: #475569;"><?php esc_html_e( 'Veuillez vérifier et confirmer l\'utilisation de ces nouveaux cookies ajoutés lors du dernier scan :', 'eo-tools' ); ?></p>
+	<div id="eo-scan-validation-modal" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); align-items: center; justify-content: center;">
+		<div style="background-color: #fff; margin: auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+			<h3 style="margin-top: 0; font-size: 16px; color: #1e293b;"><?php esc_html_e( 'Validation des modifications', 'eo-tools' ); ?></h3>
+			<p><?php esc_html_e( 'Veuillez vérifier et confirmer l\'ajout ou la suppression des cookies suivants détectés lors du dernier scan :', 'eo-tools' ); ?></p>
 			<ul id="eo-scan-validation-list" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px 15px; max-height: 200px; overflow-y: auto; list-style: disc inside; color: #0f172a; font-weight: 500;"></ul>
 			<div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
 				<button type="button" class="button" id="eo-scan-validation-cancel"><?php esc_html_e( 'Annuler', 'eo-tools' ); ?></button>
@@ -329,12 +329,15 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 					<th><?php esc_html_e( 'Date du scan', 'eo-tools' ); ?></th>
 					<th><?php esc_html_e( 'Statut', 'eo-tools' ); ?></th>
 					<th><?php esc_html_e( 'Cookies trouvés', 'eo-tools' ); ?></th>
-					<th><?php esc_html_e( 'Nouveaux ajoutés', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Listes des Cookies trouvés', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Modifications Cookies', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Listes des Cookies', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Action', 'eo-tools' ); ?></th>
 				</tr>
 			</thead>
 			<tbody id="eo-scan-history-list">
 				<tr>
-					<td colspan="4" style="text-align: center; color: #64748b; font-style: italic; padding: 15px;">
+					<td colspan="7" style="text-align: center; color: #64748b; font-style: italic; padding: 15px;">
 						<?php esc_html_e( 'Chargement de l\'historique...', 'eo-tools' ); ?>
 					</td>
 				</tr>
@@ -445,6 +448,7 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 			<thead>
 				<tr>
 					<th><?php esc_html_e( 'Consent ID', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Commentaires', 'eo-tools' ); ?></th>
 					<th><?php esc_html_e( 'Statut', 'eo-tools' ); ?></th>
 					<th><?php esc_html_e( 'Date & Heure', 'eo-tools' ); ?></th>
 				</tr>
@@ -470,6 +474,7 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 						?>
 						<tr>
 							<td><code><?php echo esc_html( $log->consent_id ); ?></code></td>
+							<td style="color: #64748b; font-size: 12px; max-width: 300px; white-space: normal; word-break: break-all;"><?php echo esc_html( isset( $log->comments ) ? $log->comments : '' ); ?></td>
 							<td><span style="display: inline-block; <?php echo $status_style; ?>"><?php echo $status_label; ?></span></td>
 							<td><?php echo esc_html( wp_date( 'M j, Y H:i:s', strtotime( $log->time ) ) ); ?></td>
 						</tr>

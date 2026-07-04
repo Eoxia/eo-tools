@@ -23,6 +23,7 @@ class Eotools_Menu {
 		add_action( 'wp_ajax_eo_tools_get_scan_history', array( $this, 'ajax_get_scan_history' ) );
 		add_action( 'wp_ajax_eo_tools_save_scan_result', array( $this, 'ajax_save_scan_result' ) );
 		add_action( 'wp_ajax_eo_tools_validate_scan', array( $this, 'ajax_validate_scan' ) );
+		add_action( 'wp_ajax_eo_tools_scan_frontend_cookies', array( $this, 'ajax_scan_frontend_cookies' ) );
 	}
 
 	public function ajax_validate_scan() {
@@ -42,20 +43,43 @@ class Eotools_Menu {
 		// 1. Update the scan in history to validated
 		$history = get_option( 'eo_tools_scan_history', array() );
 		$updated = false;
+		$target_scan = null;
+		
 		foreach ( $history as &$scan ) {
 			if ( $timestamp && isset( $scan['timestamp'] ) && floatval( $scan['timestamp'] ) === $timestamp ) {
 				$scan['validated'] = true;
 				$scan['validatedDate'] = current_time( 'Y-m-d H:i:s' );
 				$updated = true;
+				$target_scan = $scan;
 				break;
 			} elseif ( ! empty( $date ) && isset( $scan['date'] ) && $scan['date'] === $date ) {
 				$scan['validated'] = true;
 				$scan['validatedDate'] = current_time( 'Y-m-d H:i:s' );
 				$updated = true;
+				$target_scan = $scan;
 				break;
 			}
 		}
 		
+		// Auto-validate other scans with the exact same modifications
+		if ( $target_scan ) {
+			$del = isset( $target_scan['deletedNames'] ) ? $target_scan['deletedNames'] : array();
+			$add = isset( $target_scan['addedNames'] ) ? $target_scan['addedNames'] : array();
+			
+			foreach ( $history as &$scan ) {
+				if ( empty( $scan['validated'] ) ) {
+					$s_del = isset( $scan['deletedNames'] ) ? $scan['deletedNames'] : array();
+					$s_add = isset( $scan['addedNames'] ) ? $scan['addedNames'] : array();
+					
+					if ( $s_del === $del && $s_add === $add ) {
+						$scan['validated'] = true;
+						$scan['validatedDate'] = current_time( 'Y-m-d H:i:s' );
+						$updated = true;
+					}
+				}
+			}
+		}
+
 		if ( $updated ) {
 			update_option( 'eo_tools_scan_history', $history );
 		}
@@ -63,14 +87,18 @@ class Eotools_Menu {
 		// 2. Insert into log table
 		global $wpdb;
 		$table_log = $wpdb->prefix . 'eotools_cookie_log';
+		$comments_text = implode( ', ', $names );
+		$admin_consent_id = hash( 'sha256', $comments_text );
+		
 		$wpdb->insert(
 			$table_log,
 			array(
-				'consent_id'     => 'Validation Admin : ' . implode( ', ', array_slice( $names, 0, 10 ) ) . ( count( $names ) > 10 ? '...' : '' ),
+				'consent_id'     => $admin_consent_id,
 				'consent_status' => 'ADMIN_VALIDATION',
+				'comments'       => $comments_text,
 				'time'           => current_time( 'mysql' ),
 			),
-			array( '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s' )
 		);
 		
 		wp_send_json_success( $history );
@@ -142,6 +170,99 @@ class Eotools_Menu {
 		
 		update_option( 'eo_tools_cookie_registry', $registry );
 		wp_send_json_success( $registry );
+	}
+
+	public function ajax_scan_frontend_cookies() {
+		check_ajax_referer( 'eo_tools_cookie_registry_nonce', 'security' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Unauthorized' );
+		}
+
+		$found_cookies = array();
+		$response = wp_remote_get( home_url() );
+
+		if ( is_wp_error( $response ) ) {
+			wp_send_json_success( array( 'cookies' => $found_cookies ) );
+		}
+
+		// 1. Check headers for Set-Cookie
+		$headers = wp_remote_retrieve_headers( $response );
+		if ( isset( $headers['set-cookie'] ) ) {
+			$set_cookies = (array) $headers['set-cookie'];
+			foreach ( $set_cookies as $cookie_header ) {
+				$parts = explode( ';', $cookie_header );
+				$name_value = explode( '=', $parts[0], 2 );
+				if ( ! empty( $name_value[0] ) ) {
+					$found_cookies[] = trim( $name_value[0] );
+				}
+			}
+		}
+
+		// 2. Parse HTML body for known scripts to infer third-party cookies
+		$body = wp_remote_retrieve_body( $response );
+		
+		// Add all published posts content and widgets to find embedded scripts on specific pages
+		global $wpdb;
+		$posts_content = $wpdb->get_col( "SELECT post_content FROM {$wpdb->posts} WHERE post_status = 'publish'" );
+		if ( ! empty( $posts_content ) ) {
+			$body .= ' ' . implode( ' ', $posts_content );
+		}
+		
+		$widget_content = $wpdb->get_col( "SELECT option_value FROM {$wpdb->options} WHERE option_name LIKE 'widget_%'" );
+		if ( ! empty( $widget_content ) ) {
+			$body .= ' ' . implode( ' ', $widget_content );
+		}
+
+		$inferred_cookies = array();
+
+		// Google Analytics
+		if ( strpos( $body, 'google-analytics.com' ) !== false || strpos( $body, 'googletagmanager.com' ) !== false || strpos( $body, 'gtag(' ) !== false ) {
+			$inferred_cookies = array_merge( $inferred_cookies, array( '_ga', '_gid', '_gat', '_gcl_au' ) );
+		}
+		
+		// YouTube
+		if ( strpos( $body, 'youtube.com/embed' ) !== false || strpos( $body, 'youtube.com/watch' ) !== false || strpos( $body, 'youtu.be' ) !== false || strpos( $body, 'wp:core-embed/youtube' ) !== false ) {
+			$inferred_cookies = array_merge( $inferred_cookies, array( 'VISITOR_PRIVACY_METADATA', 'VISITOR_INFO1_LIVE', 'YSC', 'ytidb::LAST_RESULT_ENTRY_KEY', '__Secure-YNID', '__Secure-ROLLOUT_TOKEN', '__Secure-YEC' ) );
+		}
+
+		// Cloudflare
+		if ( strpos( $body, 'cloudflare.com' ) !== false ) {
+			$inferred_cookies = array_merge( $inferred_cookies, array( '__cf_bm', '__cfduid', 'cf_clearance' ) );
+		}
+
+		// Calendly
+		if ( strpos( $body, 'calendly.com' ) !== false ) {
+			$inferred_cookies = array_merge( $inferred_cookies, array( '_cfuvid', '_calendly_session' ) );
+		}
+
+		// Hotjar
+		if ( strpos( $body, 'hotjar.com' ) !== false ) {
+			$inferred_cookies = array_merge( $inferred_cookies, array( '_hjSessionUser_', '_hjSession_', '_hjTLDTest', '_hjFirstSeen' ) );
+		}
+
+		// Recaptcha
+		if ( strpos( $body, 'google.com/recaptcha' ) !== false ) {
+			$inferred_cookies = array_merge( $inferred_cookies, array( 'rc::a', 'rc::c', 'rc::b' ) );
+		}
+
+		// Stripe
+		if ( strpos( $body, 'js.stripe.com' ) !== false ) {
+			$inferred_cookies = array_merge( $inferred_cookies, array( 'm', '__stripe_mid', '__stripe_sid' ) );
+		}
+		
+		// Facebook Pixel
+		if ( strpos( $body, 'connect.facebook.net' ) !== false || strpos( $body, 'facebook.com/tr' ) !== false ) {
+			$inferred_cookies = array_merge( $inferred_cookies, array( '_fbp', 'fr' ) );
+		}
+
+		// OneTrust / Consent
+		if ( strpos( $body, 'onetrust.com' ) !== false || strpos( $body, 'optanon' ) !== false ) {
+			$inferred_cookies = array_merge( $inferred_cookies, array( 'OptanonConsent', 'OptanonAlertBoxClosed' ) );
+		}
+
+		$found_cookies = array_unique( array_merge( $found_cookies, $inferred_cookies ) );
+
+		wp_send_json_success( array( 'cookies' => array_values( $found_cookies ) ) );
 	}
 
 
