@@ -77,8 +77,10 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 	<h2 class="nav-tab-wrapper">
 		<a href="?page=eo-tools-cookies&tab=dashboard" class="nav-tab <?php echo $active_tab === 'dashboard' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Tableau de bord', 'eo-tools' ); ?></a>
 		<a href="?page=eo-tools-cookies&tab=manage" class="nav-tab <?php echo $active_tab === 'manage' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Gérer les cookies', 'eo-tools' ); ?></a>
+		<a href="?page=eo-tools-cookies&tab=detailed_scan" class="nav-tab <?php echo $active_tab === 'detailed_scan' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Scan', 'eo-tools' ); ?></a>
 		<a href="?page=eo-tools-cookies&tab=statistics" class="nav-tab <?php echo $active_tab === 'statistics' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Statistiques', 'eo-tools' ); ?></a>
 		<a href="?page=eo-tools-cookies&tab=report" class="nav-tab <?php echo $active_tab === 'report' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Rapport de consentements', 'eo-tools' ); ?></a>
+		<a href="?page=eo-tools-cookies&tab=settings" class="nav-tab <?php echo $active_tab === 'settings' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Réglages', 'eo-tools' ); ?></a>
 	</h2>
 
 	<?php if ( 'dashboard' === $active_tab ) : ?>
@@ -134,45 +136,6 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		</p>
 	</div>
 	<?php endif; ?>
-
-	<form method="post" action="">
-		<?php wp_nonce_field( 'eo_tools_cookies_settings' ); ?>
-
-		<div class="eo-card" style="margin-top: 20px;">
-			<h2><?php esc_html_e( 'Réglages Principaux', 'eo-tools' ); ?></h2>
-			<table class="form-table">
-				<tr>
-					<th scope="row"><label for="eotools_cookies_active"><?php esc_html_e( 'Activer le gestionnaire', 'eo-tools' ); ?></label></th>
-					<td>
-						<input type="checkbox" id="eotools_cookies_active" name="eotools_cookies[active]" value="1" <?php checked( ! empty( $settings['active'] ) ); ?> />
-						<p class="description"><?php esc_html_e( 'Active le bandeau et le blocage des cookies tiers.', 'eo-tools' ); ?></p>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="eotools_cookies_duration"><?php esc_html_e( 'Durée de conservation (mois)', 'eo-tools' ); ?></label></th>
-					<td>
-						<input type="number" id="eotools_cookies_duration" name="eotools_cookies[duration]" value="<?php echo esc_attr( $settings['duration'] ); ?>" min="1" max="12" />
-						<p class="description"><?php esc_html_e( 'Conformément aux recommandations de la CNIL, la durée maximale est fixée à 12 mois.', 'eo-tools' ); ?></p>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="eotools_cookies_icon_full"><?php esc_html_e( 'Icône d\'acceptation totale (URL)', 'eo-tools' ); ?></label></th>
-					<td>
-						<input type="url" id="eotools_cookies_icon_full" class="regular-text" name="eotools_cookies[icon_full]" value="<?php echo esc_attr( $settings['icon_full'] ?? '' ); ?>" placeholder="https://..." />
-						<p class="description"><?php esc_html_e( 'Laissez vide pour utiliser l\'icône par défaut (cookie plein).', 'eo-tools' ); ?></p>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row"><label for="eotools_cookies_icon_partial"><?php esc_html_e( 'Icône d\'acceptation partielle/refus (URL)', 'eo-tools' ); ?></label></th>
-					<td>
-						<input type="url" id="eotools_cookies_icon_partial" class="regular-text" name="eotools_cookies[icon_partial]" value="<?php echo esc_attr( $settings['icon_partial'] ?? '' ); ?>" placeholder="https://..." />
-						<p class="description"><?php esc_html_e( 'Laissez vide pour utiliser l\'icône par défaut (cookie croqué).', 'eo-tools' ); ?></p>
-					</td>
-				</tr>
-			</table>
-			<?php submit_button(); ?>
-		</div>
-	</form>
 
 	<?php elseif ( 'manage' === $active_tab ) : ?>
 
@@ -318,31 +281,6 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 				<button type="button" class="button button-primary" id="eo-scan-validation-confirm" style="background: #10b981; border-color: #059669;"><?php esc_html_e( 'Je confirme la validation', 'eo-tools' ); ?></button>
 			</div>
 		</div>
-	</div>
-
-	<!-- Scan History Section -->
-	<div class="eo-card" style="margin-top: 30px;">
-		<h2 style="margin: 0 0 20px 0;"><?php esc_html_e( 'Historique des Scans', 'eo-tools' ); ?></h2>
-		<table class="wp-list-table widefat fixed striped" style="border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Date du scan', 'eo-tools' ); ?></th>
-					<th><?php esc_html_e( 'Statut', 'eo-tools' ); ?></th>
-					<th><?php esc_html_e( 'Cookies trouvés', 'eo-tools' ); ?></th>
-					<th><?php esc_html_e( 'Listes des Cookies trouvés', 'eo-tools' ); ?></th>
-					<th><?php esc_html_e( 'Modifications Cookies', 'eo-tools' ); ?></th>
-					<th><?php esc_html_e( 'Listes des Cookies', 'eo-tools' ); ?></th>
-					<th><?php esc_html_e( 'Action', 'eo-tools' ); ?></th>
-				</tr>
-			</thead>
-			<tbody id="eo-scan-history-list">
-				<tr>
-					<td colspan="7" style="text-align: center; color: #64748b; font-style: italic; padding: 15px;">
-						<?php esc_html_e( 'Chargement de l\'historique...', 'eo-tools' ); ?>
-					</td>
-				</tr>
-			</tbody>
-		</table>
 	</div>
 
 	<?php elseif ( 'statistics' === $active_tab ) : ?>
@@ -492,5 +430,227 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		</table>
 		<p class="description"><?php esc_html_e( 'Seuls les 100 derniers événements sont affichés ici.', 'eo-tools' ); ?></p>
 	</div>
+
+	<?php elseif ( 'detailed_scan' === $active_tab ) : ?>
+	
+	<?php if ( isset( $_GET['batch_id'] ) ) : ?>
+	<script>
+		var eo_tools_preload_batch_id = '<?php echo esc_js( sanitize_text_field( $_GET['batch_id'] ) ); ?>';
+	</script>
+	<?php endif; ?>
+
+	<div class="eo-card" style="margin-top: 20px;">
+		<h2><?php esc_html_e( 'Scan des pages', 'eo-tools' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Analysez toutes les pages et articles de votre site pour détecter les scripts et cookies installés (Analytics, Publicités, etc.).', 'eo-tools' ); ?></p>
+		
+		<div style="margin-top: 20px; display: flex; gap: 15px; align-items: center;">
+			<button id="eo-start-detailed-scan" class="button button-primary" style="padding: 0; width: 36px; height: 36px; display: inline-flex; justify-content: center; align-items: center;" title="<?php esc_attr_e( 'Démarrer le scan complet', 'eo-tools' ); ?>">
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-left: 2px;"><path d="M8 5v14l11-7z"/></svg>
+			</button>
+			<button id="eo-pause-detailed-scan" class="button button-secondary" style="display: none; padding: 0; width: 36px; height: 36px; justify-content: center; align-items: center;" title="<?php esc_attr_e( 'Mettre en pause', 'eo-tools' ); ?>">
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+			</button>
+			<button id="eo-resume-detailed-scan" class="button button-secondary" style="display: none; padding: 0; width: 36px; height: 36px; justify-content: center; align-items: center;" title="<?php esc_attr_e( 'Reprendre le scan', 'eo-tools' ); ?>">
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-left: 2px;"><path d="M8 5v14l11-7z"/></svg>
+			</button>
+			
+			<div id="eo-detailed-scan-progress-container" style="position: relative; width: 36px; height: 36px; display: none;">
+				<svg width="36" height="36" viewBox="0 0 140 140" style="transform: rotate(-90deg);">
+					<defs>
+						<mask id="eo-progress-mask">
+							<circle id="eo-detailed-scan-progress-mask-circle" cx="70" cy="70" r="60" fill="none" stroke="white" stroke-width="16" stroke-dasharray="377" stroke-dashoffset="377" style="transition: stroke-dashoffset 0.3s ease;" />
+						</mask>
+					</defs>
+					<circle cx="70" cy="70" r="60" fill="none" stroke="#e2e8f0" stroke-width="12" stroke-dasharray="22 9.4" />
+					<circle cx="70" cy="70" r="60" fill="none" stroke="#0ea5e9" stroke-width="12" stroke-dasharray="22 9.4" mask="url(#eo-progress-mask)" />
+				</svg>
+				<div id="eo-detailed-scan-progress-text" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #1e293b;">0%</div>
+			</div>
+
+			<span id="eo-detailed-scan-timing" style="margin-left: 15px; font-size: 13px; color: #64748b; display: none; align-items: center;">
+				Début : <strong id="eo-scan-time-start">-</strong> <span style="margin: 0 5px;">|</span> 
+				Fin : <strong id="eo-scan-time-end">-</strong> <span style="margin: 0 5px;">|</span> 
+				Durée : <strong id="eo-scan-time-duration">-</strong>
+			</span>
+		</div>
+
+		<h3 style="margin-top: 40px;"><?php esc_html_e( 'État d\'avancement par type de contenu', 'eo-tools' ); ?></h3>
+		<table class="wp-list-table widefat fixed striped" id="eo-detailed-scan-counts-table">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Type de contenu', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Nombre en BDD', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Nombre scanné', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Pourcentage', 'eo-tools' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr data-type="headers_footers">
+					<td>Header / Footer</td>
+					<td class="count-total">-</td>
+					<td class="count-scanned">-</td>
+					<td class="count-percent">-</td>
+				</tr>
+				<tr data-type="posts">
+					<td>Articles</td>
+					<td class="count-total">-</td>
+					<td class="count-scanned">-</td>
+					<td class="count-percent">-</td>
+				</tr>
+				<tr data-type="pages">
+					<td>Pages</td>
+					<td class="count-total">-</td>
+					<td class="count-scanned">-</td>
+					<td class="count-percent">-</td>
+				</tr>
+				<tr data-type="cpts">
+					<td>Custom Post Types</td>
+					<td class="count-total">-</td>
+					<td class="count-scanned">-</td>
+					<td class="count-percent">-</td>
+				</tr>
+				<tr data-type="attachments">
+					<td>Médias (Attachments)</td>
+					<td class="count-total">-</td>
+					<td class="count-scanned">-</td>
+					<td class="count-percent">-</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<h3 style="margin-top: 40px;"><?php esc_html_e( 'URLs Scannées', 'eo-tools' ); ?></h3>
+		<table class="wp-list-table widefat fixed striped" id="eo-detailed-scan-results-table">
+			<thead>
+				<tr>
+					<th style="width: 45%;"><?php esc_html_e( 'URL Scannée', 'eo-tools' ); ?></th>
+					<th style="width: 9%;"><?php esc_html_e( 'Scan Type', 'eo-tools' ); ?></th>
+					<th style="width: 8%; text-align: center;"><?php esc_html_e( 'Total', 'eo-tools' ); ?></th>
+					<th style="width: 7%; text-align: center;"><?php esc_html_e( 'Nécessaire', 'eo-tools' ); ?></th>
+					<th style="width: 7%; text-align: center;"><?php esc_html_e( 'Analytique', 'eo-tools' ); ?></th>
+					<th style="width: 7%; text-align: center;"><?php esc_html_e( 'Publicité', 'eo-tools' ); ?></th>
+					<th style="width: 7%; text-align: center;"><?php esc_html_e( 'Social', 'eo-tools' ); ?></th>
+					<th style="width: 10%; text-align: center;"><?php esc_html_e( 'Autres', 'eo-tools' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr id="eo-detailed-scan-empty-row">
+					<td colspan="8" style="text-align: center; color: #64748b; font-style: italic; padding: 15px;">
+						<?php esc_html_e( 'Le scan n\'a pas encore commencé.', 'eo-tools' ); ?>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+
+		<div id="eo-detailed-scan-floating-console" style="display: none; position: fixed; bottom: 20px; right: 20px; width: 600px; max-width: 90vw; background-color: #111827; color: #10b981; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100000; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; overflow: hidden; border: 1px solid #374151;">
+			<div style="background-color: #1f2937; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; cursor: pointer; user-select: none;" id="eo-floating-console-header">
+				<div style="font-weight: bold; color: #60a5fa; font-size: 13px; display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 65%;">
+					<span style="color: #3b82f6;">>_</span> CONSOLE 
+					<span style="color: #9ca3af; font-weight: normal; margin-left: 10px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="eo-console-last-msg">Dernier : En attente...</span>
+				</div>
+				<div style="display: flex; align-items: center; gap: 12px; font-size: 11px; color: #9ca3af; flex-shrink: 0;">
+					<span id="eo-console-copy" style="cursor: pointer;" title="<?php esc_attr_e( 'Copier les logs', 'eo-tools' ); ?>">Copier</span>
+					<span style="color: #4b5563;">|</span>
+					<span id="eo-console-clear" style="cursor: pointer;" title="<?php esc_attr_e( 'Vider la console', 'eo-tools' ); ?>">Vider</span>
+					<span style="color: #4b5563;">|</span>
+					<span id="eo-console-toggle-icon" style="font-size: 10px;">▲</span>
+				</div>
+			</div>
+			<div id="eo-detailed-scan-console" style="padding: 15px; height: 300px; overflow-y: auto; font-size: 13px; line-height: 1.6; display: none; color: #34d399;">
+				<div><?php esc_html_e( '[En attente...] Prêt à démarrer le scan.', 'eo-tools' ); ?></div>
+			</div>
+		</div>
+
+	</div>
+
+	<!-- Scan History Section -->
+	<div class="eo-card" style="margin-top: 30px;">
+		<h2 style="margin: 0 0 20px 0;"><?php esc_html_e( 'Historique des Scans', 'eo-tools' ); ?></h2>
+		<table class="wp-list-table widefat fixed striped" style="border: 1px solid #ccd0d4; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
+			<thead>
+				<tr>
+					<th><?php esc_html_e( 'Date du scan', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Statut', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Cookies trouvés', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Listes des Cookies trouvés', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Modifications Cookies', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Listes des Cookies', 'eo-tools' ); ?></th>
+					<th><?php esc_html_e( 'Action', 'eo-tools' ); ?></th>
+				</tr>
+			</thead>
+			<tbody id="eo-scan-history-list">
+				<tr>
+					<td colspan="7" style="text-align: center; color: #64748b; font-style: italic; padding: 15px;">
+						<?php esc_html_e( 'Chargement de l\'historique...', 'eo-tools' ); ?>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+
+	<?php elseif ( 'settings' === $active_tab ) : ?>
+	
+	<form method="post" action="">
+		<?php wp_nonce_field( 'eo_tools_cookies_settings' ); ?>
+
+		<div class="eo-card" style="margin-top: 20px;">
+			<h2><?php esc_html_e( 'Cookies et bandeau', 'eo-tools' ); ?></h2>
+			<table class="form-table">
+				<tr>
+					<th scope="row"><label for="eotools_cookies_active"><?php esc_html_e( 'Activer le gestionnaire', 'eo-tools' ); ?></label></th>
+					<td>
+						<input type="checkbox" id="eotools_cookies_active" name="eotools_cookies[active]" value="1" <?php checked( ! empty( $settings['active'] ) ); ?> />
+						<p class="description"><?php esc_html_e( 'Active le bandeau et le blocage des cookies tiers.', 'eo-tools' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="eotools_cookies_duration"><?php esc_html_e( 'Durée de conservation des choix (mois)', 'eo-tools' ); ?></label></th>
+					<td>
+						<input type="number" id="eotools_cookies_duration" name="eotools_cookies[duration]" value="<?php echo esc_attr( $settings['duration'] ); ?>" min="1" max="12" />
+						<p class="description"><?php esc_html_e( 'Conformément aux recommandations de la CNIL, la durée maximale est fixée à 12 mois.', 'eo-tools' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="eotools_cookies_icon_full"><?php esc_html_e( 'Icône d\'acceptation totale (URL)', 'eo-tools' ); ?></label></th>
+					<td>
+						<input type="url" id="eotools_cookies_icon_full" class="regular-text" name="eotools_cookies[icon_full]" value="<?php echo esc_attr( $settings['icon_full'] ?? '' ); ?>" placeholder="https://..." />
+						<p class="description"><?php esc_html_e( 'Laissez vide pour utiliser l\'icône par défaut (cookie plein).', 'eo-tools' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="eotools_cookies_icon_partial"><?php esc_html_e( 'Icône d\'acceptation partielle/refus (URL)', 'eo-tools' ); ?></label></th>
+					<td>
+						<input type="url" id="eotools_cookies_icon_partial" class="regular-text" name="eotools_cookies[icon_partial]" value="<?php echo esc_attr( $settings['icon_partial'] ?? '' ); ?>" placeholder="https://..." />
+						<p class="description"><?php esc_html_e( 'Laissez vide pour utiliser l\'icône par défaut (cookie croqué).', 'eo-tools' ); ?></p>
+					</td>
+				</tr>
+			</table>
+
+			<h2 style="margin-top: 30px;"><?php esc_html_e( 'Scans et logs', 'eo-tools' ); ?></h2>
+			<table class="form-table">
+				<tr>
+					<th scope="row"><label for="eotools_cookies_duration_logs"><?php esc_html_e( 'Durée de conservation des logs de scan (mois)', 'eo-tools' ); ?></label></th>
+					<td>
+						<input type="number" id="eotools_cookies_duration_logs" name="eotools_cookies[duration_logs]" value="<?php echo esc_attr( $settings['duration_logs'] ?? 6 ); ?>" min="1" max="24" />
+						<p class="description"><?php esc_html_e( 'Les journaux du scanner détaillé plus anciens que cette durée seront supprimés automatiquement pour alléger la base de données.', 'eo-tools' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="eotools_cookies_batch_size"><?php esc_html_e( 'Taille des lots (Batch size)', 'eo-tools' ); ?></label></th>
+					<td>
+						<input type="number" id="eotools_cookies_batch_size" name="eotools_cookies[batch_size]" value="<?php echo esc_attr( isset($settings['batch_size']) && $settings['batch_size'] !== '' ? $settings['batch_size'] : 5 ); ?>" min="1" max="50" />
+						<p class="description"><?php esc_html_e( 'Nombre d\'URLs scannées simultanément par le scanner détaillé. Réduisez si votre serveur s\'essouffle.', 'eo-tools' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="eotools_cookies_batch_delay"><?php esc_html_e( 'Délai entre les lots (ms)', 'eo-tools' ); ?></label></th>
+					<td>
+						<input type="number" id="eotools_cookies_batch_delay" name="eotools_cookies[batch_delay]" value="<?php echo esc_attr( isset($settings['batch_delay']) && $settings['batch_delay'] !== '' ? $settings['batch_delay'] : 200 ); ?>" min="0" max="10000" />
+						<p class="description"><?php esc_html_e( 'Pause en millisecondes entre chaque requête du scanner (ex: 1000 pour 1 seconde). Aide à prévenir les surcharges (Timeout).', 'eo-tools' ); ?></p>
+					</td>
+				</tr>
+			</table>
+			<?php submit_button(); ?>
+		</div>
+	</form>
 
 	<?php endif; ?>

@@ -32,60 +32,19 @@ class Eotools_Menu {
 			wp_send_json_error( 'Unauthorized' );
 		}
 		
-		$timestamp = isset( $_POST['timestamp'] ) ? floatval( $_POST['timestamp'] ) : 0;
-		$date = isset( $_POST['date'] ) ? sanitize_text_field( wp_unslash( $_POST['date'] ) ) : '';
+		$scan_id = isset( $_POST['timestamp'] ) ? intval( $_POST['timestamp'] ) : 0;
 		$names = isset( $_POST['names'] ) ? array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['names'] ) ) : array();
 		
-		if ( ! $timestamp && empty( $date ) ) {
-			wp_send_json_error( 'Missing timestamp or date' );
+		if ( ! $scan_id ) {
+			wp_send_json_error( 'Missing scan id' );
 		}
 		
-		// 1. Update the scan in history to validated
-		$history = get_option( 'eo_tools_scan_history', array() );
-		$updated = false;
-		$target_scan = null;
-		
-		foreach ( $history as &$scan ) {
-			if ( $timestamp && isset( $scan['timestamp'] ) && floatval( $scan['timestamp'] ) === $timestamp ) {
-				$scan['validated'] = true;
-				$scan['validatedDate'] = current_time( 'Y-m-d H:i:s' );
-				$updated = true;
-				$target_scan = $scan;
-				break;
-			} elseif ( ! empty( $date ) && isset( $scan['date'] ) && $scan['date'] === $date ) {
-				$scan['validated'] = true;
-				$scan['validatedDate'] = current_time( 'Y-m-d H:i:s' );
-				$updated = true;
-				$target_scan = $scan;
-				break;
-			}
-		}
-		
-		// Auto-validate other scans with the exact same modifications
-		if ( $target_scan ) {
-			$del = isset( $target_scan['deletedNames'] ) ? $target_scan['deletedNames'] : array();
-			$add = isset( $target_scan['addedNames'] ) ? $target_scan['addedNames'] : array();
-			
-			foreach ( $history as &$scan ) {
-				if ( empty( $scan['validated'] ) ) {
-					$s_del = isset( $scan['deletedNames'] ) ? $scan['deletedNames'] : array();
-					$s_add = isset( $scan['addedNames'] ) ? $scan['addedNames'] : array();
-					
-					if ( $s_del === $del && $s_add === $add ) {
-						$scan['validated'] = true;
-						$scan['validatedDate'] = current_time( 'Y-m-d H:i:s' );
-						$updated = true;
-					}
-				}
-			}
-		}
-
-		if ( $updated ) {
-			update_option( 'eo_tools_scan_history', $history );
-		}
-		
-		// 2. Insert into log table
 		global $wpdb;
+		$table_scans = $wpdb->prefix . 'eotools_scan';
+		
+		$wpdb->update( $table_scans, array( 'requires_validation' => 0 ), array( 'id' => $scan_id ) );
+
+		// 2. Insert into log table
 		$table_log = $wpdb->prefix . 'eotools_cookie_log';
 		$comments_text = implode( ', ', $names );
 		$admin_consent_id = hash( 'sha256', $comments_text );
@@ -101,7 +60,38 @@ class Eotools_Menu {
 			array( '%s', '%s', '%s', '%s' )
 		);
 		
-		wp_send_json_success( $history );
+		$scans = $wpdb->get_results( "SELECT * FROM $table_scans ORDER BY id DESC LIMIT 50", ARRAY_A );
+		
+		$formatted_history = array();
+		foreach ( $scans as $scan ) {
+			$new_cookies = $scan['new_cookies'] ? json_decode( $scan['new_cookies'], true ) : array();
+			$added_names = array();
+			if ( is_array( $new_cookies ) ) {
+				foreach ( $new_cookies as $c ) {
+					if ( isset( $c['cookie']['name'] ) ) {
+						$added_names[] = $c['cookie']['name'];
+					}
+				}
+			}
+
+			$formatted_history[] = array(
+				'id'         => $scan['id'],
+				'ref'        => $scan['ref'],
+				'type'       => $scan['type'],
+				'date'       => date( 'd/m/Y H:i:s', strtotime( $scan['date_end'] !== '0000-00-00 00:00:00' ? $scan['date_end'] : $scan['date_start'] ) ),
+				'status'     => strtoupper( $scan['status'] ),
+				'totalFound' => $scan['total_cookies_found'],
+				'added'      => count( $added_names ),
+				'addedNames' => $added_names,
+				'addedCookies' => $new_cookies,
+				'validated'  => $scan['requires_validation'] ? false : true,
+				'timestamp'  => $scan['id'],
+				'batch_id'   => $scan['id'],
+				'source'     => $scan['type']
+			);
+		}
+		
+		wp_send_json_success( $formatted_history );
 	}
 
 	public function ajax_get_registry() {
@@ -118,8 +108,43 @@ class Eotools_Menu {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Unauthorized' );
 		}
-		$history = get_option( 'eo_tools_scan_history', array() );
-		wp_send_json_success( $history );
+
+		global $wpdb;
+		$table_scans = $wpdb->prefix . 'eotools_scan';
+		
+		$scans = $wpdb->get_results( "SELECT * FROM $table_scans ORDER BY id DESC LIMIT 50", ARRAY_A );
+		
+		// Reformater pour le frontend (qui s'attendait Ã  la structure wp_options)
+		$formatted_history = array();
+		foreach ( $scans as $scan ) {
+			$new_cookies = $scan['new_cookies'] ? json_decode( $scan['new_cookies'], true ) : array();
+			$added_names = array();
+			if ( is_array( $new_cookies ) ) {
+				foreach ( $new_cookies as $c ) {
+					if ( isset( $c['cookie']['name'] ) ) {
+						$added_names[] = $c['cookie']['name'];
+					}
+				}
+			}
+
+			$formatted_history[] = array(
+				'id'         => $scan['id'],
+				'ref'        => $scan['ref'],
+				'type'       => $scan['type'],
+				'date'       => date( 'd/m/Y H:i:s', strtotime( $scan['date_end'] !== '0000-00-00 00:00:00' ? $scan['date_end'] : $scan['date_start'] ) ),
+				'status'     => strtoupper( $scan['status'] ),
+				'totalFound' => $scan['total_cookies_found'],
+				'added'      => count( $added_names ),
+				'addedNames' => $added_names,
+				'addedCookies' => $new_cookies,
+				'validated'  => $scan['requires_validation'] ? false : true,
+				'timestamp'  => $scan['id'],
+				'batch_id'   => $scan['id'],
+				'source'     => $scan['type']
+			);
+		}
+
+		wp_send_json_success( $formatted_history );
 	}
 
 	public function ajax_save_scan_result() {
@@ -140,14 +165,34 @@ class Eotools_Menu {
 			wp_send_json_error( 'Invalid data' );
 		}
 		
-		$history = get_option( 'eo_tools_scan_history', array() );
-		array_unshift( $history, $result );
+		global $wpdb;
+		$table_scans = $wpdb->prefix . 'eotools_scan';
 		
-		// Keep last 20
-		$history = array_slice( $history, 0, 20 );
+		$prefix = 'SC' . current_time('ym') . '-';
+		$last_ref = $wpdb->get_var( $wpdb->prepare( "SELECT ref FROM $table_scans WHERE ref LIKE %s ORDER BY id DESC LIMIT 1", $prefix . '%' ) );
+		if ( $last_ref ) {
+			$num = intval( substr( $last_ref, -5 ) ) + 1;
+		} else {
+			$num = 1;
+		}
+		$ref = $prefix . str_pad( $num, 5, '0', STR_PAD_LEFT );
+
+		$new_cookies_json = isset( $result['addedCookies'] ) ? wp_json_encode( $result['addedCookies'] ) : null;
 		
-		update_option( 'eo_tools_scan_history', $history );
-		wp_send_json_success( $history );
+		$wpdb->insert( $table_scans, array(
+			'ref' => $ref,
+			'type' => isset( $result['source'] ) ? $result['source'] : 'quick_scan',
+			'status' => 'completed',
+			'date_start' => current_time( 'mysql' ),
+			'date_end' => current_time( 'mysql' ),
+			'total_urls' => 1,
+			'scanned_urls' => 1,
+			'total_cookies_found' => isset( $result['found'] ) ? intval( $result['found'] ) : 0,
+			'requires_validation' => empty( $result['validated'] ) ? 1 : 0,
+			'new_cookies' => $new_cookies_json
+		) );
+		
+		wp_send_json_success( array() );
 	}
 
 	public function ajax_save_registry() {
@@ -169,6 +214,24 @@ class Eotools_Menu {
 		}
 		
 		update_option( 'eo_tools_cookie_registry', $registry );
+
+		// Log the changes
+		$change_log = isset( $_POST['change_log'] ) ? wp_unslash( $_POST['change_log'] ) : array();
+		if ( is_array( $change_log ) && ! empty( $change_log ) ) {
+			global $wpdb;
+			$table_log = $wpdb->prefix . 'eotools_cookie_log';
+			$comments_text = implode( ', ', array_map( 'sanitize_text_field', $change_log ) );
+			$wpdb->insert(
+				$table_log,
+				array(
+					'consent_id'     => md5( uniqid( '', true ) ),
+					'consent_status' => 'VALIDATION ADMIN',
+					'comments'       => $comments_text,
+					'time'           => current_time( 'mysql' )
+				)
+			);
+		}
+
 		wp_send_json_success( $registry );
 	}
 
@@ -325,6 +388,13 @@ class Eotools_Menu {
 			wp_enqueue_style( 'eo-tools-cookies-admin-css', EO_TOOLS_URL . 'assets/css/cookies-admin.css', array(), time() );
 			wp_enqueue_script( 'chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', array(), '4.0.0', true );
 			wp_enqueue_script( 'eo-tools-cookies-admin-js', EO_TOOLS_URL . 'assets/js/cookies-admin.js', array( 'jquery', 'wp-i18n', 'chart-js' ), time(), true );
+			wp_enqueue_script( 'eo-tools-cookies-detailed-scan-js', EO_TOOLS_URL . 'assets/js/cookies-detailed-scan.js', array( 'jquery' ), time(), true );
+			$settings = get_option( 'eo_tools_cookies_settings', array( 'active' => false, 'duration' => 12 ) );
+			wp_localize_script( 'eo-tools-cookies-detailed-scan-js', 'eo_tools_admin_vars', array(
+				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+				'nonce'       => wp_create_nonce( 'eo_tools_detailed_scan_nonce' ),
+				'batch_delay' => isset( $settings['batch_delay'] ) && $settings['batch_delay'] !== '' ? intval( $settings['batch_delay'] ) : 200
+			) );
 			wp_set_script_translations( 'eo-tools-cookies-admin-js', 'eo-tools' );
 			wp_localize_script( 'eo-tools-cookies-admin-js', 'eoToolsCookiesAdmin', array(
 				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),

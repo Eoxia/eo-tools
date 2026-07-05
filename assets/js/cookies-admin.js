@@ -123,11 +123,17 @@ jQuery(document).ready(function($) {
 		});
 	}
 
-	function saveRegistry(callback) {
+	function saveRegistry(changeLog, callback) {
+		if (typeof changeLog === 'function') {
+			callback = changeLog;
+			changeLog = null;
+		}
+		
 		$.post(eoToolsCookiesAdmin.ajaxUrl, {
 			action: 'eo_tools_save_cookie_registry',
 			security: eoToolsCookiesAdmin.nonce,
-			registry: cookieRegistry
+			registry: cookieRegistry,
+			change_log: changeLog || []
 		}, function(response) {
 			if (response.success) {
 				renderSidebarCounts();
@@ -190,6 +196,58 @@ jQuery(document).ready(function($) {
 		
 		$btn.prop('disabled', true).text(wp.i18n.__('Validation...', 'eo-tools'));
 		
+		if (currentValidationTimestamp === 'manual') {
+			const cookiesToAdd = window.eoManualBulkAddCookies || [];
+			cookiesToAdd.forEach(name => {
+				let foundInDB = false;
+				if (window.openCookieDB) {
+					const match = window.openCookieDB.find(c => c.name.toLowerCase() === name.toLowerCase());
+					if (match) {
+						let cat = match.category;
+						if (cat === 'Analytics') cat = 'analytics';
+						else if (cat === 'Marketing') cat = 'marketing';
+						else if (cat === 'Social') cat = 'social';
+						else if (cat === 'Functional') cat = 'functional';
+						else cat = 'others';
+						
+						if (!cookieRegistry[cat]) cookieRegistry[cat] = [];
+						if (!Array.isArray(cookieRegistry[cat])) cookieRegistry[cat] = Object.values(cookieRegistry[cat]);
+						
+						if (!cookieRegistry[cat].some(c => c.name === match.name)) {
+							cookieRegistry[cat].push({
+								name: match.name,
+								domain: match.domain || '',
+								duration: match.retention || '0',
+								description: match.description || '',
+								active: true
+							});
+						}
+						foundInDB = true;
+					}
+				}
+				if (!foundInDB) {
+					if (!cookieRegistry['functional']) cookieRegistry['functional'] = [];
+					if (!Array.isArray(cookieRegistry['functional'])) cookieRegistry['functional'] = Object.values(cookieRegistry['functional']);
+					
+					if (!cookieRegistry['functional'].some(c => c.name === name)) {
+						cookieRegistry['functional'].push({
+							name: name,
+							domain: '',
+							duration: '0',
+							description: 'Ajout manuel',
+							active: true
+						});
+					}
+				}
+			});
+			saveRegistry();
+			$('#eo-scan-validation-modal').hide();
+			$('#eo-cookie-search-db').val('');
+			showNotice(wp.i18n.__('Cookies ajoutés avec succès !', 'eo-tools'));
+			$btn.prop('disabled', false).text(originalText);
+			return;
+		}
+
 		// Apply modifications to registry
 		const scanToValidate = globalHistoryArray.find(item => item.timestamp == currentValidationTimestamp);
 		if (scanToValidate) {
@@ -365,13 +423,16 @@ jQuery(document).ready(function($) {
 		}
 
 		const existingIndex = cookieRegistry[newCat].findIndex(c => c.id === id);
+		let changeLogMsg = '';
 		if (existingIndex > -1) {
 			cookieRegistry[newCat][existingIndex] = cookieData;
+			changeLogMsg = '~ ' + name;
 		} else {
 			cookieRegistry[newCat].push(cookieData);
+			changeLogMsg = '+ ' + name;
 		}
 
-		saveRegistry(() => {
+		saveRegistry([changeLogMsg], () => {
 			$('#eo-cookie-modal').hide();
 		});
 	});
@@ -399,18 +460,24 @@ jQuery(document).ready(function($) {
 	// Delete Cookie
 	$(document).on('click', '.eo-delete-cookie', function() {
 		const id = $(this).data('id');
-		cookieRegistry[currentCategory] = cookieRegistry[currentCategory].filter(c => c.id !== id);
-		saveRegistry();
+		const cookies = cookieRegistry[currentCategory] || [];
+		const cookie = cookies.find(c => c.id === id);
+		cookieRegistry[currentCategory] = cookies.filter(c => c.id !== id);
+		if (cookie) {
+			saveRegistry(['- ' + cookie.name]);
+		} else {
+			saveRegistry();
+		}
 	});
 
 	// Toggle Active status inline
-	$(document).on('click', '.eo-toggle-active', function() {
+	$(document).on('change', '.eo-cookie-active-toggle', function() {
 		const id = $(this).data('id');
 		const cookies = cookieRegistry[currentCategory] || [];
 		const cookie = cookies.find(c => c.id === id);
 		if (cookie) {
-			cookie.active = (cookie.active === false) ? true : false;
-			saveRegistry();
+			cookie.active = $(this).is(':checked');
+			saveRegistry(['~ ' + cookie.name + (cookie.active ? ' (activé)' : ' (désactivé)')]);
 		}
 	});
 
@@ -519,7 +586,7 @@ jQuery(document).ready(function($) {
 		const originalHtml = $btn.html();
 		
 		// 1. Loading UI on button
-		$btn.prop('disabled', true).html('<span class="dashicons dashicons-update" style="animation: dashicons-spin 1s infinite linear; margin-top: 3px;"></span> ' + wp.i18n.__('Analyse en cours...', 'eo-tools'));
+		$btn.prop('disabled', true).html('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" style="animation: dashicons-spin 1s infinite linear; vertical-align: middle; margin-right: 5px; margin-top: -2px;"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg> ' + wp.i18n.__('Analyse en cours...', 'eo-tools'));
 		
 		// 2. Add temporary line in History table
 		const scanDate = new Date().toLocaleString();
@@ -534,12 +601,8 @@ jQuery(document).ready(function($) {
 		$tbody.prepend(`
 			<tr id="${tempId}" style="background-color: #f8fafc;">
 				<td><strong>${scanDate}</strong></td>
-				<td><span style="background: #e2e8f0; color: #475569; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;"><span class="dashicons dashicons-update" style="animation: dashicons-spin 1s infinite linear; font-size: 14px; width: 14px; height: 14px; margin-right: 4px; vertical-align: text-top;"></span>${wp.i18n.__('EN COURS', 'eo-tools')}</span></td>
-				<td>-</td>
-				<td>-</td>
-				<td>-</td>
-				<td>-</td>
-				<td>-</td>
+				<td><span style="background: #e2e8f0; color: #475569; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" style="animation: dashicons-spin 1s infinite linear; vertical-align: middle; margin-right: 4px; margin-top: -2px;"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>${wp.i18n.__('EN COURS', 'eo-tools')}</span></td>
+				<td colspan="5" style="color: #64748b; font-style: italic;">${wp.i18n.__('Scan en cours d\'exécution...', 'eo-tools')}</td>
 			</tr>
 		`);
 
@@ -721,7 +784,7 @@ jQuery(document).ready(function($) {
 			if (item.status === 'FAILED' || item.status === 'ERREUR') {
 				$tbody.append(`
 					<tr>
-						<td><strong>${item.date}</strong></td>
+						<td><strong>${item.ref || ''}</strong><br><span style="font-size:10px;color:#64748b;">${item.date}</span></td>
 						<td><span style="background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${wp.i18n.__('ERREUR', 'eo-tools')}</span></td>
 						<td colspan="5" style="color: #dc2626;">${item.error || wp.i18n.__('Erreur inconnue', 'eo-tools')}</td>
 					</tr>
@@ -750,7 +813,7 @@ jQuery(document).ready(function($) {
 					addedNamesHtml = changesArr.join('<span style="color: #cbd5e1;">, </span>');
 				}
 				
-				let actionHtml = '-';
+				let actionHtml = '';
 				
 				let foundHtml = item.found;
 				let foundNamesHtml = '-';
@@ -758,25 +821,35 @@ jQuery(document).ready(function($) {
 					foundNamesHtml = item.foundNames.join(', ');
 				}
 
+				// Bouton détails pour le scan détaillé
+				if (item.source === 'detailed_scan') {
+					let batchLink = item.batch_id ? `&batch_id=${item.batch_id}` : '';
+					actionHtml += `<a href="?page=eo-tools-cookies&tab=detailed_scan${batchLink}" class="button button-secondary" style="font-size: 11px; padding: 0 8px; min-height: 24px; line-height: 22px; display: inline-block; margin-bottom: 5px;">${wp.i18n.__('Consulter les détails', 'eo-tools')}</a><br>`;
+				}
+
 				if (item.added > 0 || item.deleted > 0) {
 					if (item.validated) {
-						actionHtml = `<span style="color: #166534; font-size: 11px;"><span class="dashicons dashicons-yes-alt" style="color: #10b981; font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span> ${wp.i18n.sprintf(wp.i18n.__('Validé le %s', 'eo-tools'), item.validatedDate || item.date)} - <a href="?page=eo-tools-cookies&tab=report" style="color: #166534; text-decoration: underline;">${wp.i18n.__('Voir le rapport', 'eo-tools')}</a></span>`;
+						actionHtml += `<span style="color: #166534; font-size: 11px;"><span class="dashicons dashicons-yes-alt" style="color: #10b981; font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span> ${wp.i18n.sprintf(wp.i18n.__('Validé le %s', 'eo-tools'), item.validatedDate || item.date)} - <a href="?page=eo-tools-cookies&tab=report" style="color: #166534; text-decoration: underline;">${wp.i18n.__('Voir le rapport', 'eo-tools')}</a></span>`;
 					} else {
 						const addNamesData = (item.addedNames && item.addedNames.length > 0) ? item.addedNames.join(',') : '';
 						const delNamesData = (item.deletedNames && item.deletedNames.length > 0) ? item.deletedNames.join(',') : '';
-						actionHtml = `<button type="button" class="button button-primary eo-validate-scan-btn" data-timestamp="${item.timestamp || 0}" data-date="${item.date}" data-added-names="${addNamesData}" data-deleted-names="${delNamesData}" style="font-size: 11px; padding: 0 8px; min-height: 24px; line-height: 22px; background: #eab308; border-color: #ca8a04; color: #fff;">${wp.i18n.__('Valider ces modifications', 'eo-tools')}</button>`;
+						actionHtml += `<button type="button" class="button button-primary eo-validate-scan-btn" data-timestamp="${item.timestamp || 0}" data-date="${item.date}" data-added-names="${addNamesData}" data-deleted-names="${delNamesData}" style="font-size: 11px; padding: 0 8px; min-height: 24px; line-height: 22px; background: #eab308; border-color: #ca8a04; color: #fff;">${wp.i18n.__('Valider les nouveaux cookies', 'eo-tools')}</button>`;
 					}
+				} else if (actionHtml === '') {
+					actionHtml = '-';
 				}
-				
+
 				$tbody.append(`
 					<tr>
-						<td><strong>${item.date}</strong></td>
+						<td><strong>${item.ref || ''}</strong><br><span style="font-size:10px;color:#64748b;">${item.date}</span></td>
 						<td><span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">${item.status}</span></td>
-						<td><strong>${item.found}</strong></td>
+						<td><strong>${typeof item.totalFound !== 'undefined' ? item.totalFound : (typeof item.found !== 'undefined' ? item.found : '-')}</strong></td>
 						<td><span style="font-size: 10px; color: #64748b; background: #f1f5f9; padding: 2px 4px; border-radius: 3px; cursor: text; user-select: all;" title="Copier la liste" onclick="navigator.clipboard.writeText('${foundNamesHtml.replace(/'/g, "\\'")}');">${foundNamesHtml}</span></td>
 						<td>${addedHtml}</td>
 						<td><span style="font-size: 10px; font-weight: bold;">${addedNamesHtml}</span></td>
-						<td>${actionHtml}</td>
+						<td style="text-align: right; white-space: nowrap;">
+							${actionHtml}
+						</td>
 					</tr>
 				`);
 			}
@@ -791,4 +864,12 @@ jQuery(document).ready(function($) {
 	// Initial load
 	loadRegistry();
 	loadScanHistory();
+	
+	window.showNotice = function(msg, type = 'success') {
+		const bg = type === 'error' ? '#ef4444' : '#10b981';
+		const $notice = $('<div style="position:fixed;bottom:20px;right:20px;background:'+bg+';color:white;padding:10px 20px;border-radius:4px;z-index:999999;box-shadow:0 4px 6px rgba(0,0,0,0.1);">'+msg+'</div>');
+		$('body').append($notice);
+		setTimeout(() => $notice.fadeOut(300, function(){ $(this).remove(); }), 3000);
+	};
 });
+
