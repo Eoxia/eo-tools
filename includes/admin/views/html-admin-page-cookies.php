@@ -152,7 +152,7 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		?>
 		<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
 			<div style="display: flex; gap: 20px; align-items: center; flex: 1;">
-				<code style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px; color: #475569; font-size: 12px;"><?php echo esc_html( $last_admin_log->consent_id ); ?></code>
+				<code style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px; color: #475569; font-size: 12px;"><?php echo esc_html( substr( $last_admin_log->consent_id, 0, 12 ) ); ?></code>
 				<div style="font-size: 12px; color: #64748b; max-width: 500px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 					<?php 
 					// Show the list with + and - (or just the list)
@@ -405,7 +405,7 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 						}
 						?>
 						<tr>
-							<td><code><?php echo esc_html( $log->consent_id ); ?></code></td>
+							<td><code><?php echo esc_html( substr( $log->consent_id, 0, 12 ) ); ?></code></td>
 							<td style="color: #64748b; font-size: 12px; max-width: 300px; white-space: normal; word-break: break-all;">
 								<?php 
 								$comments_data = isset( $log->comments ) ? $log->comments : '';

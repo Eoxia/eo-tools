@@ -453,15 +453,17 @@ jQuery(document).ready(function($) {
 		const $btn = $(this);
 		$btn.prop('disabled', true).text(wp.i18n.__('Enregistrement...', 'eo-tools'));
 		
-		let activeCount = 0;
+		let activeCookiesList = [];
 		for (const cat in cookieRegistry) {
 			if (cookieRegistry[cat]) {
-				activeCount += cookieRegistry[cat].filter(c => c.active !== false).length;
+				cookieRegistry[cat].forEach(c => {
+					if (c.active !== false) {
+						activeCookiesList.push(c.name);
+					}
+				});
 			}
 		}
 
-		const changeLogMsg = 'Consentement validé manuellement avec ' + activeCount + ' cookies actifs';
-		
 		$.post(eoToolsCookiesAdmin.ajaxUrl, {
 			action: 'eo_tools_save_cookie_registry',
 			security: eoToolsCookiesAdmin.nonce,
