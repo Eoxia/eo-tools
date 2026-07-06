@@ -281,6 +281,19 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		</div>
 	</div>
 
+	<!-- Modal Delete Confirmation -->
+	<div id="eo-delete-confirm-modal" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); align-items: center; justify-content: center;">
+		<div style="background-color: #fff; margin: auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 400px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+			<h3 style="margin-top: 0; font-size: 16px; color: #1e293b;"><?php esc_html_e( 'Confirmation de suppression', 'eo-tools' ); ?></h3>
+			<p><?php esc_html_e( 'Êtes-vous sûr de vouloir supprimer ce cookie ?', 'eo-tools' ); ?></p>
+			<p style="font-weight: bold; color: #dc2626;" id="eo-delete-confirm-cookie-name"></p>
+			<div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+				<button type="button" class="button" id="eo-delete-confirm-cancel"><?php esc_html_e( 'Annuler', 'eo-tools' ); ?></button>
+				<button type="button" class="button button-primary" id="eo-delete-confirm-btn" style="background: #ef4444; border-color: #dc2626;"><?php esc_html_e( 'Supprimer', 'eo-tools' ); ?></button>
+			</div>
+		</div>
+	</div>
+
 	<?php elseif ( 'statistics' === $active_tab ) : ?>
 		<div class="eo-card" style="margin-top: 20px;">
 			<h2><?php esc_html_e( 'Statistiques de Consentement', 'eo-tools' ); ?></h2>

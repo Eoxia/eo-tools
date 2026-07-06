@@ -1,4 +1,11 @@
 jQuery(document).ready(function($) {
+	window.showNotice = function(msg, type = 'success') {
+		const bg = type === 'error' ? '#ef4444' : '#10b981';
+		const $notice = $('<div style="position:fixed;bottom:20px;right:20px;background:'+bg+';color:white;padding:10px 20px;border-radius:4px;z-index:999999;box-shadow:0 4px 6px rgba(0,0,0,0.1);">'+msg+'</div>');
+		$('body').append($notice);
+		setTimeout(() => $notice.fadeOut(300, function(){ $(this).remove(); }), 3000);
+	};
+
 	if (typeof window.eoCookieChartData !== 'undefined') {
 		const ctx = document.getElementById('eoCookieStatsChart');
 		if (ctx) {
@@ -121,7 +128,7 @@ jQuery(document).ready(function($) {
 					renderCookieTable();
 				}
 			} else {
-				alert(wp.i18n.__('Erreur lors du chargement des cookies.', 'eo-tools'));
+				showNotice(wp.i18n.__('Erreur lors du chargement des cookies.', 'eo-tools'), 'error');
 			}
 		});
 	}
@@ -289,18 +296,10 @@ jQuery(document).ready(function($) {
 					if (typeof showNotice !== 'undefined') showNotice(wp.i18n.__('Cookies validés avec succès et journalisés dans le rapport de consentements.', 'eo-tools'));
 					if (typeof renderScanHistory !== 'undefined') renderScanHistory(response.data);
 				} else {
-					if (typeof showNotice !== 'undefined') {
-						showNotice(wp.i18n.__('Erreur lors de la validation : ', 'eo-tools') + (response.data || ''), 'error');
-					} else {
-						alert(wp.i18n.__('Erreur lors de la validation.', 'eo-tools'));
-					}
+					showNotice(wp.i18n.__('Erreur lors de la validation : ', 'eo-tools') + (response.data || ''), 'error');
 				}
 			}).fail(function() {
-				if (typeof showNotice !== 'undefined') {
-					showNotice(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'), 'error');
-				} else {
-					alert(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'));
-				}
+				showNotice(wp.i18n.__('Erreur serveur lors de la validation.', 'eo-tools'), 'error');
 			}).always(function() {
 				$btn.prop('disabled', false).text(originalText);
 			});
@@ -534,6 +533,8 @@ jQuery(document).ready(function($) {
 	});
 
 	// Delete Cookie
+	let cookieToDelete = null;
+
 	$(document).on('click', '.eo-delete-cookie', function() {
 		const cat = $(this).data('cat');
 		const id = $(this).data('id');
@@ -541,9 +542,23 @@ jQuery(document).ready(function($) {
 		const cookie = cookies.find(c => c.id === id);
 		if (!cookie) return;
 
-		if (confirm(wp.i18n.__('Êtes-vous sûr de vouloir supprimer ce cookie ?', 'eo-tools'))) {
-			cookieRegistry[cat] = cookies.filter(c => c.id !== id);
-			saveRegistry(['- ' + cookie.name]);
+		cookieToDelete = { cat, id, name: cookie.name };
+		$('#eo-delete-confirm-cookie-name').text(cookie.name);
+		$('#eo-delete-confirm-modal').css('display', 'flex');
+	});
+
+	$('#eo-delete-confirm-cancel').on('click', function() {
+		cookieToDelete = null;
+		$('#eo-delete-confirm-modal').hide();
+	});
+
+	$('#eo-delete-confirm-btn').on('click', function() {
+		if (cookieToDelete) {
+			const cookies = cookieRegistry[cookieToDelete.cat] || [];
+			cookieRegistry[cookieToDelete.cat] = cookies.filter(c => c.id !== cookieToDelete.id);
+			saveRegistry(['- ' + cookieToDelete.name]);
+			cookieToDelete = null;
+			$('#eo-delete-confirm-modal').hide();
 		}
 	});
 
@@ -814,8 +829,9 @@ jQuery(document).ready(function($) {
 				});
 			}
 		}).fail(function() {
+			showNotice(wp.i18n.__('Erreur lors du scan backend.', 'eo-tools'), 'error');
+		}).always(function() {
 			$btn.prop('disabled', false).html(originalHtml);
-			alert(wp.i18n.__('Erreur lors du scan backend.', 'eo-tools'));
 		});
 	});
 
@@ -927,12 +943,5 @@ jQuery(document).ready(function($) {
 	// Initial load
 	loadRegistry();
 	loadScanHistory();
-	
-	window.showNotice = function(msg, type = 'success') {
-		const bg = type === 'error' ? '#ef4444' : '#10b981';
-		const $notice = $('<div style="position:fixed;bottom:20px;right:20px;background:'+bg+';color:white;padding:10px 20px;border-radius:4px;z-index:999999;box-shadow:0 4px 6px rgba(0,0,0,0.1);">'+msg+'</div>');
-		$('body').append($notice);
-		setTimeout(() => $notice.fadeOut(300, function(){ $(this).remove(); }), 3000);
-	};
 });
 
