@@ -143,6 +143,34 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
 			<h2 style="margin: 0;"><?php esc_html_e( 'Liste des cookies', 'eo-tools' ); ?></h2>
 		</div>
+
+		<?php
+		global $wpdb;
+		$table_log = $wpdb->prefix . 'eotools_cookie_log';
+		$last_admin_log = $wpdb->get_row( "SELECT * FROM $table_log WHERE consent_status = 'ADMIN_VALIDATION' ORDER BY time DESC LIMIT 1" );
+		if ( $last_admin_log ) :
+		?>
+		<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+			<div style="display: flex; gap: 20px; align-items: center; flex: 1;">
+				<code style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px; color: #475569; font-size: 12px;"><?php echo esc_html( $last_admin_log->consent_id ); ?></code>
+				<div style="font-size: 12px; color: #64748b; max-width: 500px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+					<?php 
+					// Show the list with + and - (or just the list)
+					echo esc_html( $last_admin_log->comments ); 
+					?>
+				</div>
+			</div>
+			<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+				<div style="font-size: 12px; color: #475569;">
+					<?php echo esc_html( wp_date( 'M j, Y H:i:s', strtotime( $last_admin_log->time ) ) ); ?> 
+					<span style="color: #16a34a; font-weight: bold; font-size: 14px;">&check;</span>
+				</div>
+				<span style="color: #1d4ed8; background: #eff6ff; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #bfdbfe; font-size: 11px; letter-spacing: 0.5px;">
+					<?php esc_html_e( 'VALIDATION ADMIN', 'eo-tools' ); ?>
+				</span>
+			</div>
+		</div>
+		<?php endif; ?>
 			
 		<div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
 			<div style="flex: 1; min-width: 300px; display: flex; align-items: center; border: 1px solid #2271b1; border-radius: 4px; padding: 0 10px; background: #fff;">
@@ -156,6 +184,16 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		
 		<div id="eo-active-cookies-summary" style="margin-bottom: 20px; font-size: 13px; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px 15px; display: none;">
 			<!-- Rempli par JS -->
+		</div>
+
+		<div id="eo-validation-prompt-container" style="display: none; background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px; align-items: center; justify-content: space-between;">
+			<div style="font-size: 14px; color: #92400e;">
+				<strong><?php esc_html_e( 'Confirmez-vous la mise en place de :', 'eo-tools' ); ?></strong>
+				<span id="eo-validation-cookie-list" style="margin-left: 5px;"></span>
+			</div>
+			<button type="button" id="eo-save-consent-btn" class="button button-primary" style="font-size: 13px;">
+				<?php esc_html_e( 'Validation Admin', 'eo-tools' ); ?>
+			</button>
 		</div>
 			
 		<div id="eo-cookie-list-container" style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 20px; min-height: 300px;">

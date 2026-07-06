@@ -414,10 +414,26 @@ jQuery(document).ready(function($) {
 					</tbody>
 				</table>
 			</div>
-			<div style="text-align: right;">
-				<button type="button" id="eo-save-consent-btn" class="button button-primary button-large" style="font-size: 14px; padding: 0 30px; line-height: 2.2;">${wp.i18n.__('Validation et Enregistrement', 'eo-tools')}</button>
 			</div>
 		`);
+
+		// Mettre à jour le bandeau de validation en haut
+		let activeCookiesList = [];
+		for (const cat in cookieRegistry) {
+			if (cookieRegistry[cat]) {
+				cookieRegistry[cat].forEach(c => {
+					if (c.active !== false) {
+						activeCookiesList.push(c.name);
+					}
+				});
+			}
+		}
+		if (activeCookiesList.length > 0) {
+			$('#eo-validation-cookie-list').text(activeCookiesList.join(', '));
+			$('#eo-validation-prompt-container').css('display', 'flex');
+		} else {
+			$('#eo-validation-prompt-container').hide();
+		}
 	}
 
 	// Handle sort
@@ -450,17 +466,17 @@ jQuery(document).ready(function($) {
 			action: 'eo_tools_save_cookie_registry',
 			security: eoToolsCookiesAdmin.nonce,
 			registry: cookieRegistry,
-			change_log: [changeLogMsg],
-			action_type: 'Consentement'
+			change_log: activeCookiesList,
+			action_type: 'ADMIN_VALIDATION'
 		}, function(response) {
-			$btn.prop('disabled', false).text(wp.i18n.__('Validation et Enregistrement', 'eo-tools'));
+			$btn.prop('disabled', false).text(wp.i18n.__('Validation Admin', 'eo-tools'));
 			if (response.success) {
-				alert(wp.i18n.__('Le consentement a bien été validé et enregistré.', 'eo-tools'));
+				window.location.reload();
 			} else {
 				alert(wp.i18n.__('Erreur lors de l\'enregistrement.', 'eo-tools'));
 			}
 		}).fail(function() {
-			$btn.prop('disabled', false).text(wp.i18n.__('Validation et Enregistrement', 'eo-tools'));
+			$btn.prop('disabled', false).text(wp.i18n.__('Validation Admin', 'eo-tools'));
 			alert(wp.i18n.__('Erreur lors de l\'enregistrement.', 'eo-tools'));
 		});
 	});
