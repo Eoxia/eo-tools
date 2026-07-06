@@ -149,9 +149,6 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 				<span class="dashicons dashicons-search" style="color: #2271b1;"></span>
 				<input type="text" id="eo-cookie-search-db" placeholder="<?php esc_attr_e( 'Recherchez vos cookies (ex: _ga) pour les pré-remplir...', 'eo-tools' ); ?>" style="border: none; box-shadow: none; flex: 1; padding: 8px; outline: none; background: transparent;">
 			</div>
-			<button type="button" id="eo-scan-cookies-btn" class="button button-secondary">
-				<span class="dashicons dashicons-search" style="margin-top: 3px;"></span> <?php esc_html_e( 'Scanner automatique', 'eo-tools' ); ?>
-			</button>
 			<button type="button" id="eo-add-cookie-btn" class="button button-primary">
 				+ <?php esc_html_e( 'Ajouter un cookie', 'eo-tools' ); ?>
 			</button>
@@ -444,8 +441,12 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 		<p class="description"><?php esc_html_e( 'Analysez toutes les pages et articles de votre site pour détecter les scripts et cookies installés (Analytics, Publicités, etc.).', 'eo-tools' ); ?></p>
 		
 		<div style="margin-top: 20px; display: flex; gap: 15px; align-items: center;">
-			<button id="eo-start-detailed-scan" class="button button-primary" style="padding: 0; width: 36px; height: 36px; display: inline-flex; justify-content: center; align-items: center;" title="<?php esc_attr_e( 'Démarrer le scan complet', 'eo-tools' ); ?>">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-left: 2px;"><path d="M8 5v14l11-7z"/></svg>
+			<button id="eo-start-detailed-scan" class="button button-primary" style="display: inline-flex; justify-content: center; align-items: center; gap: 5px;" title="<?php esc_attr_e( 'Démarrer le scan complet', 'eo-tools' ); ?>">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle;"><path d="M8 5v14l11-7z"/></svg>
+				<?php esc_html_e( 'Scan base de données', 'eo-tools' ); ?>
+			</button>
+			<button type="button" id="eo-scan-cookies-btn" class="button button-secondary">
+				<?php esc_html_e( 'Scan Automatique', 'eo-tools' ); ?>
 			</button>
 			<button id="eo-pause-detailed-scan" class="button button-secondary" style="display: none; padding: 0; width: 36px; height: 36px; justify-content: center; align-items: center;" title="<?php esc_attr_e( 'Mettre en pause', 'eo-tools' ); ?>">
 				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>

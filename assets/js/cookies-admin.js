@@ -83,7 +83,7 @@ jQuery(document).ready(function($) {
 	}
 
 	// --- Cookie Manager Logic ---
-	if (typeof window.eoToolsCookiesAdmin === 'undefined' || $('#eo-cookie-list-container').length === 0) return;
+	if (typeof window.eoToolsCookiesAdmin === 'undefined') return;
 
 	let cookieRegistry = {};
 	let currentCategory = 'strictly-necessary';
@@ -115,8 +115,10 @@ jQuery(document).ready(function($) {
 		}, function(response) {
 			if (response.success) {
 				cookieRegistry = response.data || {};
-				renderSidebarCounts();
-				renderCookieList();
+				if ($('#eo-cookie-list-container').length) {
+					renderSidebarCounts();
+					renderCookieList();
+				}
 			} else {
 				alert(wp.i18n.__('Erreur lors du chargement des cookies.', 'eo-tools'));
 			}
@@ -136,8 +138,10 @@ jQuery(document).ready(function($) {
 			change_log: changeLog || []
 		}, function(response) {
 			if (response.success) {
-				renderSidebarCounts();
-				renderCookieList();
+				if ($('#eo-cookie-list-container').length) {
+					renderSidebarCounts();
+					renderCookieList();
+				}
 				if (callback) callback();
 			} else {
 				showNotice(wp.i18n.__('Erreur lors de l\'enregistrement.', 'eo-tools'), 'error');
@@ -306,6 +310,8 @@ jQuery(document).ready(function($) {
 	});
 
 	function renderCookieList() {
+		if (!$('#eo-cookie-list-container').length) return;
+
 		$('#eo-cookie-current-cat-title').text(catTitles[currentCategory]);
 		$('#eo-cookie-current-cat-desc').text(catDescs[currentCategory]);
 
@@ -374,6 +380,7 @@ jQuery(document).ready(function($) {
 
 	// Change category
 	$('.eo-cookie-cat-item').on('click', function() {
+		if (!$('#eo-cookie-list-container').length) return;
 		$('.eo-cookie-cat-item').removeClass('active').css('background', 'transparent');
 		$(this).addClass('active').css('background', '#f8fafc');
 		currentCategory = $(this).data('cat');
