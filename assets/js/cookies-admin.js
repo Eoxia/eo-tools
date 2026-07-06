@@ -116,8 +116,7 @@ jQuery(document).ready(function($) {
 			if (response.success) {
 				cookieRegistry = response.data || {};
 				if ($('#eo-cookie-list-container').length) {
-					renderSidebarCounts();
-					renderCookieList();
+					renderCookieTable();
 				}
 			} else {
 				alert(wp.i18n.__('Erreur lors du chargement des cookies.', 'eo-tools'));
@@ -139,8 +138,7 @@ jQuery(document).ready(function($) {
 		}, function(response) {
 			if (response.success) {
 				if ($('#eo-cookie-list-container').length) {
-					renderSidebarCounts();
-					renderCookieList();
+					renderCookieTable();
 				}
 				if (callback) callback();
 			} else {
@@ -309,136 +307,84 @@ jQuery(document).ready(function($) {
 		});
 	});
 
-	function renderCookieList() {
-		if (!$('#eo-cookie-list-container').length) return;
-
-		renderActiveCookiesSummary();
-
-		$('#eo-cookie-current-cat-title').text(catTitles[currentCategory]);
-		$('#eo-cookie-current-cat-desc').text(catDescs[currentCategory]);
-
-		const $container = $('#eo-cookie-items');
-		$container.empty();
-
-		const cookies = cookieRegistry[currentCategory] || [];
-
-		if (cookies.length === 0) {
-			$container.html(`<p style="color: #64748b; font-style: italic;">${wp.i18n.__('Aucun cookie défini pour cette catégorie.', 'eo-tools')}</p>`);
-			return;
-		}
-
-		cookies.forEach(cookie => {
-			const isStandard = openCookieDB.some(c => c.name === cookie.name);
-			const $item = $(`
-				<div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-					<div style="flex: 1;">
-						<div style="display: flex; gap: 20px; margin-bottom: 15px;">
-							<div style="width: 150px; color: #64748b; font-weight: 500;">Cookie</div>
-							<div style="font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #334155;">${cookie.name}</div>
-						</div>
-						<div style="display: flex; gap: 20px; margin-bottom: 15px;">
-							<div style="width: 150px; color: #64748b; font-weight: 500;">${wp.i18n.__('Domaine', 'eo-tools')}</div>
-							<div style="color: #334155;">${cookie.domain || ''}</div>
-						</div>
-						<div style="display: flex; gap: 20px; margin-bottom: 15px;">
-							<div style="width: 150px; color: #64748b; font-weight: 500;">${wp.i18n.__('Durée', 'eo-tools')}</div>
-							<div style="color: #334155;">${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</div>
-						</div>
-						<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
-							<h4 style="margin: 0; font-size: 1rem;">${cookie.name}</h4>
-							<label class="eo-toggle" style="display: inline-block; position: relative; width: 44px; height: 24px; flex-shrink: 0;" title="${cookie.active ? wp.i18n.__('Désactiver ce cookie', 'eo-tools') : wp.i18n.__('Activer ce cookie', 'eo-tools')}">
-								<input type="checkbox" class="eo-cookie-active-toggle" data-cat="${currentCategory}" data-id="${cookie.id}" ${cookie.active ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
-								<span class="eo-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${cookie.active ? '#10b981' : '#cbd5e1'}; transition: .3s; border-radius: 34px;">
-									<span class="eo-knob" style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; transform: ${cookie.active ? 'translateX(20px)' : 'translateX(0)'}; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
-								</span>
-							</label>
-						</div>
-						<div style="font-size: 12px; color: #64748b; margin-bottom: 8px; display: grid; grid-template-columns: 100px 1fr; gap: 4px;">
-							<strong>${wp.i18n.__('Domaine', 'eo-tools')}</strong> <span>${cookie.domain || wp.i18n.__('Géré localement', 'eo-tools')}</span>
-							<strong>${wp.i18n.__('Durée', 'eo-tools')}</strong> <span>${cookie.date} ${wp.i18n.__('jours', 'eo-tools')}</span>
-							${cookie.date > 395 ? `<div style="grid-column: 1 / -1; margin-top: 5px; color: #dc2626; background: #fef2f2; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;"><span class="dashicons dashicons-warning" style="font-size: 14px; width: 14px; height: 14px; margin-top: 1px;"></span> ${wp.i18n.__('Attention : ce cookie dépasse la limite légale de conservation des 13 mois dictée par la CNIL.', 'eo-tools')}</div>` : ''}
-						</div>
-						<p style="margin: 0; font-size: 13px; color: #334155;">${cookie.comment}</p>
-					</div>
-					<div style="display: flex; gap: 15px; align-items: center; margin-left: 20px;">
-						<button type="button" class="button-link eo-edit-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}" style="color: #64748b; padding: 0;">
-							<span class="dashicons dashicons-edit" style="font-size: 22px; width: 22px; height: 22px;"></span>
-						</button>
-						${isStandard ? `
-						<button type="button" class="button-link" title="${wp.i18n.__('Cookie standard (suppression impossible)', 'eo-tools')}" style="color: #e2e8f0; padding: 0; cursor: not-allowed;">
-							<span class="dashicons dashicons-trash" style="font-size: 22px; width: 22px; height: 22px;"></span>
-						</button>
-						` : `
-						<button type="button" class="button-link eo-delete-cookie" data-id="${cookie.id}" title="${wp.i18n.__('Supprimer', 'eo-tools')}" style="color: #ef4444; padding: 0;">
-							<span class="dashicons dashicons-trash" style="font-size: 22px; width: 22px; height: 22px;"></span>
-						</button>
-						`}
-					</div>
-				</div>
-			`);
-			$container.append($item);
-		});
-	}
-
-	function renderActiveCookiesSummary() {
-		const $summary = $('#eo-active-cookies-summary');
-		if (!$summary.length) return;
+	function renderCookieTable() {
+		const $container = $('#eo-cookie-list-container');
+		if (!$container.length) return;
 
 		let allCookies = [];
 		for (const cat in cookieRegistry) {
 			if (cookieRegistry[cat] && Array.isArray(cookieRegistry[cat])) {
 				cookieRegistry[cat].forEach(c => {
 					if (c && c.name) {
-						allCookies.push({
-							category: catTitles[cat] || cat,
-							name: c.name,
-							domain: c.domain || wp.i18n.__('Géré localement', 'eo-tools'),
-							duration: c.date || c.duration,
-							comment: c.comment || c.description || ''
-						});
+						// Add cat info inside object
+						c.catRaw = cat;
+						c.catTitle = catTitles[cat] || cat;
+						allCookies.push(c);
 					}
 				});
 			}
 		}
 
 		if (allCookies.length === 0) {
-			$summary.hide();
+			$container.html(`<p style="color: #64748b; font-style: italic; padding: 20px; text-align: center;">${wp.i18n.__('Aucun cookie défini pour le moment.', 'eo-tools')}</p>`);
 			return;
 		}
-		
+
 		let rowsHtml = '';
-		allCookies.forEach(c => {
+		allCookies.forEach(cookie => {
+			const isStandard = openCookieDB.some(c => c.name === cookie.name);
+			
 			rowsHtml += `
 				<tr>
-					<td>${c.category}</td>
-					<td><strong>${c.name}</strong></td>
-					<td>${c.domain}</td>
-					<td>${c.duration} ${wp.i18n.__('jours', 'eo-tools')}</td>
-					<td>${c.comment}</td>
+					<td>${cookie.catTitle}</td>
+					<td><strong>${cookie.name}</strong></td>
+					<td>${cookie.domain || wp.i18n.__('Géré localement', 'eo-tools')}</td>
+					<td>${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</td>
+					<td>${cookie.comment || cookie.description || ''}</td>
+					<td style="text-align: center;">
+						<label class="eo-toggle" style="display: inline-block; position: relative; width: 44px; height: 24px;" title="${cookie.active ? wp.i18n.__('Désactiver ce cookie', 'eo-tools') : wp.i18n.__('Activer ce cookie', 'eo-tools')}">
+							<input type="checkbox" class="eo-cookie-active-toggle" data-cat="${cookie.catRaw}" data-id="${cookie.id}" ${cookie.active ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
+							<span class="eo-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${cookie.active ? '#10b981' : '#cbd5e1'}; transition: .3s; border-radius: 34px;">
+								<span class="eo-knob" style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; transform: ${cookie.active ? 'translateX(20px)' : 'translateX(0)'}; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
+							</span>
+						</label>
+					</td>
+					<td style="text-align: right;">
+						<button type="button" class="button-link eo-edit-cookie" data-cat="${cookie.catRaw}" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}" style="color: #64748b; padding: 0; margin-right: 10px;">
+							<span class="dashicons dashicons-edit" style="font-size: 20px; width: 20px; height: 20px;"></span>
+						</button>
+						${isStandard ? `
+						<button type="button" class="button-link" title="${wp.i18n.__('Cookie standard (suppression impossible)', 'eo-tools')}" style="color: #e2e8f0; padding: 0; cursor: not-allowed;">
+							<span class="dashicons dashicons-trash" style="font-size: 20px; width: 20px; height: 20px;"></span>
+						</button>
+						` : `
+						<button type="button" class="button-link eo-delete-cookie" data-cat="${cookie.catRaw}" data-id="${cookie.id}" title="${wp.i18n.__('Supprimer', 'eo-tools')}" style="color: #ef4444; padding: 0;">
+							<span class="dashicons dashicons-trash" style="font-size: 20px; width: 20px; height: 20px;"></span>
+						</button>
+						`}
+					</td>
 				</tr>
 			`;
 		});
 
-		$summary.css('padding', '0').css('background', 'transparent').css('border', 'none').html(`
-			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-				<strong>${wp.i18n.__('Cookies validés par l\'admin :', 'eo-tools')}</strong> 
-				<a href="?page=eo-tools-cookies&tab=report" class="button button-secondary" style="white-space: nowrap;">${wp.i18n.__('Voir le rapport de consentements', 'eo-tools')}</a>
-			</div>
-			<table class="wp-list-table widefat fixed striped" style="margin-bottom: 10px;">
+		$container.html(`
+			<table class="wp-list-table widefat fixed striped">
 				<thead>
 					<tr>
 						<th style="width: 15%;">${wp.i18n.__('Type', 'eo-tools')}</th>
-						<th style="width: 20%;">${wp.i18n.__('Cookie', 'eo-tools')}</th>
-						<th style="width: 20%;">${wp.i18n.__('Domaine', 'eo-tools')}</th>
-						<th style="width: 15%;">${wp.i18n.__('Durée', 'eo-tools')}</th>
-						<th style="width: 30%;">${wp.i18n.__('Commentaire', 'eo-tools')}</th>
+						<th style="width: 15%;">${wp.i18n.__('Cookie', 'eo-tools')}</th>
+						<th style="width: 15%;">${wp.i18n.__('Domaine', 'eo-tools')}</th>
+						<th style="width: 10%;">${wp.i18n.__('Durée', 'eo-tools')}</th>
+						<th style="width: 25%;">${wp.i18n.__('Commentaire', 'eo-tools')}</th>
+						<th style="width: 10%; text-align: center;">${wp.i18n.__('Actif', 'eo-tools')}</th>
+						<th style="width: 10%; text-align: right;">${wp.i18n.__('Actions', 'eo-tools')}</th>
 					</tr>
 				</thead>
 				<tbody>
 					${rowsHtml}
 				</tbody>
 			</table>
-		`).show();
+		`);
 	}
 
 	// Change category
@@ -447,7 +393,7 @@ jQuery(document).ready(function($) {
 		$('.eo-cookie-cat-item').removeClass('active').css('background', 'transparent');
 		$(this).addClass('active').css('background', '#f8fafc');
 		currentCategory = $(this).data('cat');
-		renderCookieList();
+		renderCookieTable();
 	});
 
 	// Open Add Modal
@@ -509,14 +455,15 @@ jQuery(document).ready(function($) {
 
 	// Edit Cookie
 	$(document).on('click', '.eo-edit-cookie', function() {
+		const cat = $(this).data('cat');
 		const id = $(this).data('id');
-		const cookies = cookieRegistry[currentCategory] || [];
+		const cookies = cookieRegistry[cat] || [];
 		const cookie = cookies.find(c => c.id === id);
 		
 		if (cookie) {
 			$('#eo-cookie-id').val(cookie.id);
-			$('#eo-cookie-old-cat').val(currentCategory);
-			$('#eo-cookie-cat').val(currentCategory);
+			$('#eo-cookie-old-cat').val(cat);
+			$('#eo-cookie-cat').val(cat);
 			$('#eo-cookie-active').prop('checked', cookie.active !== false);
 			$('#eo-cookie-name').val(cookie.name);
 			$('#eo-cookie-domain').val(cookie.domain || '');
@@ -529,21 +476,23 @@ jQuery(document).ready(function($) {
 
 	// Delete Cookie
 	$(document).on('click', '.eo-delete-cookie', function() {
+		const cat = $(this).data('cat');
 		const id = $(this).data('id');
-		const cookies = cookieRegistry[currentCategory] || [];
+		const cookies = cookieRegistry[cat] || [];
 		const cookie = cookies.find(c => c.id === id);
-		cookieRegistry[currentCategory] = cookies.filter(c => c.id !== id);
-		if (cookie) {
+		if (!cookie) return;
+
+		if (confirm(wp.i18n.__('Êtes-vous sûr de vouloir supprimer ce cookie ?', 'eo-tools'))) {
+			cookieRegistry[cat] = cookies.filter(c => c.id !== id);
 			saveRegistry(['- ' + cookie.name]);
-		} else {
-			saveRegistry();
 		}
 	});
 
 	// Toggle Active status inline
 	$(document).on('change', '.eo-cookie-active-toggle', function() {
+		const cat = $(this).data('cat');
 		const id = $(this).data('id');
-		const cookies = cookieRegistry[currentCategory] || [];
+		const cookies = cookieRegistry[cat] || [];
 		const cookie = cookies.find(c => c.id === id);
 		if (cookie) {
 			cookie.active = $(this).is(':checked');

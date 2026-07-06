@@ -158,53 +158,8 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 			<!-- Rempli par JS -->
 		</div>
 			
-		<div style="display: flex; gap: 20px;">
-			<!-- Sidebar Categories -->
-			<div style="width: 250px; background: #fff; border: 1px solid #ccd0d4; border-radius: 4px;">
-				<ul id="eo-cookie-categories-list" style="margin: 0; padding: 0; list-style: none;">
-					<li class="eo-cookie-cat-item active" data-cat="strictly-necessary" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
-						<span><?php esc_html_e( 'Nécessaire', 'eo-tools' ); ?></span>
-						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
-					</li>
-					<li class="eo-cookie-cat-item" data-cat="functional" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-						<span><?php esc_html_e( 'Fonctionnelle', 'eo-tools' ); ?></span>
-						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
-					</li>
-					<li class="eo-cookie-cat-item" data-cat="analytics" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-						<span><?php esc_html_e( 'Analytique', 'eo-tools' ); ?></span>
-						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
-					</li>
-					<li class="eo-cookie-cat-item" data-cat="performance" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-						<span><?php esc_html_e( 'Performance', 'eo-tools' ); ?></span>
-						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
-					</li>
-					<li class="eo-cookie-cat-item" data-cat="marketing" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-						<span><?php esc_html_e( 'Publicité', 'eo-tools' ); ?></span>
-						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
-					</li>
-					<li class="eo-cookie-cat-item" data-cat="social" style="padding: 15px; border-bottom: 1px solid #ccd0d4; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-						<span><?php esc_html_e( 'Réseaux sociaux', 'eo-tools' ); ?></span>
-						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
-					</li>
-					<li class="eo-cookie-cat-item" data-cat="others" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-						<span><?php esc_html_e( 'Autres', 'eo-tools' ); ?></span>
-						<span class="count" style="color: #3b82f6; font-weight: bold;">(0)</span>
-					</li>
-				</ul>
-			</div>
-
-			<!-- Main Content -->
-			<div style="flex: 1;">
-				<div id="eo-cookie-list-container" style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 20px; min-height: 300px;">
-					<h3 id="eo-cookie-current-cat-title" style="margin-top: 0; font-size: 1.2rem;"><?php esc_html_e( 'Nécessaire', 'eo-tools' ); ?></h3>
-					<p id="eo-cookie-current-cat-desc" class="description" style="margin-bottom: 20px;"><?php esc_html_e( 'Ces cookies sont indispensables au bon fonctionnement du site.', 'eo-tools' ); ?></p>
-					
-					<div id="eo-cookie-items" style="display: flex; flex-direction: column; gap: 15px;">
-						<!-- Filled via JS -->
-						<p><?php esc_html_e( 'Chargement...', 'eo-tools' ); ?></p>
-					</div>
-				</div>
-			</div>
+		<div id="eo-cookie-list-container" style="background: #fff; border: 1px solid #ccd0d4; border-radius: 4px; padding: 20px; min-height: 300px;">
+			<p><?php esc_html_e( 'Chargement...', 'eo-tools' ); ?></p>
 		</div>
 	</div>
 
