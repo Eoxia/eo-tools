@@ -212,6 +212,10 @@ jQuery(document).ready(function($) {
                             $('#eo-scan-time-duration').text(formatDuration(endTime - startTime));
                         }
                         
+                        var addedCookies = response.data.added_cookies || [];
+                        var addedNames = response.data.added_names || [];
+                        $(document).trigger('eo_detailed_scan_complete', [addedCookies, addedNames]);
+                        
                         return;
                     }
 
@@ -241,18 +245,40 @@ jQuery(document).ready(function($) {
                         $('#eo-detailed-scan-empty-row').hide();
                         
                         response.data.results.forEach(function(item) {
-                            logToConsole(`Scanned URL: ${item.url} (${item.type}) - Cookies: ${item.cookies}`);
+                            let cookiesArr = [];
+                            try {
+                                if (item.cookies_found) {
+                                    cookiesArr = JSON.parse(item.cookies_found);
+                                }
+                            } catch(e) {}
                             
+                            let total = item.cookies;
+                            let necessary = 0, analytics = 0, advertising = 0, social = 0, others = 0;
+                            
+                            cookiesArr.forEach(cName => {
+                                const name = cName.toLowerCase();
+                                if (name.includes('ga') || name.includes('matomo')) analytics++;
+                                else if (name.includes('ads') || name.includes('pixel') || name.includes('fbp')) advertising++;
+                                else if (name.includes('tw') || name.includes('li_') || name.includes('social')) social++;
+                                else if (name.includes('phpsessid') || name.includes('wordpress')) necessary++;
+                                else others++;
+                            });
+                            
+                            let totalHtml = total > 0 ? `<span style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px;">${total}</span>` : `<span style="color: #94a3b8;">0</span>`;
                             var typeLabel = item.type === 'page' || item.type === 'post' ? 'Web' : 'BDD';
-                            var $tr = $('<tr>').html(`
-                                <td><a href="${item.url}" target="_blank">${item.url}</a></td>
-                                <td>${typeLabel}</td>
-                                <td style="text-align: center;"><strong>${item.cookies}</strong></td>
-                                <td style="text-align: center;">-</td>
-                                <td style="text-align: center;">-</td>
-                                <td style="text-align: center;">-</td>
-                                <td style="text-align: center;">-</td>
-                                <td style="text-align: center;">-</td>
+                            
+                            var $tr = $('<tr>').css('background-color', total > 0 ? '#fef2f2' : 'transparent').html(`
+                                <td style="word-break: break-all; font-family: monospace; font-size: 12px;">
+                                    <a href="${item.url}" target="_blank" style="color: #2563eb; text-decoration: none;">${item.url}</a>
+                                    ${total > 0 ? `<div style="margin-top: 5px; font-size: 11px; color: #64748b;">Cookies: ${cookiesArr.join(', ')}</div>` : ''}
+                                </td>
+                                <td><span style="background: #e2e8f0; padding: 2px 5px; border-radius: 3px; font-size: 10px; text-transform: uppercase;">${item.type}</span></td>
+                                <td style="text-align: center; font-weight: bold;">${totalHtml}</td>
+                                <td style="text-align: center; color: #64748b;">${necessary > 0 ? necessary : '-'}</td>
+                                <td style="text-align: center; color: #64748b;">${analytics > 0 ? analytics : '-'}</td>
+                                <td style="text-align: center; color: #64748b;">${advertising > 0 ? advertising : '-'}</td>
+                                <td style="text-align: center; color: #64748b;">${social > 0 ? social : '-'}</td>
+                                <td style="text-align: center; color: #64748b;">${others > 0 ? others : '-'}</td>
                             `);
                             $resultsTableBody.prepend($tr);
                         });
@@ -315,6 +341,7 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     currentBatchId = response.data.batch_id;
                     logToConsole('Initialisation terminée. ' + response.data.total + ' éléments trouvés dans la BDD.');
+                    $('#eo-scan-ref-display').text(response.data.ref ? 'Scan : ' + response.data.ref : '');
                     counts = response.data.counts;
                     totalItems = response.data.total;
                     scannedItems = 0;

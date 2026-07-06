@@ -349,13 +349,23 @@ jQuery(document).ready(function($) {
 			return 0;
 		});
 
+		const urlParams = new URLSearchParams(window.location.search);
+		const highlightStr = urlParams.get('highlight');
+		let highlights = [];
+		if (highlightStr) {
+			highlights = highlightStr.split(',').map(s => s.trim().toLowerCase());
+		}
+
 		let rowsHtml = '';
 		allCookies.forEach(cookie => {
+			let isHighlight = highlights.includes(cookie.name.toLowerCase());
+			let rowStyle = isHighlight ? 'background: #dcfce7; border-left: 4px solid #10b981;' : 'background: #fff;';
+			let newBadge = isHighlight ? '<span style="margin-left: 8px; background: #10b981; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; vertical-align: middle;">Nouveau</span>' : '';
 			
 			rowsHtml += `
-				<tr style="background: #fff;">
+				<tr style="${rowStyle}">
 					<td style="vertical-align: middle;">${cookie.catTitle}</td>
-					<td style="vertical-align: middle;"><strong>${cookie.name}</strong></td>
+					<td style="vertical-align: middle;"><strong>${cookie.name}</strong>${newBadge}</td>
 					<td style="vertical-align: middle;">${cookie.domain || wp.i18n.__('Géré localement', 'eo-tools')}</td>
 					<td style="vertical-align: middle;">${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</td>
 					<td style="vertical-align: middle; font-size: 13px; color: #475569;">${cookie.comment || cookie.description || ''}</td>
@@ -509,7 +519,7 @@ jQuery(document).ready(function($) {
 
 		saveRegistry([changeLogMsg], () => {
 			$('#eo-cookie-modal').hide();
-		});
+		}, 'ADMIN_MODIFICATION');
 	});
 
 	// Edit Cookie
@@ -556,7 +566,7 @@ jQuery(document).ready(function($) {
 		if (cookieToDelete) {
 			const cookies = cookieRegistry[cookieToDelete.cat] || [];
 			cookieRegistry[cookieToDelete.cat] = cookies.filter(c => c.id !== cookieToDelete.id);
-			saveRegistry(['- ' + cookieToDelete.name]);
+			saveRegistry(['- ' + cookieToDelete.name], null, 'ADMIN_DELETION');
 			cookieToDelete = null;
 			$('#eo-delete-confirm-modal').hide();
 		}
@@ -911,9 +921,14 @@ jQuery(document).ready(function($) {
 						actionHtml += `<span style="color: #166534; font-size: 11px;"><span class="dashicons dashicons-yes-alt" style="color: #10b981; font-size: 14px; width: 14px; height: 14px; vertical-align: middle;"></span> ${wp.i18n.sprintf(wp.i18n.__('Validé le %s', 'eo-tools'), item.validatedDate || item.date)} - <a href="?page=eo-tools-cookies&tab=report" style="color: #166534; text-decoration: underline;">${wp.i18n.__('Voir le rapport', 'eo-tools')}</a></span>`;
 					} else {
 						const addNamesData = (item.addedNames && item.addedNames.length > 0) ? item.addedNames.join(',') : '';
-						const delNamesData = (item.deletedNames && item.deletedNames.length > 0) ? item.deletedNames.join(',') : '';
-						actionHtml += `<button type="button" class="button button-primary eo-validate-scan-btn" data-timestamp="${item.timestamp || 0}" data-date="${item.date}" data-added-names="${addNamesData}" data-deleted-names="${delNamesData}" style="font-size: 11px; padding: 0 8px; min-height: 24px; line-height: 22px; background: #eab308; border-color: #ca8a04; color: #fff;">${wp.i18n.__('Valider les nouveaux cookies', 'eo-tools')}</button>`;
+						if (addNamesData) {
+							actionHtml += `<a href="?page=eo-tools-cookies&tab=cookies&highlight=${encodeURIComponent(addNamesData)}" class="button button-primary" style="font-size: 11px; padding: 0 8px; min-height: 24px; line-height: 22px; background: #eab308; border-color: #ca8a04; color: #fff; text-decoration: none;">${wp.i18n.__('Valider les nouveaux cookies', 'eo-tools')}</a>`;
+						} else {
+							actionHtml += `<a href="?page=eo-tools-cookies&tab=cookies" class="button button-secondary" style="font-size: 11px; padding: 0 8px; min-height: 24px; line-height: 22px; display: inline-block;">${wp.i18n.__('Gérer les cookies', 'eo-tools')}</a>`;
+						}
 					}
+				} else if (item.totalFound > 0 || item.found > 0) {
+					actionHtml += `<a href="?page=eo-tools-cookies&tab=cookies" class="button button-secondary" style="font-size: 11px; padding: 0 8px; min-height: 24px; line-height: 22px; display: inline-block;">${wp.i18n.__('Gérer les cookies', 'eo-tools')}</a>`;
 				} else if (actionHtml === '') {
 					actionHtml = '-';
 				}
@@ -939,6 +954,23 @@ jQuery(document).ready(function($) {
 	if (!$('#eo-spin-style').length) {
 		$('head').append('<style id="eo-spin-style">@keyframes dashicons-spin { 100% { transform: rotate(360deg); } }</style>');
 	}
+
+	// Listen to detailed scan completion to sync history and registry
+	$(document).on('eo_detailed_scan_complete', function(e, addedCookies, addedNames) {
+		if (addedCookies && addedCookies.length > 0) {
+			addedCookies.forEach(c => {
+				const cat = c.cat || 'others';
+				if (!cookieRegistry[cat]) cookieRegistry[cat] = [];
+				if (!cookieRegistry[cat].find(existing => existing.name === c.cookie.name)) {
+					cookieRegistry[cat].push(c.cookie);
+				}
+			});
+			saveRegistry(['+ ' + addedNames.join(', + ')], null, 'SCAN_SYNC');
+		}
+		
+		// The backend detailed scan already saves the scan row in DB, so we just reload it.
+		loadScanHistory();
+	});
 
 	// Initial load
 	loadRegistry();

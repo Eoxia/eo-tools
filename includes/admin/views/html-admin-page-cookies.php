@@ -416,9 +416,18 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 						} elseif ( 'PARTIAL' === $log->consent_status ) {
 							$status_label = esc_html__( 'PARTIELLEMENT ACCEPTÉ', 'eo-tools' );
 							$status_style = 'color: #c2410c; background: #fff7ed; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #fdba74; font-size: 13px; letter-spacing: 0.5px;';
-						} elseif ( 'ADMIN_VALIDATION' === $log->consent_status ) {
+						} elseif ( 'ADMIN_VALIDATION' === $log->consent_status || 'VALIDATION ADMIN' === $log->consent_status ) {
 							$status_label = esc_html__( 'VALIDATION ADMIN', 'eo-tools' );
 							$status_style = 'color: #1d4ed8; background: #eff6ff; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #bfdbfe; font-size: 13px; letter-spacing: 0.5px;';
+						} elseif ( 'ADMIN_DELETION' === $log->consent_status ) {
+							$status_label = esc_html__( 'SUPPRESSION ADMIN', 'eo-tools' );
+							$status_style = 'color: #b91c1c; background: #fef2f2; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #fca5a5; font-size: 13px; letter-spacing: 0.5px;';
+						} elseif ( 'ADMIN_MODIFICATION' === $log->consent_status ) {
+							$status_label = esc_html__( 'AJOUT ADMIN', 'eo-tools' );
+							$status_style = 'color: #047857; background: #f0fdf4; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #86efac; font-size: 13px; letter-spacing: 0.5px;';
+						} elseif ( 'SCAN_SYNC' === $log->consent_status ) {
+							$status_label = esc_html__( 'AUTO-AJOUT SCAN', 'eo-tools' );
+							$status_style = 'color: #6d28d9; background: #f5f3ff; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #ddd6fe; font-size: 13px; letter-spacing: 0.5px;';
 						}
 						?>
 						<tr>
@@ -485,9 +494,6 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle;"><path d="M8 5v14l11-7z"/></svg>
 				<?php esc_html_e( 'Scan base de données', 'eo-tools' ); ?>
 			</button>
-			<button type="button" id="eo-scan-cookies-btn" class="button button-secondary">
-				<?php esc_html_e( 'Scan Automatique', 'eo-tools' ); ?>
-			</button>
 			<button id="eo-pause-detailed-scan" class="button button-secondary" style="display: none; padding: 0; width: 36px; height: 36px; justify-content: center; align-items: center;" title="<?php esc_attr_e( 'Mettre en pause', 'eo-tools' ); ?>">
 				<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
 			</button>
@@ -509,6 +515,7 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 			</div>
 
 			<span id="eo-detailed-scan-timing" style="margin-left: 15px; font-size: 13px; color: #64748b; display: none; align-items: center;">
+				<span id="eo-scan-ref-display" style="margin-right: 15px; font-weight: bold; color: #ef4444;"></span>
 				Début : <strong id="eo-scan-time-start">-</strong> <span style="margin: 0 5px;">|</span> 
 				Fin : <strong id="eo-scan-time-end">-</strong> <span style="margin: 0 5px;">|</span> 
 				Durée : <strong id="eo-scan-time-duration">-</strong>

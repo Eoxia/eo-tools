@@ -81,8 +81,9 @@ class EoTools_Detailed_Scan {
 
 		wp_send_json_success( array(
 			'counts'   => $counts,
-			'scan_id' => $scan_id,
-			'total'    => $total
+			'batch_id' => $scan_id,
+			'total'    => $total,
+			'ref'      => $ref
 		) );
 	}
 
@@ -166,7 +167,19 @@ class EoTools_Detailed_Scan {
 				'new_cookies' => $new_cookies_json
 			), array( 'id' => $scan_id ) );
 
-			wp_send_json_success( array( 'status' => 'complete', 'message' => 'RÃ©sultats du batch.', 'items' => array(), 'batch_id' => $scan_id ) );
+			$added_names = array();
+			foreach ( $added_cookies as $c ) {
+				$added_names[] = $c['cookie']['name'];
+			}
+
+			wp_send_json_success( array( 
+				'status' => 'complete', 
+				'message' => 'Résultats du batch.', 
+				'items' => array(), 
+				'batch_id' => $scan_id,
+				'added_cookies' => $added_cookies,
+				'added_names' => $added_names
+			) );
 		} else {
 			$patterns = array(
 				'analytics'   => '/google-analytics\.com|googletagmanager\.com|analytics|matomo|piwik/i',
@@ -216,9 +229,10 @@ class EoTools_Detailed_Scan {
 				), array( 'id' => $item->id ) );
 
 				$results[] = array(
-					'url'     => $item->url,
-					'type'    => $item->item_type,
-					'cookies' => count( array_unique( $found_cookies ) )
+					'url'           => $item->url,
+					'type'          => $item->item_type,
+					'cookies'       => count( array_unique( $found_cookies ) ),
+					'cookies_found' => wp_json_encode( array_values( array_unique( $found_cookies ) ) )
 				);
 			}
 
