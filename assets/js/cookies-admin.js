@@ -384,33 +384,60 @@ jQuery(document).ready(function($) {
 		const $summary = $('#eo-active-cookies-summary');
 		if (!$summary.length) return;
 
-		let allNames = [];
+		let allCookies = [];
 		for (const cat in cookieRegistry) {
 			if (cookieRegistry[cat] && Array.isArray(cookieRegistry[cat])) {
 				cookieRegistry[cat].forEach(c => {
 					if (c && c.name) {
-						allNames.push(c.name);
+						allCookies.push({
+							category: catTitles[cat] || cat,
+							name: c.name,
+							domain: c.domain || wp.i18n.__('Géré localement', 'eo-tools'),
+							duration: c.date || c.duration,
+							comment: c.comment || c.description || ''
+						});
 					}
 				});
 			}
 		}
 
-		if (allNames.length === 0) {
+		if (allCookies.length === 0) {
 			$summary.hide();
 			return;
 		}
-
-		const uniqueNames = [...new Set(allNames)].sort();
-		const listHtml = uniqueNames.map(name => `<span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; margin-right: 5px; font-weight: bold;">${name}</span>`).join('');
 		
-		$summary.html(`
-			<div style="display: flex; justify-content: space-between; align-items: center;">
-				<div>
-					<strong>${wp.i18n.__('Cookies actifs validés par l\'admin :', 'eo-tools')}</strong> 
-					<div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px;">${listHtml}</div>
-				</div>
+		let rowsHtml = '';
+		allCookies.forEach(c => {
+			rowsHtml += `
+				<tr>
+					<td>${c.category}</td>
+					<td><strong>${c.name}</strong></td>
+					<td>${c.domain}</td>
+					<td>${c.duration} ${wp.i18n.__('jours', 'eo-tools')}</td>
+					<td>${c.comment}</td>
+				</tr>
+			`;
+		});
+
+		$summary.css('padding', '0').css('background', 'transparent').css('border', 'none').html(`
+			<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+				<strong>${wp.i18n.__('Cookies validés par l\'admin :', 'eo-tools')}</strong> 
 				<a href="?page=eo-tools-cookies&tab=report" class="button button-secondary" style="white-space: nowrap;">${wp.i18n.__('Voir le rapport de consentements', 'eo-tools')}</a>
 			</div>
+			<table class="wp-list-table widefat fixed striped" style="margin-bottom: 10px;">
+				<thead>
+					<tr>
+						<th style="width: 15%;">${wp.i18n.__('Type', 'eo-tools')}</th>
+						<th style="width: 20%;">${wp.i18n.__('Cookie', 'eo-tools')}</th>
+						<th style="width: 20%;">${wp.i18n.__('Domaine', 'eo-tools')}</th>
+						<th style="width: 15%;">${wp.i18n.__('Durée', 'eo-tools')}</th>
+						<th style="width: 30%;">${wp.i18n.__('Commentaire', 'eo-tools')}</th>
+					</tr>
+				</thead>
+				<tbody>
+					${rowsHtml}
+				</tbody>
+			</table>
 		`).show();
 	}
 
