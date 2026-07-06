@@ -47,7 +47,7 @@ class Eotools_Menu {
 		// 2. Insert into log table
 		$table_log = $wpdb->prefix . 'eotools_cookie_log';
 		$comments_text = implode( ', ', $names );
-		$admin_consent_id = hash( 'sha256', $comments_text );
+		$admin_consent_id = substr( hash( 'sha256', $comments_text ), 0, 12 );
 		
 		$wpdb->insert(
 			$table_log,
@@ -225,7 +225,7 @@ class Eotools_Menu {
 			$comments_text = implode( ', ', $change_log );
 			
 			$wpdb->insert( $table_log, array(
-				'consent_id'     => md5( uniqid( '', true ) ),
+				'consent_id'     => substr( hash( 'sha256', $comments_text ), 0, 12 ),
 				'consent_status' => $action_type,
 				'comments'       => $comments_text,
 				'time'           => current_time( 'mysql' )
