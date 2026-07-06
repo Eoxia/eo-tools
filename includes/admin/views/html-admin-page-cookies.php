@@ -229,15 +229,6 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><label for="eo-cookie-active"><?php esc_html_e( 'Statut', 'eo-tools' ); ?></label></th>
-						<td>
-							<label>
-								<input type="checkbox" id="eo-cookie-active" checked>
-								<?php esc_html_e( 'Actif (affiché sur le site et soumis au consentement)', 'eo-tools' ); ?>
-							</label>
-						</td>
-					</tr>
-					<tr>
 						<th scope="row"><label for="eo-cookie-name"><?php esc_html_e( 'Nom du Cookie', 'eo-tools' ); ?></label></th>
 						<td>
 							<input type="text" id="eo-cookie-name" class="regular-text" required placeholder="_ga" style="width: 100%;" pattern="^[!#$%&'*+\-\.^_`|~a-zA-Z0-9]+$" title="<?php esc_attr_e( 'Uniquement des lettres, chiffres et caractères spéciaux autorisés selon la norme RFC 6265.', 'eo-tools' ); ?>">
