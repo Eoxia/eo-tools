@@ -90,6 +90,9 @@
 			if (this.consent && this.consent.id) {
 				data.append('consent_id', this.consent.id);
 			}
+			if (type === 'custom' && this.consent) {
+				data.append('categories', JSON.stringify(this.consent));
+			}
 
 			fetch(window.eoToolsCookieData.ajaxUrl, {
 				method: 'POST',

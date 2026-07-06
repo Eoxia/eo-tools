@@ -359,7 +359,7 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 							$status_label = esc_html__( 'ACCEPTÉ', 'eo-tools' );
 							$status_style = 'color: #047857; background: #f0fdf4; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #86efac; font-size: 13px; letter-spacing: 0.5px;';
 						} elseif ( 'PARTIAL' === $log->consent_status ) {
-							$status_label = esc_html__( 'PARTIEL', 'eo-tools' );
+							$status_label = esc_html__( 'PARTIELLEMENT ACCEPTÉ', 'eo-tools' );
 							$status_style = 'color: #c2410c; background: #fff7ed; padding: 4px 12px; border-radius: 4px; font-weight: bold; border: 1px solid #fdba74; font-size: 13px; letter-spacing: 0.5px;';
 						} elseif ( 'ADMIN_VALIDATION' === $log->consent_status ) {
 							$status_label = esc_html__( 'VALIDATION ADMIN', 'eo-tools' );
@@ -368,7 +368,33 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 						?>
 						<tr>
 							<td><code><?php echo esc_html( $log->consent_id ); ?></code></td>
-							<td style="color: #64748b; font-size: 12px; max-width: 300px; white-space: normal; word-break: break-all;"><?php echo esc_html( isset( $log->comments ) ? $log->comments : '' ); ?></td>
+							<td style="color: #64748b; font-size: 12px; max-width: 300px; white-space: normal; word-break: break-all;">
+								<?php 
+								$comments_data = isset( $log->comments ) ? $log->comments : '';
+								$decoded_comments = json_decode( $comments_data, true );
+								if ( is_array( $decoded_comments ) ) {
+									// It's a JSON of categories
+									$labels = array(
+										'strictly-necessary' => 'Necessary',
+										'functional'         => 'Functional',
+										'analytics'          => 'Analytics',
+										'performance'        => 'Performance',
+										'advertisement'      => 'Advertisement',
+										'others'             => 'Others'
+									);
+									echo '<ul style="list-style: none; padding: 0; margin: 0;">';
+									foreach ( $decoded_comments as $cat_key => $is_accepted ) {
+										$cat_label = isset( $labels[ $cat_key ] ) ? $labels[ $cat_key ] : ucfirst( str_replace( '-', ' ', $cat_key ) );
+										$icon = $is_accepted ? '<span style="color: #16a34a; font-weight: bold;">&check;</span>' : '<span style="color: #dc2626; font-weight: bold;">&cross;</span>';
+										echo '<li style="margin-bottom: 2px;">' . esc_html( $cat_label ) . ' ' . $icon . '</li>';
+									}
+									echo '</ul>';
+								} else {
+									// Just a plain string
+									echo esc_html( $comments_data );
+								}
+								?>
+							</td>
 							<td><span style="display: inline-block; <?php echo $status_style; ?>"><?php echo $status_label; ?></span></td>
 							<td><?php echo esc_html( wp_date( 'M j, Y H:i:s', strtotime( $log->time ) ) ); ?></td>
 						</tr>

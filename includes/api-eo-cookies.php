@@ -70,11 +70,24 @@ class Eotools_Cookies_API {
 				} elseif ( 'refuse_all' === $type ) {
 					$status = 'REJECTED';
 				}
+				$comments = '';
+				if ( 'custom' === $type && isset( $_POST['categories'] ) ) {
+					// Validate JSON to ensure we only save valid category data
+					$categories = json_decode( wp_unslash( $_POST['categories'] ), true );
+					if ( is_array( $categories ) ) {
+						// Remove the ID and time from the categories list before saving it as comments
+						unset( $categories['id'] );
+						unset( $categories['time'] );
+						$comments = wp_json_encode( $categories );
+					}
+				}
+
 				$wpdb->insert(
 					$table_log,
 					array(
 						'consent_id'     => $consent_id,
 						'consent_status' => $status,
+						'comments'       => $comments,
 						'time'           => current_time( 'mysql' )
 					)
 				);
