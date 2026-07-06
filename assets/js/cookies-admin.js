@@ -352,7 +352,6 @@ jQuery(document).ready(function($) {
 
 		let rowsHtml = '';
 		allCookies.forEach(cookie => {
-			const isStandard = openCookieDB.some(c => c.name === cookie.name);
 			
 			rowsHtml += `
 				<tr style="background: #fff;">
@@ -365,15 +364,9 @@ jQuery(document).ready(function($) {
 						<button type="button" class="button-link eo-edit-cookie" data-cat="${cookie.catRaw}" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}" style="color: #64748b; padding: 0; margin-right: 10px;">
 							<span class="dashicons dashicons-edit" style="font-size: 20px; width: 20px; height: 20px;"></span>
 						</button>
-						${isStandard ? `
-						<button type="button" class="button-link" title="${wp.i18n.__('Cookie standard (suppression impossible)', 'eo-tools')}" style="color: #e2e8f0; padding: 0; cursor: not-allowed;">
-							<span class="dashicons dashicons-trash" style="font-size: 20px; width: 20px; height: 20px;"></span>
-						</button>
-						` : `
 						<button type="button" class="button-link eo-delete-cookie" data-cat="${cookie.catRaw}" data-id="${cookie.id}" title="${wp.i18n.__('Supprimer', 'eo-tools')}" style="color: #ef4444; padding: 0;">
 							<span class="dashicons dashicons-trash" style="font-size: 20px; width: 20px; height: 20px;"></span>
 						</button>
-						`}
 					</td>
 				</tr>
 			`;
@@ -385,8 +378,7 @@ jQuery(document).ready(function($) {
 		};
 
 		$container.html(`
-			<div style="border: 1px solid #ccd0d4; border-radius: 4px; overflow: hidden; margin-bottom: 20px;">
-				<table class="wp-list-table widefat fixed striped" style="margin: 0; border: none;">
+				<table class="wp-list-table widefat fixed striped" style="margin-bottom: 20px;">
 					<thead>
 						<tr>
 							<th class="eo-sortable-th" data-sort="category" style="width: 15%; cursor: pointer;">${wp.i18n.__('Type', 'eo-tools')}${getSortIcon('category')}</th>
@@ -401,8 +393,6 @@ jQuery(document).ready(function($) {
 						${rowsHtml}
 					</tbody>
 				</table>
-			</div>
-			</div>
 		`);
 
 		// Mettre à jour le bandeau de validation en haut
