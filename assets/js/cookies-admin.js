@@ -133,23 +133,27 @@ jQuery(document).ready(function($) {
 		});
 	}
 
-	function saveRegistry(changeLog, callback) {
+	function saveRegistry(changeLog, callback, actionTypeArg) {
 		if (typeof changeLog === 'function') {
+			actionTypeArg = callback;
 			callback = changeLog;
 			changeLog = null;
 		}
+		
+		const actionType = actionTypeArg || (typeof callback === 'string' ? callback : 'REFUSÉ');
 		
 		$.post(eoToolsCookiesAdmin.ajaxUrl, {
 			action: 'eo_tools_save_cookie_registry',
 			security: eoToolsCookiesAdmin.nonce,
 			registry: cookieRegistry,
-			change_log: changeLog || []
+			change_log: changeLog || [],
+			action_type: actionType
 		}, function(response) {
 			if (response.success) {
 				if ($('#eo-cookie-list-container').length) {
 					renderCookieTable();
 				}
-				if (callback) callback();
+				if (typeof callback === 'function') callback();
 			} else {
 				showNotice(wp.i18n.__('Erreur lors de l\'enregistrement.', 'eo-tools'), 'error');
 			}
