@@ -86,6 +86,8 @@ jQuery(document).ready(function($) {
 	if (typeof window.eoToolsCookiesAdmin === 'undefined') return;
 
 	let cookieRegistry = {};
+	let currentSortCol = 'name';
+	let currentSortDir = 'asc';
 	let currentCategory = 'strictly-necessary';
 	
 	const catTitles = {
@@ -316,7 +318,6 @@ jQuery(document).ready(function($) {
 			if (cookieRegistry[cat] && Array.isArray(cookieRegistry[cat])) {
 				cookieRegistry[cat].forEach(c => {
 					if (c && c.name) {
-						// Add cat info inside object
 						c.catRaw = cat;
 						c.catTitle = catTitles[cat] || cat;
 						allCookies.push(c);
@@ -330,18 +331,40 @@ jQuery(document).ready(function($) {
 			return;
 		}
 
+		// Sort logic
+		allCookies.sort((a, b) => {
+			let valA = '', valB = '';
+			switch(currentSortCol) {
+				case 'category': valA = a.catTitle; valB = b.catTitle; break;
+				case 'name': valA = a.name; valB = b.name; break;
+				case 'domain': valA = a.domain || ''; valB = b.domain || ''; break;
+				case 'duration': valA = parseInt(a.date || a.duration || 0); valB = parseInt(b.date || b.duration || 0); break;
+				case 'comment': valA = a.comment || ''; valB = b.comment || ''; break;
+				case 'active': valA = a.active ? 1 : 0; valB = b.active ? 1 : 0; break;
+			}
+			
+			if (typeof valA === 'string') {
+				valA = valA.toLowerCase();
+				valB = valB.toLowerCase();
+			}
+			
+			if (valA < valB) return currentSortDir === 'asc' ? -1 : 1;
+			if (valA > valB) return currentSortDir === 'asc' ? 1 : -1;
+			return 0;
+		});
+
 		let rowsHtml = '';
 		allCookies.forEach(cookie => {
 			const isStandard = openCookieDB.some(c => c.name === cookie.name);
 			
 			rowsHtml += `
-				<tr>
-					<td>${cookie.catTitle}</td>
-					<td><strong>${cookie.name}</strong></td>
-					<td>${cookie.domain || wp.i18n.__('Géré localement', 'eo-tools')}</td>
-					<td>${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</td>
-					<td>${cookie.comment || cookie.description || ''}</td>
-					<td style="text-align: center;">
+				<tr style="background: #fff;">
+					<td style="vertical-align: middle;">${cookie.catTitle}</td>
+					<td style="vertical-align: middle;"><strong>${cookie.name}</strong></td>
+					<td style="vertical-align: middle;">${cookie.domain || wp.i18n.__('Géré localement', 'eo-tools')}</td>
+					<td style="vertical-align: middle;">${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</td>
+					<td style="vertical-align: middle; font-size: 13px; color: #475569;">${cookie.comment || cookie.description || ''}</td>
+					<td style="vertical-align: middle; text-align: center;">
 						<label class="eo-toggle" style="display: inline-block; position: relative; width: 44px; height: 24px;" title="${cookie.active ? wp.i18n.__('Désactiver ce cookie', 'eo-tools') : wp.i18n.__('Activer ce cookie', 'eo-tools')}">
 							<input type="checkbox" class="eo-cookie-active-toggle" data-cat="${cookie.catRaw}" data-id="${cookie.id}" ${cookie.active ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
 							<span class="eo-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${cookie.active ? '#10b981' : '#cbd5e1'}; transition: .3s; border-radius: 34px;">
@@ -349,7 +372,7 @@ jQuery(document).ready(function($) {
 							</span>
 						</label>
 					</td>
-					<td style="text-align: right;">
+					<td style="vertical-align: middle; text-align: right;">
 						<button type="button" class="button-link eo-edit-cookie" data-cat="${cookie.catRaw}" data-id="${cookie.id}" title="${wp.i18n.__('Modifier', 'eo-tools')}" style="color: #64748b; padding: 0; margin-right: 10px;">
 							<span class="dashicons dashicons-edit" style="font-size: 20px; width: 20px; height: 20px;"></span>
 						</button>
@@ -367,33 +390,79 @@ jQuery(document).ready(function($) {
 			`;
 		});
 
+		const getSortIcon = (col) => {
+			if (currentSortCol !== col) return '';
+			return currentSortDir === 'asc' ? ' <span class="dashicons dashicons-arrow-up-alt2" style="font-size: 14px; width: 14px; height: 14px; vertical-align: text-bottom;"></span>' : ' <span class="dashicons dashicons-arrow-down-alt2" style="font-size: 14px; width: 14px; height: 14px; vertical-align: text-bottom;"></span>';
+		};
+
 		$container.html(`
-			<table class="wp-list-table widefat fixed striped">
-				<thead>
-					<tr>
-						<th style="width: 15%;">${wp.i18n.__('Type', 'eo-tools')}</th>
-						<th style="width: 15%;">${wp.i18n.__('Cookie', 'eo-tools')}</th>
-						<th style="width: 15%;">${wp.i18n.__('Domaine', 'eo-tools')}</th>
-						<th style="width: 10%;">${wp.i18n.__('Durée', 'eo-tools')}</th>
-						<th style="width: 25%;">${wp.i18n.__('Commentaire', 'eo-tools')}</th>
-						<th style="width: 10%; text-align: center;">${wp.i18n.__('Actif', 'eo-tools')}</th>
-						<th style="width: 10%; text-align: right;">${wp.i18n.__('Actions', 'eo-tools')}</th>
-					</tr>
-				</thead>
-				<tbody>
-					${rowsHtml}
-				</tbody>
-			</table>
+			<div style="border: 1px solid #ccd0d4; border-radius: 4px; overflow: hidden; margin-bottom: 20px;">
+				<table class="wp-list-table widefat fixed striped" style="margin: 0; border: none;">
+					<thead>
+						<tr>
+							<th class="eo-sortable-th" data-sort="category" style="width: 15%; cursor: pointer;">${wp.i18n.__('Type', 'eo-tools')}${getSortIcon('category')}</th>
+							<th class="eo-sortable-th" data-sort="name" style="width: 15%; cursor: pointer;">${wp.i18n.__('Cookie', 'eo-tools')}${getSortIcon('name')}</th>
+							<th class="eo-sortable-th" data-sort="domain" style="width: 15%; cursor: pointer;">${wp.i18n.__('Domaine', 'eo-tools')}${getSortIcon('domain')}</th>
+							<th class="eo-sortable-th" data-sort="duration" style="width: 10%; cursor: pointer;">${wp.i18n.__('Durée', 'eo-tools')}${getSortIcon('duration')}</th>
+							<th class="eo-sortable-th" data-sort="comment" style="width: 25%; cursor: pointer;">${wp.i18n.__('Commentaire', 'eo-tools')}${getSortIcon('comment')}</th>
+							<th class="eo-sortable-th" data-sort="active" style="width: 10%; text-align: center; cursor: pointer;">${wp.i18n.__('Actif', 'eo-tools')}${getSortIcon('active')}</th>
+							<th style="width: 10%; text-align: right;">${wp.i18n.__('Actions', 'eo-tools')}</th>
+						</tr>
+					</thead>
+					<tbody>
+						${rowsHtml}
+					</tbody>
+				</table>
+			</div>
+			<div style="text-align: right;">
+				<button type="button" id="eo-save-consent-btn" class="button button-primary button-large" style="font-size: 14px; padding: 0 30px; line-height: 2.2;">${wp.i18n.__('Validation et Enregistrement', 'eo-tools')}</button>
+			</div>
 		`);
 	}
 
-	// Change category
-	$('.eo-cookie-cat-item').on('click', function() {
-		if (!$('#eo-cookie-list-container').length) return;
-		$('.eo-cookie-cat-item').removeClass('active').css('background', 'transparent');
-		$(this).addClass('active').css('background', '#f8fafc');
-		currentCategory = $(this).data('cat');
+	// Handle sort
+	$(document).on('click', '.eo-sortable-th', function() {
+		const col = $(this).data('sort');
+		if (currentSortCol === col) {
+			currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			currentSortCol = col;
+			currentSortDir = 'asc';
+		}
 		renderCookieTable();
+	});
+
+	// Handle Validation & Save button
+	$(document).on('click', '#eo-save-consent-btn', function() {
+		const $btn = $(this);
+		$btn.prop('disabled', true).text(wp.i18n.__('Enregistrement...', 'eo-tools'));
+		
+		let activeCount = 0;
+		for (const cat in cookieRegistry) {
+			if (cookieRegistry[cat]) {
+				activeCount += cookieRegistry[cat].filter(c => c.active !== false).length;
+			}
+		}
+
+		const changeLogMsg = 'Consentement validé manuellement avec ' + activeCount + ' cookies actifs';
+		
+		$.post(eoToolsCookiesAdmin.ajaxUrl, {
+			action: 'eo_tools_save_cookie_registry',
+			security: eoToolsCookiesAdmin.nonce,
+			registry: cookieRegistry,
+			change_log: [changeLogMsg],
+			action_type: 'Consentement'
+		}, function(response) {
+			$btn.prop('disabled', false).text(wp.i18n.__('Validation et Enregistrement', 'eo-tools'));
+			if (response.success) {
+				alert(wp.i18n.__('Le consentement a bien été validé et enregistré.', 'eo-tools'));
+			} else {
+				alert(wp.i18n.__('Erreur lors de l\'enregistrement.', 'eo-tools'));
+			}
+		}).fail(function() {
+			$btn.prop('disabled', false).text(wp.i18n.__('Validation et Enregistrement', 'eo-tools'));
+			alert(wp.i18n.__('Erreur lors de l\'enregistrement.', 'eo-tools'));
+		});
 	});
 
 	// Open Add Modal
@@ -401,7 +470,7 @@ jQuery(document).ready(function($) {
 		$('#eo-cookie-form')[0].reset();
 		$('#eo-cookie-id').val('');
 		$('#eo-cookie-old-cat').val('');
-		$('#eo-cookie-cat').val(currentCategory);
+		$('#eo-cookie-cat').val('strictly-necessary');
 		$('#eo-cookie-active').prop('checked', true);
 		$('#eo-cookie-domain').val('');
 		$('#eo-cookie-modal-title').text(wp.i18n.__('Ajouter un cookie', 'eo-tools'));
@@ -564,15 +633,12 @@ jQuery(document).ready(function($) {
 			
 			$item.on('click', function() {
 				// Pre-fill modal
-				currentCategory = mapCategory(res.category);
-				$('.eo-cookie-cat-item').removeClass('active').css('background', 'transparent');
-				$(`.eo-cookie-cat-item[data-cat="${currentCategory}"]`).addClass('active').css('background', '#f8fafc');
-				renderCookieList();
+				const cat = mapCategory(res.category);
 				
 				$('#eo-cookie-form')[0].reset();
 				$('#eo-cookie-id').val('');
 				$('#eo-cookie-old-cat').val('');
-				$('#eo-cookie-cat').val(currentCategory);
+				$('#eo-cookie-cat').val(cat);
 				$('#eo-cookie-active').prop('checked', true);
 				$('#eo-cookie-name').val(res.name);
 				$('#eo-cookie-domain').val(res.domain || '');

@@ -216,20 +216,20 @@ class Eotools_Menu {
 		update_option( 'eo_tools_cookie_registry', $registry );
 
 		// Log the changes
-		$change_log = isset( $_POST['change_log'] ) ? wp_unslash( $_POST['change_log'] ) : array();
-		if ( is_array( $change_log ) && ! empty( $change_log ) ) {
+		$change_log = isset( $_POST['change_log'] ) ? array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['change_log'] ) ) : array();
+		$action_type = isset( $_POST['action_type'] ) ? sanitize_text_field( wp_unslash( $_POST['action_type'] ) ) : 'Manuel';
+		
+		if ( ! empty( $change_log ) ) {
 			global $wpdb;
 			$table_log = $wpdb->prefix . 'eotools_cookie_log';
-			$comments_text = implode( ', ', array_map( 'sanitize_text_field', $change_log ) );
-			$wpdb->insert(
-				$table_log,
-				array(
-					'consent_id'     => md5( uniqid( '', true ) ),
-					'consent_status' => 'VALIDATION ADMIN',
-					'comments'       => $comments_text,
-					'time'           => current_time( 'mysql' )
-				)
-			);
+			$comments_text = implode( ', ', $change_log );
+			
+			$wpdb->insert( $table_log, array(
+				'consent_id'     => md5( uniqid( '', true ) ),
+				'consent_status' => $action_type,
+				'comments'       => $comments_text,
+				'time'           => current_time( 'mysql' )
+			) );
 		}
 
 		wp_send_json_success( $registry );
