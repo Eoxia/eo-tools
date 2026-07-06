@@ -237,3 +237,7 @@ Never:
 
 When in doubt:
 prefer a minimal and safe modification.
+
+## Expérience Utilisateur et Interface
+
+Ne jamais utiliser les fenêtres pop-up natives du navigateur (alert(), confirm(), prompt()). Toujours utiliser des fenêtres modales HTML personnalisées, des messages intégrés (inline) ou les notifications natives de l'administration WordPress. Pensez également à toujours utiliser le système de traduction de WordPress (wp.i18n.__ en JS, __() et esc_html__() en PHP) pour l'intégralité des textes d'interface.

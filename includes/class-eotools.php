@@ -23,6 +23,12 @@ class Eotools {
 
 		add_action( 'init', array( $this, 'eo_tools_create_tables' ) );
 		
+		// Schedule Cron if not exists
+		if ( ! wp_next_scheduled( 'eo_tools_daily_scan_cleanup_cron' ) ) {
+			wp_schedule_event( time(), 'daily', 'eo_tools_daily_scan_cleanup_cron' );
+		}
+		add_action( 'eo_tools_daily_scan_cleanup_cron', array( $this, 'purge_scan_logs' ) );
+		
 		// Cookie Interceptor
 		\EoTools\Includes\Eotools_Cookie_Interceptor::init();
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_scripts' ) );
@@ -394,9 +400,12 @@ class Eotools {
 		$table_login = $wpdb->prefix . 'eo_login_attempts';
 		$table_cookies = $wpdb->prefix . 'eotools_cookie_stats';
 		$table_log = $wpdb->prefix . 'eotools_cookie_log';
+		$table_scan_log = $wpdb->prefix . 'eotools_scan_log';
+		$table_scans = $wpdb->prefix . 'eotools_scan';
+		$table_scan_lines = $wpdb->prefix . 'eotools_scan_lines';
 		$db_version = get_option( 'eo_tools_db_version', '0' );
 		
-		if ( version_compare( $db_version, '1.2.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
+		if ( version_compare( $db_version, '1.5.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
 			$charset_collate = $wpdb->get_charset_collate();
 			
 			$sql = "CREATE TABLE $table_login (
@@ -429,13 +438,68 @@ class Eotools {
 				PRIMARY KEY  (id),
 				KEY consent_id (consent_id),
 				KEY time (time)
+			) $charset_collate;
+			CREATE TABLE $table_scan_log (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Identifiant unique',
+				batch_id varchar(50) NOT NULL COMMENT 'Identifiant du lot de scan',
+				item_type varchar(50) NOT NULL COMMENT 'Type de contenu scanne (page, post, header...)',
+				item_id bigint(20) unsigned NOT NULL COMMENT 'ID WordPress de l''element',
+				url text NOT NULL COMMENT 'URL analysee',
+				status varchar(20) NOT NULL COMMENT 'Statut de l''analyse (pending, processing, completed, error)',
+				cookies_found text NULL COMMENT 'Cookies detectes au format JSON',
+				scan_date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL COMMENT 'Date et heure de l''analyse',
+				PRIMARY KEY  (id),
+				KEY batch_id (batch_id),
+				KEY status (status)
+			) $charset_collate;
+			CREATE TABLE $table_scans (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID interne du scan',
+				ref varchar(50) NOT NULL COMMENT 'Reference unique type SC2605-00001',
+				type varchar(50) NOT NULL COMMENT 'Type de scan (detailed, quick)',
+				status varchar(50) NOT NULL COMMENT 'Statut (pending, processing, completed, error)',
+				date_start datetime DEFAULT '0000-00-00 00:00:00' NOT NULL COMMENT 'Date de debut du scan',
+				date_end datetime DEFAULT '0000-00-00 00:00:00' NOT NULL COMMENT 'Date de fin du scan',
+				total_urls int(11) DEFAULT 0 NOT NULL COMMENT 'Nombre total d urls a scanner',
+				scanned_urls int(11) DEFAULT 0 NOT NULL COMMENT 'Nombre d urls deja scannees',
+				total_cookies_found int(11) DEFAULT 0 NOT NULL COMMENT 'Nombre total de cookies trouves',
+				requires_validation tinyint(1) DEFAULT 0 NOT NULL COMMENT '1 si de nouveaux cookies attendent validation',
+				new_cookies text NULL COMMENT 'JSON des nouveaux cookies a valider',
+				PRIMARY KEY  (id),
+				UNIQUE KEY ref (ref),
+				KEY status (status)
+			) $charset_collate;
+			CREATE TABLE $table_scan_lines (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Identifiant unique de la ligne',
+				scan_id bigint(20) unsigned NOT NULL COMMENT 'Cle etrangere vers wp_eotools_scan.id',
+				item_type varchar(50) NOT NULL COMMENT 'Type de contenu scanne (page, post...)',
+				item_id bigint(20) unsigned NOT NULL COMMENT 'ID WordPress de l element',
+				url text NOT NULL COMMENT 'URL analysee',
+				status varchar(20) NOT NULL COMMENT 'Statut de l analyse',
+				cookies_found text NULL COMMENT 'Cookies detectes au format JSON',
+				scan_date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL COMMENT 'Date d analyse de la ligne',
+				PRIMARY KEY  (id),
+				KEY scan_id (scan_id),
+				KEY status (status)
 			) $charset_collate;";
 			
 			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 			dbDelta( $sql );
 			
-			update_option( 'eo_tools_db_version', '1.2.0' );
+			update_option( 'eo_tools_db_version', '1.5.0' );
 		}
+	}
+
+	public function purge_scan_logs() {
+		global $wpdb;
+		$table_scan_log = $wpdb->prefix . 'eotools_scan_log';
+		$settings = get_option( 'eo_tools_cookies_settings', array( 'active' => false, 'duration' => 12, 'duration_logs' => 6 ) );
+		$months = intval( $settings['duration_logs'] ?? 6 );
+		if ( $months < 1 ) $months = 6;
+		
+		$wpdb->query( $wpdb->prepare(
+			"DELETE FROM $table_scan_log WHERE scan_date < DATE_SUB(NOW(), INTERVAL %d MONTH) AND scan_date != '0000-00-00 00:00:00'",
+			$months
+		) );
 	}
 
 	/**

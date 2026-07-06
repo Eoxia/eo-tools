@@ -90,6 +90,9 @@
 			if (this.consent && this.consent.id) {
 				data.append('consent_id', this.consent.id);
 			}
+			if (type === 'custom' && this.consent) {
+				data.append('categories', JSON.stringify(this.consent));
+			}
 
 			fetch(window.eoToolsCookieData.ajaxUrl, {
 				method: 'POST',
@@ -258,6 +261,22 @@
 
 			// Send view stat
 			this.sendStats('view');
+			
+			const registry = (window.eoToolsCookieData && window.eoToolsCookieData.cookieRegistry) ? window.eoToolsCookieData.cookieRegistry : {};
+			let activeCookiesNames = [];
+			Object.keys(registry).forEach(cat => {
+				if (registry[cat] && registry[cat].length > 0) {
+					registry[cat].forEach(cookie => {
+						if (cookie.active !== false && cookie.name) {
+							activeCookiesNames.push('<code>' + cookie.name + '</code>');
+						}
+					});
+				}
+			});
+			let cookieListText = '';
+			if (activeCookiesNames.length > 0) {
+				cookieListText = '<p style="margin-top: 15px; font-size: 0.85em; color: #64748b; line-height: 1.5;"><strong>Cookies utilisés sur ce site :</strong><br>' + activeCookiesNames.join(', ') + '</p>';
+			}
 
 			const banner = document.createElement('div');
 			banner.id = 'eo-tools-cookie-banner';
@@ -266,6 +285,7 @@
 					<div class="eo-tools-cookie-text">
 						<h3>Gestion de vos préférences sur les cookies</h3>
 						<p>Nous utilisons des cookies pour assurer le bon fonctionnement du site, mesurer l'audience et vous proposer des publicités personnalisées. Vous pouvez tous les accepter, tous les refuser ou choisir vos préférences.</p>
+						${cookieListText}
 					</div>
 					<div class="eo-tools-cookie-actions">
 						<button id="eo-cookie-refuse-all" class="eo-cookie-btn">Tout refuser</button>
