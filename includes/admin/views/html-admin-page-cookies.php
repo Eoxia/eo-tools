@@ -153,6 +153,10 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 				+ <?php esc_html_e( 'Ajouter un cookie', 'eo-tools' ); ?>
 			</button>
 		</div>
+		
+		<div id="eo-active-cookies-summary" style="margin-bottom: 20px; font-size: 13px; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px 15px; display: none;">
+			<!-- Rempli par JS -->
+		</div>
 			
 		<div style="display: flex; gap: 20px;">
 			<!-- Sidebar Categories -->

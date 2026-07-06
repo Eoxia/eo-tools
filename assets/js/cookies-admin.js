@@ -312,6 +312,8 @@ jQuery(document).ready(function($) {
 	function renderCookieList() {
 		if (!$('#eo-cookie-list-container').length) return;
 
+		renderActiveCookiesSummary();
+
 		$('#eo-cookie-current-cat-title').text(catTitles[currentCategory]);
 		$('#eo-cookie-current-cat-desc').text(catDescs[currentCategory]);
 
@@ -376,6 +378,40 @@ jQuery(document).ready(function($) {
 			`);
 			$container.append($item);
 		});
+	}
+
+	function renderActiveCookiesSummary() {
+		const $summary = $('#eo-active-cookies-summary');
+		if (!$summary.length) return;
+
+		let allNames = [];
+		for (const cat in cookieRegistry) {
+			if (cookieRegistry[cat] && Array.isArray(cookieRegistry[cat])) {
+				cookieRegistry[cat].forEach(c => {
+					if (c && c.name) {
+						allNames.push(c.name);
+					}
+				});
+			}
+		}
+
+		if (allNames.length === 0) {
+			$summary.hide();
+			return;
+		}
+
+		const uniqueNames = [...new Set(allNames)].sort();
+		const listHtml = uniqueNames.map(name => `<span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 12px; margin-right: 5px; font-weight: bold;">${name}</span>`).join('');
+		
+		$summary.html(`
+			<div style="display: flex; justify-content: space-between; align-items: center;">
+				<div>
+					<strong>${wp.i18n.__('Cookies actifs validés par l\'admin :', 'eo-tools')}</strong> 
+					<div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px;">${listHtml}</div>
+				</div>
+				<a href="?page=eo-tools-cookies&tab=report" class="button button-secondary" style="white-space: nowrap;">${wp.i18n.__('Voir le rapport de consentements', 'eo-tools')}</a>
+			</div>
+		`).show();
 	}
 
 	// Change category
