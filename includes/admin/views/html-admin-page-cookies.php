@@ -141,7 +141,16 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 
 	<div class="eo-card" style="margin-top: 20px;">
 		<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-			<h2 style="margin: 0;"><?php esc_html_e( 'Liste des cookies', 'eo-tools' ); ?></h2>
+			<h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+				<?php esc_html_e( 'Liste des cookies', 'eo-tools' ); ?>
+				<?php 
+				$db_file = plugin_dir_path( dirname( dirname( __FILE__ ) ) ) . 'assets/data/open-cookie-database.csv';
+				$db_date = file_exists( $db_file ) ? wp_date( 'd/m/Y', filemtime( $db_file ) ) : '';
+				?>
+				<span style="font-size: 13px; font-weight: normal; color: #64748b;">
+					(<a href="https://github.com/jkwakman/Open-Cookie-Database" target="_blank" rel="noopener noreferrer" style="color: #2271b1; text-decoration: none;">Open Cookie Database</a><?php echo $db_date ? ' - ' . esc_html( sprintf( __( 'mise à jour le %s', 'eo-tools' ), $db_date ) ) : ''; ?>)
+				</span>
+			</h2>
 		</div>
 
 		<?php
