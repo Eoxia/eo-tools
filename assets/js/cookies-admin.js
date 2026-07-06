@@ -428,8 +428,9 @@ jQuery(document).ready(function($) {
 				});
 			}
 		}
-		if (activeCookiesList.length > 0) {
-			$('#eo-validation-cookie-list').text(activeCookiesList.join(', '));
+		let activeCookiesListStr = activeCookiesList.join(', ');
+		if (activeCookiesList.length > 0 && activeCookiesListStr !== window.eoLastAdminValidationCookies) {
+			$('#eo-validation-cookie-list').text(activeCookiesListStr);
 			$('#eo-validation-prompt-container').css('display', 'flex');
 		} else {
 			$('#eo-validation-prompt-container').hide();

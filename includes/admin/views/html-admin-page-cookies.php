@@ -171,6 +171,10 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 			</div>
 		</div>
 		<?php endif; ?>
+		
+		<script>
+			window.eoLastAdminValidationCookies = '<?php echo esc_js( $last_admin_log ? $last_admin_log->comments : "" ); ?>';
+		</script>
 			
 		<div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;">
 			<div style="flex: 1; min-width: 300px; display: flex; align-items: center; border: 1px solid #2271b1; border-radius: 4px; padding: 0 10px; background: #fff;">
