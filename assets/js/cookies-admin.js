@@ -85,6 +85,8 @@ jQuery(document).ready(function($) {
 	// --- Cookie Manager Logic ---
 	if (typeof window.eoToolsCookiesAdmin === 'undefined') return;
 
+	const isCookieActive = (val) => val !== false && val !== 'false' && val !== 0 && val !== '0';
+
 	let cookieRegistry = {};
 	let currentSortCol = 'name';
 	let currentSortDir = 'asc';
@@ -365,10 +367,10 @@ jQuery(document).ready(function($) {
 					<td style="vertical-align: middle;">${cookie.date || cookie.duration} ${wp.i18n.__('jours', 'eo-tools')}</td>
 					<td style="vertical-align: middle; font-size: 13px; color: #475569;">${cookie.comment || cookie.description || ''}</td>
 					<td style="vertical-align: middle; text-align: center;">
-						<label class="eo-toggle" style="display: inline-block; position: relative; width: 44px; height: 24px;" title="${cookie.active ? wp.i18n.__('Désactiver ce cookie', 'eo-tools') : wp.i18n.__('Activer ce cookie', 'eo-tools')}">
-							<input type="checkbox" class="eo-cookie-active-toggle" data-cat="${cookie.catRaw}" data-id="${cookie.id}" ${cookie.active ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
-							<span class="eo-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${cookie.active ? '#10b981' : '#cbd5e1'}; transition: .3s; border-radius: 34px;">
-								<span class="eo-knob" style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; transform: ${cookie.active ? 'translateX(20px)' : 'translateX(0)'}; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
+						<label class="eo-toggle" style="display: inline-block; position: relative; width: 44px; height: 24px;" title="${isCookieActive(cookie.active) ? wp.i18n.__('Désactiver ce cookie', 'eo-tools') : wp.i18n.__('Activer ce cookie', 'eo-tools')}">
+							<input type="checkbox" class="eo-cookie-active-toggle" data-cat="${cookie.catRaw}" data-id="${cookie.id}" ${isCookieActive(cookie.active) ? 'checked' : ''} style="opacity: 0; width: 0; height: 0; position: absolute;">
+							<span class="eo-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: ${isCookieActive(cookie.active) ? '#10b981' : '#cbd5e1'}; transition: .3s; border-radius: 34px;">
+								<span class="eo-knob" style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; transform: ${isCookieActive(cookie.active) ? 'translateX(20px)' : 'translateX(0)'}; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></span>
 							</span>
 						</label>
 					</td>
@@ -422,7 +424,7 @@ jQuery(document).ready(function($) {
 		for (const cat in cookieRegistry) {
 			if (cookieRegistry[cat]) {
 				cookieRegistry[cat].forEach(c => {
-					if (c.active !== false) {
+					if (isCookieActive(c.active)) {
 						activeCookiesList.push(c.name);
 					}
 				});
@@ -458,7 +460,7 @@ jQuery(document).ready(function($) {
 		for (const cat in cookieRegistry) {
 			if (cookieRegistry[cat]) {
 				cookieRegistry[cat].forEach(c => {
-					if (c.active !== false) {
+					if (isCookieActive(c.active)) {
 						activeCookiesList.push(c.name);
 					}
 				});
@@ -552,7 +554,7 @@ jQuery(document).ready(function($) {
 			$('#eo-cookie-id').val(cookie.id);
 			$('#eo-cookie-old-cat').val(cat);
 			$('#eo-cookie-cat').val(cat);
-			$('#eo-cookie-active').prop('checked', cookie.active !== false);
+			$('#eo-cookie-active').prop('checked', isCookieActive(cookie.active));
 			$('#eo-cookie-name').val(cookie.name);
 			$('#eo-cookie-domain').val(cookie.domain || '');
 			$('#eo-cookie-duration').val(cookie.date || cookie.duration);
