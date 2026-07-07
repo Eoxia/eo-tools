@@ -1,21 +1,27 @@
-# EO Tools
+# EO Tools - Landing Pages
 
-Plugin WordPress sur mesure pour centraliser différents outils d'administration et de conformité.
+Version allégée du plugin EO Tools, dédiée aux **pages d'atterrissage** WordPress.
 
-## Fonctionnalités Principales
+## Fonctionnalités
 
-- **Gestion des cookies :** Détection automatique, catégorisation, base de données locale (scanner interne), et génération de la bannière publique de consentement.
-- **Rapport de consentement :** Statistiques anonymisées et graphiques interactifs des choix des utilisateurs (taux de consentement).
-- **Pages d'atterrissage (Maintenance & Prochainement) :** Gestion de pages temporaires personnalisées avec contrôle des rôles et redirections.
+- **Prochainement** : page « Bientôt disponible » affichée aux visiteurs pendant la construction du site (les administrateurs voient le site normalement).
+- **Maintenance** : page d'indisponibilité temporaire, renvoyant un code HTTP `503`.
+- **404** : page d'erreur 404 personnalisée avec bouton de retour à l'accueil.
 
-## Logiciels et Ressources Utilisés
+Chaque page est personnalisable : titre, texte (mise en forme simplifiée), style visuel (Minimaliste, Dégradé, Effet verre) et couleurs. Les modes Prochainement et Maintenance sont mutuellement exclusifs, et un badge dans la barre d'administration signale le mode actif.
 
-Ce projet s'appuie sur plusieurs ressources et logiciels open-source :
+## Respect des standards
 
-* **[Open Cookie Database](https://github.com/jkwakman/Open-Cookie-Database/)** :
-  Base de données utilisée par notre scanner automatique pour catégoriser et décrire les cookies détectés avec précision et en conformité avec les standards.
-* **[Chart.js](https://github.com/chartjs/Chart.js)** :
-  Bibliothèque Javascript utilisée pour générer les graphiques d'analyse (rapport de consentements) dans l'interface d'administration WordPress.
+- Aucune ressource externe chargée (polices système, aucun appel réseau sortant).
+- Textes internationalisés (text domain `eo-tools`).
+- Entrées assainies, sorties échappées, vérification des nonces et des capacités.
+- Nettoyage des options à la désinstallation (`uninstall.php`), compatible multisite.
+
+## Installation
+
+1. Copiez le dossier `eo-tools` dans `wp-content/plugins/`.
+2. Activez l'extension depuis le menu **Extensions**.
+3. Ouvrez le menu **Pages d'atterrissage** pour configurer et activer les modes.
 
 ---
-*Plugin développé et maintenu pour un usage interne et sur-mesure.*
+*Plugin développé et maintenu par Eoxia.*
