@@ -7,18 +7,23 @@
  * @package EoTools
  */
 
+// This template is always included from within a method/function scope
+// (Eotools::render_landing_page() or eo_tools_landing_pages_preview()), so the
+// variables below are local, not global, despite the static analysis warning.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! function_exists( 'eo_lp_format_description' ) ) {
+if ( ! function_exists( 'eo_tools_format_description' ) ) {
 	/**
 	 * Lightweight Markdown-ish formatter for the description field.
 	 *
 	 * @param string $text Raw description.
 	 * @return string Safe HTML.
 	 */
-	function eo_lp_format_description( $text ) {
+	function eo_tools_format_description( $text ) {
 		$text = wp_kses_post( $text );
 
 		// Headings (###, ##, #).
@@ -250,7 +255,7 @@ $card_border = $is_light_bg ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)
 	<div class="eo-lp-container">
 		<div class="eo-lp-box">
 			<h1><?php echo esc_html( $title ); ?></h1>
-			<div class="description"><?php echo wp_kses_post( eo_lp_format_description( $description ) ); ?></div>
+			<div class="description"><?php echo wp_kses_post( eo_tools_format_description( $description ) ); ?></div>
 
 			<?php if ( '404' === $type ) : ?>
 				<a href="<?php echo esc_url( home_url() ); ?>" class="eo-lp-btn">

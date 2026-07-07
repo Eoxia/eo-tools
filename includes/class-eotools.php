@@ -56,8 +56,10 @@ class Eotools {
 	public function intercept_frontend() {
 		// Administrator preview (from the admin bar / editor buttons).
 		if ( current_user_can( 'manage_options' ) && isset( $_GET['eo_preview_landing_page'] ) ) {
-			$type = sanitize_key( wp_unslash( $_GET['eo_preview_landing_page'] ) );
-			if ( in_array( $type, $this->types, true ) ) {
+			$type  = sanitize_key( wp_unslash( $_GET['eo_preview_landing_page'] ) );
+			$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+			if ( in_array( $type, $this->types, true )
+				&& wp_verify_nonce( $nonce, 'eo_preview_landing_page_' . $type ) ) {
 				$this->render_landing_page( $type );
 				exit;
 			}

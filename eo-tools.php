@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       EO Tools - Landing Pages
+ * Plugin Name:       EO Tools
  * Plugin URI:        https://www.eoxia.com
  * Description:       Affichez des pages d'atterrissage personnalisées : Prochainement, Maintenance et 404.
  * Version:           1.0.0
@@ -33,14 +33,8 @@ require_once EO_TOOLS_PATH . 'includes/autoload.php';
 // Load AJAX API endpoints for the landing pages.
 require_once EO_TOOLS_PATH . 'includes/api-eo-landing-pages.php';
 
-/**
- * Load the plugin translations.
- */
-function eo_tools_load_textdomain() {
-	load_plugin_textdomain( 'eo-tools', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
-}
-add_action( 'init', 'eo_tools_load_textdomain' );
-
 use EoTools\Includes\Eotools;
 
-$eotools = new Eotools();
+// Translations are loaded automatically by WordPress since 4.6 for plugins
+// hosted on WordPress.org, so no manual load_plugin_textdomain() is required.
+new Eotools();

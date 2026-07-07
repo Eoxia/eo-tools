@@ -1,59 +1,58 @@
-=== EO Tools - Landing Pages ===
+=== EO Tools ===
 Contributors: eoxia
 Tags: maintenance, coming soon, 404, landing page, holding page
 Requires at least: 6.0
-Tested up to: 6.7
+Tested up to: 7.0
 Requires PHP: 7.4
 Stable tag: 1.0.0
 License: GPL-3.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
-Affichez des pages d'atterrissage personnalisées : Prochainement, Maintenance et 404.
+Display custom landing pages on your WordPress site: Coming Soon, Maintenance and 404.
 
 == Description ==
 
-EO Tools - Landing Pages est une version allégée dédiée à l'affichage de pages
-d'atterrissage personnalisées sur votre site WordPress.
+EO Tools is a lightweight plugin dedicated to displaying custom landing pages
+on your WordPress site.
 
-Trois modes sont disponibles :
+Three modes are available:
 
-* **Prochainement** : affiche une page « Bientôt disponible » aux visiteurs
-  pendant la construction du site. Les administrateurs continuent de voir le site.
-* **Maintenance** : affiche une page d'indisponibilité temporaire et renvoie un
-  code HTTP 503 aux visiteurs et aux moteurs de recherche.
-* **404** : remplace la page d'erreur 404 par un écran personnalisé avec un bouton
-  de retour à l'accueil.
+* **Coming Soon**: displays a "Coming soon" page to visitors while the site is
+  being built. Administrators keep browsing the site normally.
+* **Maintenance**: displays a temporary unavailability page and returns an
+  HTTP 503 status code to visitors and search engines.
+* **404**: replaces the default 404 error page with a custom screen including a
+  button back to the home page.
 
-Chaque page est personnalisable : titre, texte (mise en forme simplifiée),
-style visuel (Minimaliste, Dégradé, Effet verre) et couleurs.
+Each page is customizable: title, text (with lightweight formatting), visual
+style (Minimalist, Gradient, Glass effect) and colors.
 
-Les modes Prochainement et Maintenance sont mutuellement exclusifs. Un badge
-dans la barre d'administration signale à tout moment le mode actif.
+The Coming Soon and Maintenance modes are mutually exclusive. A badge in the
+admin bar indicates the active mode at any time.
 
-= Confidentialité =
+= Privacy =
 
-Le plugin ne charge aucune ressource externe et n'effectue aucun appel réseau
-sortant. Aucune donnée personnelle n'est collectée.
+The plugin does not load any external resource and does not make any outgoing
+network request. No personal data is collected.
 
 == Installation ==
 
-1. Téléversez le dossier `eo-tools` dans `/wp-content/plugins/`.
-2. Activez l'extension via le menu « Extensions » de WordPress.
-3. Rendez-vous dans le menu « Pages d'atterrissage » pour configurer et activer
-   les modes souhaités.
+1. Upload the `eo-tools` folder to `/wp-content/plugins/`.
+2. Activate the plugin through the "Plugins" menu in WordPress.
+3. Go to the "Landing Pages" menu to configure and enable the modes you need.
 
 == Frequently Asked Questions ==
 
-= Les administrateurs voient-ils la page de maintenance ? =
+= Do administrators see the maintenance page? =
 
-Non. Les utilisateurs disposant de la capacité `manage_options` accèdent
-normalement au site. Un bouton de prévisualisation permet de voir chaque page.
+No. Users with the `manage_options` capability keep accessing the site normally.
+A preview button lets you see each page.
 
-= Puis-je activer Prochainement et Maintenance en même temps ? =
+= Can I enable Coming Soon and Maintenance at the same time? =
 
-Non, ces deux modes sont mutuellement exclusifs. Activer l'un désactive l'autre.
+No, these two modes are mutually exclusive. Enabling one disables the other.
 
 == Changelog ==
 
 = 1.0.0 =
-* Version initiale allégée : pages Prochainement, Maintenance et 404.
+* Initial lightweight release: Coming Soon, Maintenance and 404 pages.

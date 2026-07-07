@@ -5,6 +5,10 @@
  * @package EoTools
  */
 
+// This view is always included from within the admin menu render method, so the
+// variables below are local, not global, despite the static analysis warning.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -82,7 +86,10 @@ $pages_data = array(
 		<?php foreach ( $pages_data as $key => $page ) : ?>
 			<?php
 				$is_active   = ! empty( $page['config']['active'] );
-				$preview_url = add_query_arg( 'eo_preview_landing_page', $key, home_url() );
+				$preview_url = wp_nonce_url(
+					add_query_arg( 'eo_preview_landing_page', $key, home_url() ),
+					'eo_preview_landing_page_' . $key
+				);
 			?>
 			<div class="eo-lp-card <?php echo esc_attr( $page['color_class'] ); ?> <?php echo $is_active ? 'active' : ''; ?>" data-type="<?php echo esc_attr( $key ); ?>">
 				<div class="eo-lp-card-header">
