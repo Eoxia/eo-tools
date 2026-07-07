@@ -7,8 +7,6 @@ jQuery( function ( $ ) {
 	var i18n   = admin.i18n || {};
 	var labels = admin.labels || {};
 	var config = window.eoLandingPagesConfig || {};
-	// Capture homeUrl once: config is replaced by the server response after each save.
-	var homeUrl = config.homeUrl || admin.homeUrl || '';
 	var activeType = '';
 
 	/**
@@ -264,10 +262,6 @@ jQuery( function ( $ ) {
 		$( '.eo-lp-editor-icon' ).attr( 'class', 'dashicons eo-lp-editor-icon ' + cardIconClass );
 		$( '.eo-lp-editor-title-text' ).text( ( i18n.configuration || 'Configuration' ) + ' - ' + cardTitle );
 
-		// Preview button.
-		var previewUrl = homeUrl + '?eo_preview_landing_page=' + encodeURIComponent( type );
-		$( '.eo-lp-form-preview-btn' ).attr( 'href', previewUrl );
-
 		$( '.eo-lp-editor-status-text' ).text( '' );
 		$( '#eo-lp-save-btn' ).css( 'background-color', '#2271b1' );
 
@@ -282,6 +276,22 @@ jQuery( function ( $ ) {
 	$( '.eo-lp-editor-close-btn' ).on( 'click', function () {
 		$( '.eo-lp-editor-panel' ).slideUp( 300 );
 		activeType = '';
+	} );
+
+	// Preview the currently edited (unsaved) values in a new tab.
+	$( '.eo-lp-form-preview-btn' ).on( 'click', function () {
+		if ( ! activeType ) {
+			return;
+		}
+		var $form = $( '#eo-lp-preview-form' );
+		$form.find( '[name="type"]' ).val( activeType );
+		$form.find( '[name="title"]' ).val( $( '#eo-lp-form-title' ).val() );
+		$form.find( '[name="description"]' ).val( $( '#eo-lp-form-description' ).val() );
+		$form.find( '[name="style"]' ).val( $( '#eo-lp-form-style' ).val() );
+		$form.find( '[name="bg_color"]' ).val( $( '#eo-lp-form-bg-color' ).val() );
+		$form.find( '[name="text_color"]' ).val( $( '#eo-lp-form-text-color' ).val() );
+		$form.find( '[name="accent_color"]' ).val( $( '#eo-lp-form-accent-color' ).val() );
+		$form.get( 0 ).submit();
 	} );
 
 	// Save settings.

@@ -190,10 +190,23 @@ $pages_data = array(
 				<button type="submit" id="eo-lp-save-btn" class="button button-primary button-large">
 					<?php esc_html_e( 'Enregistrer les paramètres', 'eo-tools' ); ?>
 				</button>
-				<a href="#" class="button button-secondary button-large eo-lp-form-preview-btn" target="_blank" rel="noopener noreferrer">
+				<button type="button" class="button button-secondary button-large eo-lp-form-preview-btn">
 					<?php esc_html_e( 'Prévisualiser', 'eo-tools' ); ?>
-				</a>
+				</button>
 			</div>
+		</form>
+
+		<!-- Formulaire caché : prévisualisation des valeurs non enregistrées -->
+		<form id="eo-lp-preview-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" target="_blank" style="display: none;">
+			<input type="hidden" name="action" value="eo_tools_preview_landing_page" />
+			<?php wp_nonce_field( 'eo_tools_preview_landing_page', 'eo_tools_preview_nonce' ); ?>
+			<input type="hidden" name="type" value="" />
+			<input type="hidden" name="title" value="" />
+			<input type="hidden" name="description" value="" />
+			<input type="hidden" name="style" value="" />
+			<input type="hidden" name="bg_color" value="" />
+			<input type="hidden" name="text_color" value="" />
+			<input type="hidden" name="accent_color" value="" />
 		</form>
 	</div>
 </div>
@@ -205,7 +218,6 @@ $pages_data = array(
 			'coming_soon' => $coming_soon,
 			'maintenance' => $maintenance,
 			'404'         => $status_404,
-			'homeUrl'     => home_url(),
 		)
 	); ?>;
 </script>

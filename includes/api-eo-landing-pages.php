@@ -10,6 +10,46 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_action( 'wp_ajax_eo_save_landing_page_settings', 'eo_tools_landing_pages_ajax_save_settings' );
+add_action( 'admin_post_eo_tools_preview_landing_page', 'eo_tools_landing_pages_preview' );
+
+/**
+ * Render a live preview of a landing page using the currently edited
+ * (unsaved) values submitted from the editor form.
+ */
+function eo_tools_landing_pages_preview() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'Accès refusé.', 'eo-tools' ), '', array( 'response' => 403 ) );
+	}
+
+	check_admin_referer( 'eo_tools_preview_landing_page', 'eo_tools_preview_nonce' );
+
+	$type = isset( $_POST['type'] ) ? sanitize_key( wp_unslash( $_POST['type'] ) ) : '';
+	if ( ! in_array( $type, array( 'coming_soon', 'maintenance', '404' ), true ) ) {
+		wp_die( esc_html__( 'Type de page invalide.', 'eo-tools' ) );
+	}
+
+	$style = isset( $_POST['style'] ) ? sanitize_key( wp_unslash( $_POST['style'] ) ) : 'minimalist';
+	if ( ! in_array( $style, array( 'minimalist', 'gradient', 'glassmorphism' ), true ) ) {
+		$style = 'minimalist';
+	}
+
+	// Build the settings from the submitted (unsaved) values. The template
+	// applies its own fallbacks for empty colors.
+	$page_settings = array(
+		'title'        => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
+		'description'  => isset( $_POST['description'] ) ? wp_kses_post( wp_unslash( $_POST['description'] ) ) : '',
+		'style'        => $style,
+		'bg_color'     => isset( $_POST['bg_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['bg_color'] ) ) : '',
+		'text_color'   => isset( $_POST['text_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['text_color'] ) ) : '',
+		'accent_color' => isset( $_POST['accent_color'] ) ? sanitize_hex_color( wp_unslash( $_POST['accent_color'] ) ) : '',
+	);
+
+	nocache_headers();
+
+	// $type and $page_settings are consumed by the template.
+	include EO_TOOLS_PATH . 'includes/templates/landing-page-template.php';
+	exit;
+}
 
 /**
  * Save the settings of a landing page (or toggle its active state).

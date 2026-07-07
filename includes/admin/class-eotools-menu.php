@@ -87,7 +87,6 @@ class Eotools_Menu {
 				'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
 				'nonce'    => wp_create_nonce( 'eo_tools_landing_pages_admin_nonce' ),
 				'adminUrl' => admin_url( 'admin.php?page=' . self::PARENT_SLUG ),
-				'homeUrl'  => home_url(),
 				'i18n'     => array(
 					'unsaved'        => __( 'Changements non enregistrés', 'eo-tools' ),
 					'saving'         => __( 'Enregistrement...', 'eo-tools' ),
