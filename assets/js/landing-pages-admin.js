@@ -7,6 +7,8 @@ jQuery( function ( $ ) {
 	var i18n   = admin.i18n || {};
 	var labels = admin.labels || {};
 	var config = window.eoLandingPagesConfig || {};
+	// Capture homeUrl once: config is replaced by the server response after each save.
+	var homeUrl = config.homeUrl || admin.homeUrl || '';
 	var activeType = '';
 
 	/**
@@ -263,7 +265,7 @@ jQuery( function ( $ ) {
 		$( '.eo-lp-editor-title-text' ).text( ( i18n.configuration || 'Configuration' ) + ' - ' + cardTitle );
 
 		// Preview button.
-		var previewUrl = config.homeUrl + '?eo_preview_landing_page=' + type;
+		var previewUrl = homeUrl + '?eo_preview_landing_page=' + encodeURIComponent( type );
 		$( '.eo-lp-form-preview-btn' ).attr( 'href', previewUrl );
 
 		$( '.eo-lp-editor-status-text' ).text( '' );

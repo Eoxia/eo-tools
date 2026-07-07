@@ -190,9 +190,9 @@ $pages_data = array(
 				<button type="submit" id="eo-lp-save-btn" class="button button-primary button-large">
 					<?php esc_html_e( 'Enregistrer les paramètres', 'eo-tools' ); ?>
 				</button>
-				<button type="button" class="button button-secondary button-large eo-lp-form-preview-btn" target="_blank">
+				<a href="#" class="button button-secondary button-large eo-lp-form-preview-btn" target="_blank" rel="noopener noreferrer">
 					<?php esc_html_e( 'Prévisualiser', 'eo-tools' ); ?>
-				</button>
+				</a>
 			</div>
 		</form>
 	</div>

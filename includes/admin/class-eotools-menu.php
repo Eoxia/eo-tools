@@ -14,9 +14,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Eotools_Menu {
 
 	/**
-	 * Admin page slug.
+	 * Top-level menu slug.
 	 */
-	const PAGE_SLUG = 'eo-tools-landing-pages';
+	const PARENT_SLUG = 'eo-tools';
+
+	/**
+	 * Hook suffix of the admin page (used to scope asset loading).
+	 *
+	 * @var string
+	 */
+	private $hook_suffix = '';
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
@@ -24,17 +31,27 @@ class Eotools_Menu {
 	}
 
 	/**
-	 * Register the top-level admin menu.
+	 * Register the "EO Tools" menu with a "Pages d'atterrissage" submenu.
 	 */
 	public function add_admin_menu() {
-		add_menu_page(
+		$this->hook_suffix = add_menu_page(
+			__( 'EO Tools', 'eo-tools' ),
+			__( 'EO Tools', 'eo-tools' ),
+			'manage_options',
+			self::PARENT_SLUG,
+			array( $this, 'landing_pages_page_view' ),
+			'dashicons-admin-tools',
+			81
+		);
+
+		// Reuse the parent slug so the auto-generated first submenu is relabeled.
+		add_submenu_page(
+			self::PARENT_SLUG,
 			__( 'Pages d\'atterrissage', 'eo-tools' ),
 			__( 'Pages d\'atterrissage', 'eo-tools' ),
 			'manage_options',
-			self::PAGE_SLUG,
-			array( $this, 'landing_pages_page_view' ),
-			'dashicons-welcome-view-site',
-			81
+			self::PARENT_SLUG,
+			array( $this, 'landing_pages_page_view' )
 		);
 	}
 
@@ -44,7 +61,7 @@ class Eotools_Menu {
 	 * @param string $hook Current admin page hook suffix.
 	 */
 	public function enqueue_admin_assets( $hook ) {
-		if ( strpos( $hook, self::PAGE_SLUG ) === false ) {
+		if ( $hook !== $this->hook_suffix ) {
 			return;
 		}
 
@@ -69,7 +86,8 @@ class Eotools_Menu {
 			array(
 				'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
 				'nonce'    => wp_create_nonce( 'eo_tools_landing_pages_admin_nonce' ),
-				'adminUrl' => admin_url( 'admin.php?page=' . self::PAGE_SLUG ),
+				'adminUrl' => admin_url( 'admin.php?page=' . self::PARENT_SLUG ),
+				'homeUrl'  => home_url(),
 				'i18n'     => array(
 					'unsaved'        => __( 'Changements non enregistrés', 'eo-tools' ),
 					'saving'         => __( 'Enregistrement...', 'eo-tools' ),

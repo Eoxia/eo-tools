@@ -197,7 +197,7 @@ class Eotools {
 				'id'     => 'eo-landing-pages-status',
 				'parent' => 'top-secondary',
 				'title'  => esc_html( $label ),
-				'href'   => admin_url( 'admin.php?page=eo-tools-landing-pages' ),
+				'href'   => admin_url( 'admin.php?page=eo-tools' ),
 				'meta'   => array(
 					'title' => $label,
 					'class' => $badge_class,
