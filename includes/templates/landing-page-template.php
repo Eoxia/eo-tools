@@ -117,12 +117,13 @@ $card_border = $is_light_bg ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)
 			font-weight: 800;
 			line-height: 1.15;
 			margin-bottom: 1rem;
-			color: <?php echo $is_light_bg ? '#0f172a' : '#ffffff'; ?>;
+			color: <?php echo esc_html( $text_color ); ?>;
 		}
 
 		.description {
 			font-size: clamp(1rem, 2.5vw, 1.25rem);
-			color: <?php echo $is_light_bg ? '#475569' : '#94a3b8'; ?>;
+			color: <?php echo esc_html( $text_color ); ?>;
+			opacity: 0.85;
 			margin-bottom: 2rem;
 			max-width: 600px;
 			margin-left: auto;
