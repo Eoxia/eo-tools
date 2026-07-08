@@ -1,7 +1,6 @@
 <?php
 /**
  * Plugin Name:       EO Tools
- * Plugin URI:        https://www.eoxia.com
  * Description:       Affichez des pages d'atterrissage personnalisées : Prochainement, Maintenance et 404.
  * Version:           1.0.0
  * Requires at least: 6.0
