@@ -66,12 +66,27 @@ if ( $current_tab === 'ignored' || $current_tab === 'redirected' ) {
 		$group_clause = "";
 	}
 
+	$methods = isset($_GET['methods']) ? array_map('sanitize_text_field', (array)$_GET['methods']) : array();
+	$codes = isset($_GET['codes']) ? array_map('intval', (array)$_GET['codes']) : array();
+
+	$where_clauses = array("r.id IS NULL");
+	if (!empty($methods)) {
+		$methods_in = "'" . implode("','", array_map('esc_sql', $methods)) . "'";
+		$where_clauses[] = "l.method IN ($methods_in)";
+	}
+	if (!empty($codes)) {
+		$codes_in = implode(",", array_map('intval', $codes));
+		$where_clauses[] = "l.http_code IN ($codes_in)";
+	}
+	$where_sql = implode(" AND ", $where_clauses);
+
 	$query = "SELECT $select_clause 
 			  FROM $table_404 l 
 			  LEFT JOIN $table_redirections r ON l.url = r.url 
-			  WHERE r.id IS NULL 
+			  WHERE $where_sql 
 			  $group_clause 
 			  ORDER BY last_date DESC";
+			  
 			  
 	$logs = $wpdb->get_results( $query );
 }
@@ -104,6 +119,23 @@ if ( $current_tab === 'ignored' || $current_tab === 'redirected' ) {
 					<option value="ip" <?php selected( $groupby, 'ip' ); ?>><?php esc_html_e( 'Grouper par IP', 'eo-tools' ); ?></option>
 				</select>
 				<input type="submit" class="button" value="<?php esc_attr_e( 'Filtrer', 'eo-tools' ); ?>">
+				<button type="button" class="button" onclick="document.getElementById('eo-tools-filters').toggleAttribute('hidden')"><?php esc_html_e( 'Filtres', 'eo-tools' ); ?> <span>&#x25BC;</span></button>
+				
+				<div id="eo-tools-filters" hidden style="position:absolute; background:#fff; border:1px solid #ccc; padding:15px; margin-top:5px; box-shadow:0 3px 6px rgba(0,0,0,0.1); z-index:100; max-height: 400px; overflow-y: auto;">
+					<h4 style="margin-top:0;">Méthode</h4>
+					<label><input type="checkbox" name="methods[]" value="GET" <?php checked(in_array('GET', $methods)); ?>> GET</label><br>
+					<label><input type="checkbox" name="methods[]" value="POST" <?php checked(in_array('POST', $methods)); ?>> POST</label><br>
+					<label><input type="checkbox" name="methods[]" value="HEAD" <?php checked(in_array('HEAD', $methods)); ?>> HEAD</label><br>
+					
+					<h4>Code d'état HTTP</h4>
+					<label><input type="checkbox" name="codes[]" value="400" <?php checked(in_array(400, $codes)); ?>> 400 - Bad Request (Mauvaise requête)</label><br>
+					<label><input type="checkbox" name="codes[]" value="401" <?php checked(in_array(401, $codes)); ?>> 401 - Unauthorized (Non-autorisé)</label><br>
+					<label><input type="checkbox" name="codes[]" value="403" <?php checked(in_array(403, $codes)); ?>> 403 - Forbidden (Interdit)</label><br>
+					<label><input type="checkbox" name="codes[]" value="404" <?php checked(in_array(404, $codes)); ?>> 404 - Not Found (Introuvable)</label><br>
+					<label><input type="checkbox" name="codes[]" value="410" <?php checked(in_array(410, $codes)); ?>> 410 - Gone (N'existera plus jamais)</label><br>
+					<label><input type="checkbox" name="codes[]" value="418" <?php checked(in_array(418, $codes)); ?>> 418 - I'm a teapot (Je suis une théière)</label><br>
+					<label><input type="checkbox" name="codes[]" value="451" <?php checked(in_array(451, $codes)); ?>> 451 - Unavailable For Legal Reasons</label><br>
+				</div>
 			</div>
 		</div>
 	</form>

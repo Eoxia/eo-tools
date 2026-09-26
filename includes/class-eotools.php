@@ -139,6 +139,7 @@ class Eotools {
 				// Insert new 404 log
 				$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : '0.0.0.0';
 				$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( $_SERVER['HTTP_USER_AGENT'] ) : '';
+				$method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( strtoupper( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
 
 				$wpdb->insert(
 					$table_404,
@@ -146,6 +147,8 @@ class Eotools {
 						'url' => $url,
 						'ip' => $ip,
 						'user_agent' => $user_agent,
+						'method' => $method,
+						'http_code' => 404,
 						'created_at' => current_time('mysql'),
 					)
 				);
@@ -450,7 +453,7 @@ class Eotools {
 		$table_redirections = $wpdb->prefix . 'eotools_redirections';
 		$db_version = get_option( 'eo_tools_db_version', '0' );
 		
-		if ( version_compare( $db_version, '1.7.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
+		if ( version_compare( $db_version, '1.8.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
 			$charset_collate = $wpdb->get_charset_collate();
 			
 			$sql = "CREATE TABLE $table_login (
@@ -541,6 +544,8 @@ class Eotools {
 				url varchar(255) NOT NULL,
 				ip varchar(100) NOT NULL,
 				user_agent text NOT NULL,
+				method varchar(10) DEFAULT 'GET' NOT NULL,
+				http_code int(11) DEFAULT 404 NOT NULL,
 				created_at datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 				PRIMARY KEY  (id),
 				KEY url (url)
@@ -549,7 +554,7 @@ class Eotools {
 			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 			dbDelta( $sql );
 			
-			update_option( 'eo_tools_db_version', '1.7.0' );
+			update_option( 'eo_tools_db_version', '1.8.0' );
 		}
 	}
 
