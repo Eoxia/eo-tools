@@ -21,6 +21,9 @@ if ( isset( $_POST['action'] ) && $_POST['action'] === 'eo_tools_save_redirect' 
 	if ( isset( $_POST['ignore'] ) && $_POST['ignore'] == '1' ) {
 		$status = 'ignored';
 		$redirect_to = '';
+	} elseif ( isset( $_POST['unignore'] ) && $_POST['unignore'] == '1' ) {
+		$status = 'pending';
+		$redirect_to = '';
 	}
 
 	$wpdb->update(
@@ -35,14 +38,27 @@ if ( isset( $_POST['action'] ) && $_POST['action'] === 'eo_tools_save_redirect' 
 	echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Redirection mise à jour.', 'eo-tools' ) . '</p></div>';
 }
 
-// Fetch all 404 logs
-$query = "SELECT * FROM $table_404 ORDER BY last_accessed DESC";
+$current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'pending';
+
+// Fetch logs based on tab
+if ( $current_tab === 'ignored' ) {
+    $where = "WHERE status = 'ignored'";
+} else {
+    $where = "WHERE status != 'ignored'";
+}
+
+$query = "SELECT * FROM $table_404 $where ORDER BY last_accessed DESC";
 $logs = $wpdb->get_results( $query );
 ?>
 
 <div class="wrap">
 	<h1 class="wp-heading-inline"><?php esc_html_e( 'Erreurs 404 et Redirections', 'eo-tools' ); ?></h1>
 	<hr class="wp-header-end">
+
+	<h2 class="nav-tab-wrapper">
+		<a href="?page=eo-tools-404-errors&tab=pending" class="nav-tab <?php echo $current_tab !== 'ignored' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'À traiter / Redirigées', 'eo-tools' ); ?></a>
+		<a href="?page=eo-tools-404-errors&tab=ignored" class="nav-tab <?php echo $current_tab === 'ignored' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Ignorées', 'eo-tools' ); ?></a>
+	</h2>
 
 	<div class="notice notice-info">
 		<p><?php esc_html_e( 'Ce module permet de suivre les pages en erreur 404 et de configurer des redirections (301) pertinentes.', 'eo-tools' ); ?></p>
@@ -79,7 +95,11 @@ $logs = $wpdb->get_results( $query );
 							<input type="text" name="redirect_to" value="<?php echo esc_attr( $log->redirect_to ); ?>" placeholder="Ex: /nouvelle-page/" style="width: 100%; max-width: 250px;">
 							
 							<button type="submit" class="button button-primary"><?php esc_html_e( 'Rediriger', 'eo-tools' ); ?></button>
-							<button type="submit" name="ignore" value="1" class="button"><?php esc_html_e( 'Ignorer', 'eo-tools' ); ?></button>
+							<?php if ( $log->status === 'ignored' ) : ?>
+								<button type="submit" name="unignore" value="1" class="button"><?php esc_html_e( 'Rétablir', 'eo-tools' ); ?></button>
+							<?php else : ?>
+								<button type="submit" name="ignore" value="1" class="button"><?php esc_html_e( 'Ignorer', 'eo-tools' ); ?></button>
+							<?php endif; ?>
 						</form>
 					</td>
 					<td><?php echo intval( $log->hits ); ?></td>
