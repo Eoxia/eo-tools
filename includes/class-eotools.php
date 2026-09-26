@@ -123,7 +123,18 @@ class Eotools {
 				
 				// Perform redirection if setup
 				if ( $existing->status === 'redirected' && ! empty( $existing->redirect_to ) ) {
-					wp_redirect( home_url( $existing->redirect_to ), 301 );
+					$redirect_path = $existing->redirect_to;
+					// Si l'utilisateur a saisi une URL absolue contenant l'URL du site, on extrait le chemin relatif
+					if ( strpos( $redirect_path, home_url() ) === 0 ) {
+						$redirect_path = str_replace( home_url(), '', $redirect_path );
+					}
+					if ( substr( $redirect_path, 0, 1 ) !== '/' && strpos( $redirect_path, 'http' ) !== 0 ) {
+						$redirect_path = '/' . $redirect_path;
+					}
+					
+					// Si le chemin commence par http (ex: redirection externe voulue), on l'utilise tel quel
+					$final_url = ( strpos( $redirect_path, 'http' ) === 0 ) ? $redirect_path : home_url( $redirect_path );
+					wp_redirect( $final_url, 301 );
 					exit;
 				}
 			} else {
