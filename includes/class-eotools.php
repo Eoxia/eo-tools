@@ -109,6 +109,37 @@ class Eotools {
 	 */
 	public function intercept_404() {
 		if ( is_404() ) {
+			global $wpdb;
+			$table_404 = $wpdb->prefix . 'eotools_404_logs';
+			
+			$url = esc_url_raw( $_SERVER['REQUEST_URI'] );
+			
+			// 1. Check if a redirect exists
+			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT id, redirect_to, status FROM $table_404 WHERE url = %s", $url ) );
+			
+			if ( $existing ) {
+				// Update hits
+				$wpdb->query( $wpdb->prepare( "UPDATE $table_404 SET hits = hits + 1, last_accessed = current_timestamp() WHERE id = %d", $existing->id ) );
+				
+				// Perform redirection if setup
+				if ( $existing->status === 'redirected' && ! empty( $existing->redirect_to ) ) {
+					wp_redirect( home_url( $existing->redirect_to ), 301 );
+					exit;
+				}
+			} else {
+				// Insert new 404 log
+				$wpdb->insert(
+					$table_404,
+					array(
+						'url' => $url,
+						'hits' => 1,
+						'last_accessed' => current_time('mysql'),
+						'status' => 'pending'
+					)
+				);
+			}
+
+			// 2. Display custom 404 landing page if active
 			$settings = get_option( 'eo_tools_landing_pages_settings', array() );
 			$status_404_active = !empty( $settings['404']['active'] );
 			if ( $status_404_active ) {
@@ -403,9 +434,10 @@ class Eotools {
 		$table_scan_log = $wpdb->prefix . 'eotools_scan_log';
 		$table_scans = $wpdb->prefix . 'eotools_scan';
 		$table_scan_lines = $wpdb->prefix . 'eotools_scan_lines';
+		$table_404 = $wpdb->prefix . 'eotools_404_logs';
 		$db_version = get_option( 'eo_tools_db_version', '0' );
 		
-		if ( version_compare( $db_version, '1.5.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
+		if ( version_compare( $db_version, '1.6.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
 			$charset_collate = $wpdb->get_charset_collate();
 			
 			$sql = "CREATE TABLE $table_login (
@@ -480,12 +512,23 @@ class Eotools {
 				PRIMARY KEY  (id),
 				KEY scan_id (scan_id),
 				KEY status (status)
+			) $charset_collate;
+			CREATE TABLE $table_404 (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				url varchar(255) NOT NULL,
+				redirect_to varchar(255) DEFAULT '' NOT NULL,
+				hits int(11) DEFAULT 1 NOT NULL,
+				last_accessed datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+				status varchar(50) DEFAULT 'pending' NOT NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY url (url),
+				KEY status (status)
 			) $charset_collate;";
 			
 			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 			dbDelta( $sql );
 			
-			update_option( 'eo_tools_db_version', '1.5.0' );
+			update_option( 'eo_tools_db_version', '1.6.0' );
 		}
 	}
 
