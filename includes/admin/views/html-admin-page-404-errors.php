@@ -43,8 +43,10 @@ $current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'pe
 // Fetch logs based on tab
 if ( $current_tab === 'ignored' ) {
     $where = "WHERE status = 'ignored'";
+} elseif ( $current_tab === 'redirected' ) {
+    $where = "WHERE status = 'redirected'";
 } else {
-    $where = "WHERE status != 'ignored'";
+    $where = "WHERE status = 'pending'";
 }
 
 $query = "SELECT * FROM $table_404 $where ORDER BY last_accessed DESC";
@@ -56,7 +58,8 @@ $logs = $wpdb->get_results( $query );
 	<hr class="wp-header-end">
 
 	<h2 class="nav-tab-wrapper">
-		<a href="?page=eo-tools-404-errors&tab=pending" class="nav-tab <?php echo $current_tab !== 'ignored' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'À traiter / Redirigées', 'eo-tools' ); ?></a>
+		<a href="?page=eo-tools-404-errors&tab=pending" class="nav-tab <?php echo $current_tab === 'pending' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'À traiter', 'eo-tools' ); ?></a>
+		<a href="?page=eo-tools-404-errors&tab=redirected" class="nav-tab <?php echo $current_tab === 'redirected' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Redirigées', 'eo-tools' ); ?></a>
 		<a href="?page=eo-tools-404-errors&tab=ignored" class="nav-tab <?php echo $current_tab === 'ignored' ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Ignorées', 'eo-tools' ); ?></a>
 	</h2>
 
