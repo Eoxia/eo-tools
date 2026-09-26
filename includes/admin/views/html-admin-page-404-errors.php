@@ -150,7 +150,8 @@ if ( $current_tab === 'ignored' || $current_tab === 'redirected' ) {
 				<?php if ( $current_tab === 'pending' ) : ?>
 					<th scope="col" class="manage-column column-user-agent" style="width: 20%;"><?php esc_html_e( 'Agent utilisateur', 'eo-tools' ); ?></th>
 					<th scope="col" class="manage-column column-ip" style="width: 10%;"><?php esc_html_e( 'IP', 'eo-tools' ); ?></th>
-					<th scope="col" class="manage-column column-type" style="width: 5%;"><?php esc_html_e( 'Type', 'eo-tools' ); ?></th>
+					<th scope="col" class="manage-column column-code" style="width: 5%;"><?php esc_html_e( 'Code', 'eo-tools' ); ?></th>
+					<th scope="col" class="manage-column column-method" style="width: 5%;"><?php esc_html_e( 'Méthode', 'eo-tools' ); ?></th>
 					<?php if ( ! empty( $groupby ) ) : ?>
 						<th scope="col" class="manage-column column-views" style="width: 5%;"><?php esc_html_e( 'Vues', 'eo-tools' ); ?></th>
 					<?php endif; ?>
@@ -180,7 +181,8 @@ if ( $current_tab === 'ignored' || $current_tab === 'redirected' ) {
 					<?php if ( $current_tab === 'pending' ) : ?>
 						<td><?php echo ( $groupby === 'ip' || $groupby === 'url' ) && $log->hits > 1 ? '<span style="color:#aaa;">(Multiples)</span>' : esc_html( $log->user_agent ); ?></td>
 						<td><?php echo ( $groupby === 'user_agent' || $groupby === 'url' ) && $log->hits > 1 ? '<span style="color:#aaa;">(Multiples)</span>' : esc_html( $log->ip ); ?></td>
-						<td><?php echo esc_html( (isset($log->http_code) ? $log->http_code : '404') . ' - ' . (isset($log->method) ? $log->method : 'GET') ); ?></td>
+						<td><?php echo esc_html( isset($log->http_code) ? $log->http_code : '404' ); ?></td>
+						<td><?php echo esc_html( isset($log->method) ? $log->method : 'GET' ); ?></td>
 						<?php if ( ! empty( $groupby ) ) : ?>
 							<td><strong><?php echo intval( $log->hits ); ?></strong></td>
 						<?php endif; ?>
@@ -218,7 +220,8 @@ if ( $current_tab === 'ignored' || $current_tab === 'redirected' ) {
 				<?php if ( $current_tab === 'pending' ) : ?>
 					<th scope="col" class="manage-column column-user-agent"><?php esc_html_e( 'Agent utilisateur', 'eo-tools' ); ?></th>
 					<th scope="col" class="manage-column column-ip"><?php esc_html_e( 'IP', 'eo-tools' ); ?></th>
-					<th scope="col" class="manage-column column-type"><?php esc_html_e( 'Type', 'eo-tools' ); ?></th>
+					<th scope="col" class="manage-column column-code"><?php esc_html_e( 'Code', 'eo-tools' ); ?></th>
+					<th scope="col" class="manage-column column-method"><?php esc_html_e( 'Méthode', 'eo-tools' ); ?></th>
 					<?php if ( ! empty( $groupby ) ) : ?>
 						<th scope="col" class="manage-column column-views"><?php esc_html_e( 'Vues', 'eo-tools' ); ?></th>
 					<?php endif; ?>
