@@ -109,6 +109,52 @@ class Eotools {
 	 */
 	public function intercept_404() {
 		if ( is_404() ) {
+			global $wpdb;
+			$table_404 = $wpdb->prefix . 'eotools_404_logs';
+			$table_redirections = $wpdb->prefix . 'eotools_redirections';
+			
+			$url = esc_url_raw( $_SERVER['REQUEST_URI'] );
+			
+			// 1. Check if a redirect exists
+			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT id, redirect_to, status FROM $table_redirections WHERE url = %s", $url ) );
+			
+			if ( $existing ) {
+				// Perform redirection if setup
+				if ( $existing->status === 'redirected' && ! empty( $existing->redirect_to ) ) {
+					$redirect_path = $existing->redirect_to;
+					// Si l'utilisateur a saisi une URL absolue contenant l'URL du site, on extrait le chemin relatif
+					if ( strpos( $redirect_path, home_url() ) === 0 ) {
+						$redirect_path = str_replace( home_url(), '', $redirect_path );
+					}
+					if ( substr( $redirect_path, 0, 1 ) !== '/' && strpos( $redirect_path, 'http' ) !== 0 ) {
+						$redirect_path = '/' . $redirect_path;
+					}
+					
+					// Si le chemin commence par http (ex: redirection externe voulue), on l'utilise tel quel
+					$final_url = ( strpos( $redirect_path, 'http' ) === 0 ) ? $redirect_path : home_url( $redirect_path );
+					wp_redirect( $final_url, 301 );
+					exit;
+				}
+			} else {
+				// Insert new 404 log
+				$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : '0.0.0.0';
+				$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( $_SERVER['HTTP_USER_AGENT'] ) : '';
+				$method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( strtoupper( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+
+				$wpdb->insert(
+					$table_404,
+					array(
+						'url' => $url,
+						'ip' => $ip,
+						'user_agent' => $user_agent,
+						'method' => $method,
+						'http_code' => 404,
+						'created_at' => current_time('mysql'),
+					)
+				);
+			}
+
+			// 2. Display custom 404 landing page if active
 			$settings = get_option( 'eo_tools_landing_pages_settings', array() );
 			$status_404_active = !empty( $settings['404']['active'] );
 			if ( $status_404_active ) {
@@ -403,9 +449,11 @@ class Eotools {
 		$table_scan_log = $wpdb->prefix . 'eotools_scan_log';
 		$table_scans = $wpdb->prefix . 'eotools_scan';
 		$table_scan_lines = $wpdb->prefix . 'eotools_scan_lines';
+		$table_404 = $wpdb->prefix . 'eotools_404_logs';
+		$table_redirections = $wpdb->prefix . 'eotools_redirections';
 		$db_version = get_option( 'eo_tools_db_version', '0' );
 		
-		if ( version_compare( $db_version, '1.5.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
+		if ( version_compare( $db_version, '1.8.0', '<' ) || $wpdb->get_var( "SHOW TABLES LIKE '$table_login'" ) !== $table_login ) {
 			$charset_collate = $wpdb->get_charset_collate();
 			
 			$sql = "CREATE TABLE $table_login (
@@ -480,12 +528,33 @@ class Eotools {
 				PRIMARY KEY  (id),
 				KEY scan_id (scan_id),
 				KEY status (status)
+			) $charset_collate;
+			CREATE TABLE $table_redirections (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				url varchar(255) NOT NULL,
+				redirect_to varchar(255) DEFAULT '' NOT NULL,
+				status varchar(50) DEFAULT 'redirected' NOT NULL,
+				created_at datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY url (url),
+				KEY status (status)
+			) $charset_collate;
+			CREATE TABLE $table_404 (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				url varchar(255) NOT NULL,
+				ip varchar(100) NOT NULL,
+				user_agent text NOT NULL,
+				method varchar(10) DEFAULT 'GET' NOT NULL,
+				http_code int(11) DEFAULT 404 NOT NULL,
+				created_at datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+				PRIMARY KEY  (id),
+				KEY url (url)
 			) $charset_collate;";
 			
 			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 			dbDelta( $sql );
 			
-			update_option( 'eo_tools_db_version', '1.5.0' );
+			update_option( 'eo_tools_db_version', '1.8.0' );
 		}
 	}
 

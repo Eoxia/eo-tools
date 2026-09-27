@@ -352,6 +352,16 @@ class Eotools_Menu {
 			[ $this, 'landing_pages_page_view' ]
 		);
 
+		// Submenu pointing to 404 Errors
+		add_submenu_page(
+			'eo-tools',
+			__('404-Erreur', 'eo-tools'),
+			__('404-Erreur', 'eo-tools'),
+			'manage_options',
+			'eo-tools-404-errors',
+			[ $this, 'errors_404_page_view' ]
+		);
+
 		// Submenu pointing to Cookie Manager
 		add_submenu_page(
 			'eo-tools',
@@ -411,5 +421,9 @@ class Eotools_Menu {
 
 	public function cookies_page_view() {
 		include EO_TOOLS_PATH . 'includes/admin/views/html-admin-page-cookies.php';
+	}
+
+	public function errors_404_page_view() {
+		include EO_TOOLS_PATH . 'includes/admin/views/html-admin-page-404-errors.php';
 	}
 }
