@@ -82,6 +82,26 @@ abstract class Eotools_Mcp_Ability {
 	}
 
 	/**
+	 * Short description for the administrator (one or two lines).
+	 *
+	 * The full description is written for the AI. Abilities may override this;
+	 * otherwise the summary comes from Eotools_Mcp_Abilities::get_summaries(),
+	 * or the first sentence of the description.
+	 *
+	 * @return string
+	 */
+	public function get_summary() {
+		$summaries = \EoTools\Includes\Mcp\Eotools_Mcp_Abilities::get_summaries();
+		if ( isset( $summaries[ $this->get_name() ] ) ) {
+			return $summaries[ $this->get_name() ];
+		}
+
+		$description = $this->get_description();
+
+		return preg_match( '/^(.+?[.!?])\s/u', $description, $match ) ? $match[1] : $description;
+	}
+
+	/**
 	 * Full ability name (e.g. "eo-tools/list-posts").
 	 *
 	 * @return string

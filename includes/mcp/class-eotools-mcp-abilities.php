@@ -75,6 +75,35 @@ class Eotools_Mcp_Abilities {
 	}
 
 	/**
+	 * Short descriptions shown on the admin cards, keyed by ability name.
+	 *
+	 * @return string[]
+	 */
+	public static function get_summaries() {
+		return array(
+			'eo-tools/list-posts'              => __( 'Parcourt vos articles et pages pour trouver un contenu.', 'eo-tools' ),
+			'eo-tools/get-post'                => __( 'Lit un article ou une page, avec ses blocs.', 'eo-tools' ),
+			'eo-tools/create-draft-post'       => __( 'Rédige un nouvel article, enregistré en brouillon.', 'eo-tools' ),
+			'eo-tools/create-draft-page'       => __( 'Crée une nouvelle page, enregistrée en brouillon.', 'eo-tools' ),
+			'eo-tools/update-draft'            => __( 'Modifie un brouillon. Les contenus publiés ne sont jamais touchés.', 'eo-tools' ),
+			'eo-tools/propose-update'          => __( 'Propose une modification d\'un contenu publié, que vous appliquez ou rejetez.', 'eo-tools' ),
+			'eo-tools/list-templates'          => __( 'Liste les modèles du site : pages, en-tête, pied de page…', 'eo-tools' ),
+			'eo-tools/get-template'            => __( 'Lit le contenu d\'un modèle ou d\'une partie de modèle.', 'eo-tools' ),
+			'eo-tools/propose-template-update' => __( 'Propose une modification d\'un modèle (en-tête, pied de page…), que vous validez.', 'eo-tools' ),
+			'eo-tools/check-render'            => __( 'Vérifie le rendu d\'une page et signale les erreurs visibles.', 'eo-tools' ),
+			'eo-tools/search-images'           => __( 'Cherche des photos libres et gratuites sur Openverse.', 'eo-tools' ),
+			'eo-tools/import-image'            => __( 'Ajoute une image à la médiathèque (Openverse, adresse, SVG, image générée).', 'eo-tools' ),
+			'eo-tools/list-blocks'             => __( 'Liste les blocs disponibles (WordPress et EO Blocks).', 'eo-tools' ),
+			'eo-tools/get-block'               => __( 'Lit le mode d\'emploi d\'un bloc et ses réglages.', 'eo-tools' ),
+			'eo-tools/list-snippets'           => __( 'Liste les snippets de code du site et leur état.', 'eo-tools' ),
+			'eo-tools/get-snippet'             => __( 'Lit le code d\'un snippet.', 'eo-tools' ),
+			'eo-tools/read-source'             => __( 'Lit le code du thème et des extensions, sans rien modifier.', 'eo-tools' ),
+			'eo-tools/search-source'           => __( 'Cherche un texte dans le code du thème et des extensions.', 'eo-tools' ),
+			'eo-tools/propose-snippet'         => __( 'Propose du code CSS, JS ou PHP en dernier recours, que vous activez vous-même.', 'eo-tools' ),
+		);
+	}
+
+	/**
 	 * Abilities of a risk level.
 	 *
 	 * @param string $risk Risk level.

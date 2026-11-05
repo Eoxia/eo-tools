@@ -129,7 +129,14 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 								<span class="eo-mcp-switch-slider" aria-hidden="true"></span>
 							</span>
 						</span>
-						<span class="eo-mcp-ability-description"><?php echo esc_html( $ability->get_description() ); ?></span>
+						<span class="eo-mcp-ability-description">
+							<span class="eo-mcp-ability-summary"><?php echo esc_html( $ability->get_summary() ); ?></span>
+							<span class="eo-mcp-ability-details" id="eo-mcp-details-<?php echo esc_attr( $ability->get_slug() ); ?>">
+								<span class="eo-mcp-ability-details-inner"><?php echo esc_html( $ability->get_description() ); ?></span>
+							</span>
+							<button type="button" class="button-link eo-mcp-more" aria-expanded="false" aria-controls="eo-mcp-details-<?php echo esc_attr( $ability->get_slug() ); ?>"
+								data-label-more="<?php esc_attr_e( 'Voir plus', 'eo-tools' ); ?>" data-label-less="<?php esc_attr_e( 'Voir moins', 'eo-tools' ); ?>"><?php esc_html_e( 'Voir plus', 'eo-tools' ); ?></button>
+						</span>
 						<span class="eo-mcp-ability-meta">
 							<span class="eo-mcp-risk is-<?php echo esc_attr( $risk ); ?>" title="<?php echo esc_attr( $risk_levels[ $risk ]['description'] ); ?>"><?php echo esc_html( $risk_levels[ $risk ]['label'] ); ?></span>
 							<code><?php echo esc_html( $ability->get_name() ); ?></code>

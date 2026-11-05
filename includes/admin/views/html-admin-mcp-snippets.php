@@ -21,6 +21,7 @@ $messages = array(
 );
 $types    = array(
 	'css' => 'CSS',
+	'js'  => 'JS',
 	'php' => 'PHP',
 );
 $scopes   = array(
@@ -42,10 +43,10 @@ delete_option( Eotools_Mcp_Snippets::ALERT );
 	<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $messages[ $done ] ); ?></p></div>
 <?php endif; ?>
 
-<p class="eo-mcp-intro"><?php esc_html_e( 'Quand une demande est impossible avec les réglages, les blocs ou les modèles, votre IA peut proposer un petit morceau de code (CSS ou PHP). Il reste désactivé tant que vous ne l\'activez pas ici, et vous pouvez le désactiver à tout moment. Il est conservé lors des mises à jour du thème et des extensions.', 'eo-tools' ); ?></p>
+<p class="eo-mcp-intro"><?php esc_html_e( 'Quand une demande est impossible avec les réglages, les blocs ou les modèles, votre IA peut proposer un petit morceau de code (CSS, JS ou PHP). Il reste désactivé tant que vous ne l\'activez pas ici, et vous pouvez le désactiver à tout moment. Il est conservé lors des mises à jour du thème et des extensions.', 'eo-tools' ); ?></p>
 
 <?php if ( ! Eotools_Mcp_Snippets::user_can( 'php' ) ) : ?>
-	<p class="eo-mcp-status is-warning"><span class="dashicons dashicons-info"></span><?php esc_html_e( 'Les snippets PHP sont désactivés sur ce site (modification des fichiers interdite, ou votre compte ne peut pas modifier les extensions). Les snippets CSS fonctionnent.', 'eo-tools' ); ?></p>
+	<p class="eo-mcp-status is-warning"><span class="dashicons dashicons-info"></span><?php esc_html_e( 'Les snippets PHP sont désactivés sur ce site (modification des fichiers interdite, ou votre compte ne peut pas modifier les extensions). Les snippets CSS et JS fonctionnent.', 'eo-tools' ); ?></p>
 <?php elseif ( ! Eotools_Mcp_Snippets::dir_ready() ) : ?>
 	<p class="eo-mcp-status is-warning"><span class="dashicons dashicons-warning"></span>
 		<?php
@@ -72,10 +73,15 @@ delete_option( Eotools_Mcp_Snippets::ALERT );
 			<?php
 			$can       = Eotools_Mcp_Snippets::user_can( $snippet['type'] );
 			$pending   = isset( $snippet['pending_version'] ) && is_array( $snippet['pending_version'] ) ? $snippet['pending_version'] : null;
-			$sensitive = 'php' === $snippet['type'] ? Eotools_Mcp_Snippets::sensitive( $pending ? $pending['code'] : $snippet['code'] ) : array();
+			$sensitive = Eotools_Mcp_Snippets::sensitive( $pending ? $pending['code'] : $snippet['code'], $snippet['type'] );
 			$preview   = Eotools_Mcp_Snippets::preview_url( $snippet['id'] );
 			$state     = $snippet['active'] ? 'is-active' : ( ! empty( $snippet['awaiting_activation'] ) ? 'is-waiting' : 'is-inactive' );
-			$confirm   = 'php' === $snippet['type'] ? __( 'Activer ce code PHP ? Le site est d\'abord testé avec : en cas d\'erreur, il reste désactivé.', 'eo-tools' ) : __( 'Activer ce CSS sur le site ?', 'eo-tools' );
+			$confirms  = array(
+				'php' => __( 'Activer ce code PHP ? Le site est d\'abord testé avec : en cas d\'erreur, il reste désactivé.', 'eo-tools' ),
+				'js'  => __( 'Activer ce JavaScript ? Il s\'exécutera dans le navigateur de vos visiteurs (ou des administrateurs, selon sa portée).', 'eo-tools' ),
+				'css' => __( 'Activer ce CSS sur le site ?', 'eo-tools' ),
+			);
+			$confirm   = $confirms[ $snippet['type'] ];
 			if ( $sensitive ) {
 				/* translators: %s: list of PHP functions. */
 				$confirm .= ' ' . sprintf( __( 'Attention : ce code utilise des fonctions sensibles (%s).', 'eo-tools' ), implode( ', ', $sensitive ) );

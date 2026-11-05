@@ -364,6 +364,22 @@
 			saveAbilities( [ this.value ], this.checked );
 		} );
 
+		/* Ability cards: "Voir plus" slides the full description open. The card is a label: do not toggle the switch. */
+		$( '.eo-mcp-more' ).on( 'click', function ( event ) {
+			var $button = $( this );
+			var open    = 'true' !== $button.attr( 'aria-expanded' );
+
+			event.preventDefault();
+			event.stopPropagation();
+			$( '#' + $button.attr( 'aria-controls' ) ).toggleClass( 'is-open', open );
+			$button.attr( 'aria-expanded', open ? 'true' : 'false' ).text( $button.attr( open ? 'data-label-less' : 'data-label-more' ) );
+		} );
+
+		// Selecting text in the full description must not flip the switch either.
+		$( '.eo-mcp-ability-details' ).on( 'click', function ( event ) {
+			event.preventDefault();
+		} );
+
 		/* Risk levels: counters, and one button to turn a whole level on or off. */
 		function levelToggles( level ) {
 			return $toggles.filter( function () {

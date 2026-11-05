@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Eotools_Mcp_Snippets {
 
 	const POST_TYPE     = 'eo_tools_snippet';
-	const TYPES         = array( 'css', 'php' );
+	const TYPES         = array( 'css', 'js', 'php' );
 	const SCOPES        = array( 'everywhere', 'front', 'admin' );
 	const CACHE         = 'eo_tools_snippets';
 	const ALERT         = 'eo_tools_snippet_alert';
@@ -104,6 +104,8 @@ class Eotools_Mcp_Snippets {
 		self::run_php();
 		add_action( 'enqueue_block_assets', array( __CLASS__, 'print_front_css' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'print_admin_css' ) );
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'print_front_js' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'print_admin_js' ) );
 	}
 
 	public static function register_post_type() {
@@ -145,10 +147,11 @@ class Eotools_Mcp_Snippets {
 	/**
 	 * Whether the current user may manage snippets of this type.
 	 *
-	 * CSS needs the core `edit_css` right (Additional CSS), PHP the right to edit
-	 * plugin files, which WordPress removes with DISALLOW_FILE_EDIT.
+	 * CSS needs the core `edit_css` right (Additional CSS), JS the right to publish
+	 * scripts (`unfiltered_html`, removed by DISALLOW_UNFILTERED_HTML), PHP the
+	 * right to edit plugin files, which WordPress removes with DISALLOW_FILE_EDIT.
 	 *
-	 * @param string $type css or php; empty for any type.
+	 * @param string $type css, js or php; empty for any type.
 	 * @return bool
 	 */
 	public static function user_can( $type = '' ) {
@@ -158,11 +161,14 @@ class Eotools_Mcp_Snippets {
 		if ( 'php' === $type ) {
 			return self::php_enabled() && current_user_can( 'edit_plugins' );
 		}
+		if ( 'js' === $type ) {
+			return current_user_can( 'unfiltered_html' );
+		}
 		if ( 'css' === $type ) {
 			return current_user_can( 'edit_css' );
 		}
 
-		return current_user_can( 'edit_css' ) || ( self::php_enabled() && current_user_can( 'edit_plugins' ) );
+		return self::user_can( 'css' ) || self::user_can( 'js' ) || self::user_can( 'php' );
 	}
 
 	/**
@@ -323,7 +329,12 @@ class Eotools_Mcp_Snippets {
 			return new \WP_Error( 'eo_tools_snippet_invalid', __( '"type" doit valoir css ou php, "scope" everywhere, front ou admin.', 'eo-tools' ) );
 		}
 		if ( ! self::user_can( $type ) ) {
-			return new \WP_Error( 'eo_tools_snippet_forbidden', 'php' === $type ? __( 'Les snippets PHP sont désactivés sur ce site (modification des fichiers interdite, ou droits insuffisants). Proposez une solution en CSS ou sans code.', 'eo-tools' ) : __( 'Vous n\'avez pas le droit d\'ajouter du CSS.', 'eo-tools' ) );
+			$messages = array(
+				'php' => __( 'Les snippets PHP sont désactivés sur ce site (modification des fichiers interdite, ou droits insuffisants). Proposez une solution en CSS, en JS ou sans code.', 'eo-tools' ),
+				'js'  => __( 'Les snippets JS sont désactivés sur ce site (scripts interdits, ou droits insuffisants). Proposez une solution en CSS ou sans code.', 'eo-tools' ),
+				'css' => __( 'Vous n\'avez pas le droit d\'ajouter du CSS.', 'eo-tools' ),
+			);
+			return new \WP_Error( 'eo_tools_snippet_forbidden', $messages[ $type ] );
 		}
 		if ( ! $current && ( empty( $data['code'] ) || empty( $data['title'] ) ) ) {
 			return new \WP_Error( 'eo_tools_snippet_invalid', __( 'Un nouveau snippet demande "title", "description" et "code".', 'eo-tools' ) );
@@ -480,6 +491,10 @@ class Eotools_Mcp_Snippets {
 			$code = preg_replace( '/^<\?php\s*/i', '', $code );
 			$code = preg_replace( '/\?>\s*$/', '', $code );
 		}
+		if ( 'js' === $type ) {
+			$code = preg_replace( '#^<script\b[^>]*>\s*#i', '', $code );
+			$code = preg_replace( '#\s*</script>$#i', '', $code );
+		}
 
 		return trim( $code ) . "\n";
 	}
@@ -507,6 +522,14 @@ class Eotools_Mcp_Snippets {
 			return true;
 		}
 
+		if ( 'js' === $type ) {
+			if ( preg_match( '#</?script\b|<\?php#i', $code ) ) {
+				return new \WP_Error( 'eo_tools_snippet_js', __( 'Uniquement du JavaScript : pas de balise <script> ni de PHP.', 'eo-tools' ) );
+			}
+			$error = self::check_js_brackets( $code );
+			return '' === $error ? true : new \WP_Error( 'eo_tools_snippet_js', $error );
+		}
+
 		if ( preg_match( '/^\s*namespace\s/m', $code ) ) {
 			return new \WP_Error( 'eo_tools_snippet_php', __( 'Pas de namespace dans un snippet : préfixez plutôt les noms de fonctions.', 'eo-tools' ) );
 		}
@@ -521,13 +544,191 @@ class Eotools_Mcp_Snippets {
 	}
 
 	/**
-	 * Sensitive PHP functions used by the code, shown to the user before switching it on.
+	 * Light JavaScript check: brackets, quotes and comments must be closed.
 	 *
-	 * @param string $code PHP code.
+	 * PHP cannot parse JavaScript; this catches the truncated or half-written
+	 * code that models sometimes send. Strings, template literals, comments and
+	 * regular expression literals are skipped.
+	 *
+	 * @param string $code JavaScript.
+	 * @return string Error, empty when none.
+	 */
+	public static function check_js_brackets( $code ) {
+		$pairs  = array(
+			')' => '(',
+			']' => '[',
+			'}' => '{',
+		);
+		$stack  = array();
+		$length = strlen( $code );
+		$line   = 1;
+		$prev   = ''; // Last significant character, to tell a regex from a division.
+
+		for ( $i = 0; $i < $length; $i++ ) {
+			$char = $code[ $i ];
+			$next = $i + 1 < $length ? $code[ $i + 1 ] : '';
+
+			if ( "\n" === $char ) {
+				++$line;
+				continue;
+			}
+			if ( ctype_space( $char ) ) {
+				continue;
+			}
+
+			// Comments.
+			if ( '/' === $char && '/' === $next ) {
+				$end = strpos( $code, "\n", $i );
+				$i   = false === $end ? $length : $end - 1;
+				continue;
+			}
+			if ( '/' === $char && '*' === $next ) {
+				$end = strpos( $code, '*/', $i + 2 );
+				if ( false === $end ) {
+					/* translators: %d: line number. */
+					return sprintf( __( 'Erreur JavaScript ligne %d : commentaire /* non fermé.', 'eo-tools' ), $line );
+				}
+				$line += substr_count( substr( $code, $i, $end - $i ), "\n" );
+				$i     = $end + 1;
+				continue;
+			}
+
+			// Strings and template literals.
+			if ( '"' === $char || "'" === $char || '`' === $char ) {
+				$start = $line;
+				for ( ++$i; $i < $length; $i++ ) {
+					if ( '\\' === $code[ $i ] ) {
+						++$i;
+						continue;
+					}
+					if ( "\n" === $code[ $i ] ) {
+						if ( '`' !== $char ) {
+							break;
+						}
+						++$line;
+					}
+					if ( '`' === $char && '$' === $code[ $i ] && $i + 1 < $length && '{' === $code[ $i + 1 ] ) {
+						// Template expression: checked as code until its closing brace.
+						$stack[] = array( '${', $line );
+						++$i;
+						continue 2;
+					}
+					if ( $code[ $i ] === $char ) {
+						break;
+					}
+				}
+				if ( $i >= $length || $code[ $i ] !== $char ) {
+					/* translators: 1: line number, 2: quote character. */
+					return sprintf( __( 'Erreur JavaScript ligne %1$d : chaîne %2$s non fermée.', 'eo-tools' ), $start, $char );
+				}
+				$prev = 'a';
+				continue;
+			}
+
+			// Regular expression literal.
+			if ( '/' === $char && ( '' === $prev || false !== strpos( '(,=:[!&|?{};+-*%<>~^', $prev ) ) ) {
+				$in_class = false;
+				for ( ++$i; $i < $length && "\n" !== $code[ $i ]; $i++ ) {
+					if ( '\\' === $code[ $i ] ) {
+						++$i;
+					} elseif ( '[' === $code[ $i ] ) {
+						$in_class = true;
+					} elseif ( ']' === $code[ $i ] ) {
+						$in_class = false;
+					} elseif ( '/' === $code[ $i ] && ! $in_class ) {
+						break;
+					}
+				}
+				$prev = 'a';
+				continue;
+			}
+
+			if ( isset( $pairs[ $char ] ) || '(' === $char || '[' === $char || '{' === $char ) {
+				if ( ! isset( $pairs[ $char ] ) ) {
+					$stack[] = array( $char, $line );
+				} else {
+					$open = array_pop( $stack );
+					// The closing brace of a template expression returns into the template literal.
+					if ( $open && '${' === $open[0] && '}' === $char ) {
+						for ( ++$i; $i < $length; $i++ ) {
+							if ( '\\' === $code[ $i ] ) {
+								++$i;
+								continue;
+							}
+							if ( "\n" === $code[ $i ] ) {
+								++$line;
+							}
+							if ( '$' === $code[ $i ] && $i + 1 < $length && '{' === $code[ $i + 1 ] ) {
+								$stack[] = array( '${', $line );
+								++$i;
+								break;
+							}
+							if ( '`' === $code[ $i ] ) {
+								break;
+							}
+						}
+						$prev = 'a';
+						continue;
+					}
+					if ( ! $open || $open[0] !== $pairs[ $char ] ) {
+						/* translators: 1: line number, 2: bracket. */
+						return sprintf( __( 'Erreur JavaScript ligne %1$d : « %2$s » inattendu.', 'eo-tools' ), $line, $char );
+					}
+				}
+			}
+
+			$prev = $char;
+		}
+
+		if ( $stack ) {
+			$open = array_pop( $stack );
+			/* translators: 1: bracket, 2: line number. */
+			return sprintf( __( 'Erreur JavaScript : « %1$s » ouvert ligne %2$d n\'est jamais fermé.', 'eo-tools' ), '${' === $open[0] ? '${' : $open[0], $open[1] );
+		}
+
+		return '';
+	}
+
+	/**
+	 * JavaScript patterns flagged to the user before switching a snippet on.
+	 */
+	const SENSITIVE_JS = array(
+		'eval'                => '/\beval\s*\(/',
+		'new Function'        => '/\bnew\s+Function\s*\(/',
+		'document.cookie'     => '/\bdocument\s*\.\s*cookie\b/',
+		'localStorage'        => '/\b(local|session)Storage\b/',
+		'fetch'               => '/\bfetch\s*\(/',
+		'XMLHttpRequest'      => '/\bXMLHttpRequest\b/',
+		'sendBeacon'          => '/\bsendBeacon\s*\(/',
+		'WebSocket'           => '/\bWebSocket\s*\(/',
+		'external script'     => '/createElement\s*\(\s*[\'"]script[\'"]/',
+		'document.write'      => '/\bdocument\s*\.\s*write(ln)?\s*\(/',
+		'form / password'     => '/type\s*=\s*[\'"]?password|\.submit\s*\(/',
+		'redirection'         => '/\b(window\.)?location(\.href)?\s*=(?!=)|location\.(assign|replace)\s*\(/',
+	);
+
+	/**
+	 * Sensitive functions used by the code, shown to the user before switching it on.
+	 *
+	 * @param string $code Code.
+	 * @param string $type php or js.
 	 * @return string[]
 	 */
-	public static function sensitive( $code ) {
+	public static function sensitive( $code, $type = 'php' ) {
 		$found = array();
+
+		if ( 'js' === $type ) {
+			foreach ( self::SENSITIVE_JS as $label => $pattern ) {
+				if ( preg_match( $pattern, $code ) ) {
+					$found[] = $label;
+				}
+			}
+			return $found;
+		}
+		if ( 'php' !== $type ) {
+			return $found;
+		}
+
 		try {
 			$tokens = token_get_all( '<?php ' . $code );
 		} catch ( \Throwable $e ) {
@@ -605,6 +806,10 @@ class Eotools_Mcp_Snippets {
 				'front' => '',
 				'admin' => '',
 			),
+			'js'  => array(
+				'front' => '',
+				'admin' => '',
+			),
 		);
 
 		$posts = get_posts(
@@ -625,6 +830,16 @@ class Eotools_Mcp_Snippets {
 				foreach ( array( 'front', 'admin' ) as $side ) {
 					if ( 'everywhere' === $scope || $side === $scope ) {
 						$cache['css'][ $side ] .= $css;
+					}
+				}
+				continue;
+			}
+
+			if ( 'js' === self::type( $post->ID ) ) {
+				$js = self::wrap_js( $post->ID, $post->post_title, $post->post_content );
+				foreach ( array( 'front', 'admin' ) as $side ) {
+					if ( 'everywhere' === $scope || $side === $scope ) {
+						$cache['js'][ $side ] .= $js;
 					}
 				}
 				continue;
@@ -737,6 +952,49 @@ class Eotools_Mcp_Snippets {
 		wp_add_inline_style( $handle, $css );
 	}
 
+	public static function print_front_js() {
+		self::print_js( 'front' );
+	}
+
+	public static function print_admin_js() {
+		self::print_js( 'admin' );
+	}
+
+	/**
+	 * Adds the JavaScript of one side as an inline script in the footer.
+	 *
+	 * @param string $side front or admin.
+	 */
+	private static function print_js( $side ) {
+		$cache = get_option( self::CACHE );
+		$js    = is_array( $cache ) && isset( $cache['js'][ $side ] ) ? $cache['js'][ $side ] : '';
+		if ( '' === $js ) {
+			return;
+		}
+
+		$handle = 'eo-tools-snippets-js-' . $side;
+		wp_register_script( $handle, false, array(), EO_TOOLS_VERSION, true );
+		wp_enqueue_script( $handle );
+		wp_add_inline_script( $handle, $js );
+	}
+
+	/**
+	 * Isolates a JavaScript snippet: its own scope, and an error stays in the console.
+	 *
+	 * @param int    $id    Snippet ID.
+	 * @param string $title Snippet title.
+	 * @param string $code  JavaScript.
+	 * @return string
+	 */
+	private static function wrap_js( $id, $title, $code ) {
+		return sprintf(
+			"/* EO Tools snippet #%1\$d: %2\$s */\n(function () {\ntry {\n%3\$s\n} catch ( error ) {\nwindow.console && console.error( 'EO Tools snippet #%1\$d', error );\n}\n}());\n",
+			$id,
+			str_replace( '*/', '', $title ),
+			$code
+		);
+	}
+
 	/* ---------------------------------------------------------------------
 	 * CSS preview
 	 * ------------------------------------------------------------------ */
@@ -744,8 +1002,11 @@ class Eotools_Mcp_Snippets {
 	/**
 	 * Link showing the site with a CSS snippet (or its pending version) applied, for administrators.
 	 *
+	 * Only CSS is previewed: a JS preview would run unvalidated code in the
+	 * browser of a logged-in administrator.
+	 *
 	 * @param int $id Snippet ID.
-	 * @return string Empty for PHP snippets.
+	 * @return string Empty for JS and PHP snippets.
 	 */
 	public static function preview_url( $id ) {
 		if ( 'css' !== self::type( $id ) || 'admin' === self::scope( $id ) ) {

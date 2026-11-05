@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_List_Snippets extends Eotools_Mcp_Ability_Snippet {
 	}
 
 	public function get_description() {
-		return __( 'Liste les snippets de code du site (CSS et PHP) avec leur état (actif, en attente d\'activation, nouvelle version en attente) et leur dernière erreur. À consulter avant d\'en proposer un : améliorez un snippet existant plutôt que d\'en créer un doublon. "php_allowed" indique si le PHP est autorisé sur ce site.', 'eo-tools' );
+		return __( 'Liste les snippets de code du site (CSS, JS et PHP) avec leur état (actif, en attente d\'activation, nouvelle version en attente) et leur dernière erreur. À consulter avant d\'en proposer un : améliorez un snippet existant plutôt que d\'en créer un doublon. "php_allowed" et "js_allowed" indiquent si le PHP et le JS sont autorisés sur ce site.', 'eo-tools' );
 	}
 
 	public function get_risk() {
@@ -42,6 +42,7 @@ class Eotools_Mcp_Ability_List_Snippets extends Eotools_Mcp_Ability_Snippet {
 	public function execute( $input ) {
 		return array(
 			'php_allowed' => Eotools_Mcp_Snippets::user_can( 'php' ),
+			'js_allowed'  => Eotools_Mcp_Snippets::user_can( 'js' ),
 			'snippets'    => Eotools_Mcp_Snippets::all(),
 		);
 	}
