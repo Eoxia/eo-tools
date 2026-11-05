@@ -40,6 +40,9 @@ class Eotools_Mcp_Proposals {
 		add_action( 'admin_post_eo_tools_reject_proposal', array( __CLASS__, 'handle_reject' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'render_admin_notice' ) );
 		add_filter( 'display_post_states', array( __CLASS__, 'post_states' ), 10, 2 );
+		add_filter( 'page_row_actions', array( __CLASS__, 'row_actions' ), 10, 2 );
+		add_filter( 'post_row_actions', array( __CLASS__, 'row_actions' ), 10, 2 );
+		add_action( 'admin_bar_menu', array( __CLASS__, 'admin_bar' ), 90 );
 
 		if ( ! wp_next_scheduled( self::PURGE_CRON ) ) {
 			wp_schedule_event( time(), 'daily', self::PURGE_CRON );
@@ -307,8 +310,27 @@ class Eotools_Mcp_Proposals {
 			wp_die( esc_html( $result->get_error_message() ), esc_html__( 'Proposition non appliquée', 'eo-tools' ), array( 'back_link' => true ) );
 		}
 
-		wp_safe_redirect( get_permalink( $source ) );
+		wp_safe_redirect( self::from_admin() ? self::admin_url( 'applied' ) : get_permalink( $source ) );
 		exit;
+	}
+
+	/**
+	 * Whether the request comes from the "Propositions" tab of EO Tools > MCP.
+	 *
+	 * @return bool
+	 */
+	private static function from_admin() {
+		return isset( $_POST['eo_tools_from'] ) && 'admin' === sanitize_key( wp_unslash( $_POST['eo_tools_from'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Checked in get_requested_proposal().
+	}
+
+	/**
+	 * URL of the "Propositions" tab.
+	 *
+	 * @param string $done Action just performed (applied or rejected).
+	 * @return string
+	 */
+	public static function admin_url( $done = '' ) {
+		return add_query_arg( array_filter( array( 'done' => $done ) ), admin_url( 'admin.php?page=eo-tools-mcp&tab=proposals' ) );
 	}
 
 	/**
@@ -320,7 +342,11 @@ class Eotools_Mcp_Proposals {
 
 		wp_delete_post( $proposal->ID, true );
 
-		wp_safe_redirect( $source ? get_permalink( $source ) : home_url( '/' ) );
+		if ( self::from_admin() ) {
+			wp_safe_redirect( self::admin_url( 'rejected' ) );
+		} else {
+			wp_safe_redirect( $source ? get_permalink( $source ) : home_url( '/' ) );
+		}
 		exit;
 	}
 
@@ -381,27 +407,103 @@ class Eotools_Mcp_Proposals {
 	 * @return string[]
 	 */
 	public static function post_states( $states, $post ) {
-		static $sources = null;
-
-		// One query for the whole list.
-		if ( null === $sources ) {
-			global $wpdb;
-			$sources = array_map(
-				'intval',
-				$wpdb->get_col(
-					$wpdb->prepare(
-						"SELECT pm.meta_value FROM {$wpdb->postmeta} pm INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE pm.meta_key = %s AND p.post_status = %s",
-						self::META_SOURCE,
-						self::STATUS
-					)
-				)
-			);
-		}
-
-		if ( in_array( $post->ID, $sources, true ) ) {
+		if ( isset( self::get_pending_map()[ $post->ID ] ) ) {
 			$states['eo_tools_proposal'] = __( 'Modification proposée par l\'IA', 'eo-tools' );
 		}
 
 		return $states;
+	}
+
+	/**
+	 * Pending proposals, keyed by the ID of their published content. One query per request.
+	 *
+	 * @return int[] Proposal IDs keyed by published content ID.
+	 */
+	public static function get_pending_map() {
+		static $map = null;
+
+		if ( null === $map ) {
+			global $wpdb;
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT pm.meta_value AS source, p.ID AS proposal FROM {$wpdb->postmeta} pm INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE pm.meta_key = %s AND p.post_status = %s",
+					self::META_SOURCE,
+					self::STATUS
+				)
+			);
+			$map  = array();
+			foreach ( $rows as $row ) {
+				$map[ (int) $row->source ] = (int) $row->proposal;
+			}
+		}
+
+		return $map;
+	}
+
+	/**
+	 * Every pending proposal, newest first.
+	 *
+	 * @return \WP_Post[]
+	 */
+	public static function get_all_pending() {
+		return get_posts(
+			array(
+				'post_type'      => 'any',
+				'post_status'    => self::STATUS,
+				'posts_per_page' => 100,
+				'orderby'        => 'modified',
+				'order'          => 'DESC',
+			)
+		);
+	}
+
+	/**
+	 * "Voir la modification proposée" link in the posts and pages lists.
+	 *
+	 * @param string[] $actions Row actions.
+	 * @param \WP_Post $post    Post.
+	 * @return string[]
+	 */
+	public static function row_actions( $actions, $post ) {
+		$map = self::get_pending_map();
+
+		if ( isset( $map[ $post->ID ] ) && current_user_can( 'edit_post', $post->ID ) ) {
+			$actions['eo_tools_proposal'] = sprintf(
+				'<a href="%s" target="_blank">%s</a>',
+				esc_url( get_preview_post_link( $map[ $post->ID ] ) ),
+				esc_html__( 'Voir la modification proposée', 'eo-tools' )
+			);
+		}
+
+		return $actions;
+	}
+
+	/**
+	 * Admin bar link to the pending proposal when viewing a published content.
+	 *
+	 * @param \WP_Admin_Bar $admin_bar Admin bar.
+	 */
+	public static function admin_bar( $admin_bar ) {
+		if ( is_admin() || ! is_singular() ) {
+			return;
+		}
+
+		$post = get_queried_object();
+		if ( ! $post instanceof \WP_Post || ! current_user_can( 'edit_post', $post->ID ) ) {
+			return;
+		}
+
+		$map = self::get_pending_map();
+		if ( ! isset( $map[ $post->ID ] ) ) {
+			return;
+		}
+
+		$admin_bar->add_node(
+			array(
+				'id'    => 'eo-tools-proposal',
+				'title' => '<span class="ab-icon dashicons dashicons-visibility" style="top:2px"></span>' . esc_html__( 'Modification IA en attente', 'eo-tools' ),
+				'href'  => get_preview_post_link( $map[ $post->ID ] ),
+			)
+		);
 	}
 }

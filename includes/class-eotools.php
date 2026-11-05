@@ -36,6 +36,7 @@ class Eotools {
 		\EoTools\Includes\Mcp\Eotools_Mcp_Oauth::init();
 		\EoTools\Includes\Mcp\Eotools_Mcp_Abilities::init();
 		\EoTools\Includes\Mcp\Eotools_Mcp_Proposals::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Preview::init();
 
 		// Cookie Interceptor
 		\EoTools\Includes\Eotools_Cookie_Interceptor::init();

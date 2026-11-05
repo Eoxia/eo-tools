@@ -25,7 +25,7 @@ class Eotools_Mcp_Ability_Get_Block extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Donne le détail d\'un bloc : attributs (type, valeur par défaut, valeurs possibles), blocs parents ou enfants autorisés, styles, fonctionnalités et exemple. La section "writing" explique comment envoyer ce bloc aux outils de rédaction.', 'eo-tools' );
+		return __( 'Donne le détail d\'un bloc : attributs (type, valeur par défaut, valeurs possibles), blocs parents ou enfants autorisés, styles, fonctionnalités et exemple. La section "usage" donne le mode d\'emploi du bloc (à respecter), la section "writing" explique comment l\'envoyer aux outils de rédaction.', 'eo-tools' );
 	}
 
 	public function get_group() {
@@ -74,6 +74,7 @@ class Eotools_Mcp_Ability_Get_Block extends Eotools_Mcp_Ability {
 				'description'    => $type->description,
 				'category'       => $type->category,
 				'keywords'       => $type->keywords,
+				'usage'          => Eotools_Mcp_Blocks::get_guide( $name ),
 				'writing'        => $this->get_writing_help( $name ),
 				'parent'         => $type->parent,
 				'ancestor'       => $type->ancestor,
@@ -102,6 +103,9 @@ class Eotools_Mcp_Ability_Get_Block extends Eotools_Mcp_Ability {
 			$attributes = $builders[ $name ]['attributes'];
 			if ( $builders[ $name ]['wrapper'] ) {
 				$attributes = array_merge( $attributes, Eotools_Mcp_Block_Builder::WRAPPER_ATTRIBUTES );
+				foreach ( Eotools_Mcp_Block_Builder::get_extensions( $name ) as $extension ) {
+					$attributes = array_merge( $attributes, $extension['attributes'] );
+				}
 			}
 
 			return array(

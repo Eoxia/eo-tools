@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_List_Blocks extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Liste les blocs utilisables pour rédiger une page ou un article : blocs du cœur de WordPress (core/*) et blocs EO Blocks (eo-blocks/*). Privilégiez les blocs EO Blocks quand ils correspondent au besoin. Utilisez eo-tools/get-block pour connaître les attributs d\'un bloc avant de l\'utiliser.', 'eo-tools' );
+		return __( 'Liste les blocs utilisables pour rédiger une page ou un article : blocs du cœur de WordPress (core/*) et blocs EO Blocks (eo-blocks/*). Privilégiez les blocs EO Blocks quand ils correspondent au besoin. Avant d\'utiliser un bloc, lisez-le avec eo-tools/get-block (attributs et mode d\'emploi), surtout s\'il a "has_usage_guide".', 'eo-tools' );
 	}
 
 	public function get_group() {
@@ -87,6 +87,10 @@ class Eotools_Mcp_Ability_List_Blocks extends Eotools_Mcp_Ability {
 				'description' => $type->description,
 				'category'    => $type->category,
 			);
+
+			if ( '' !== Eotools_Mcp_Blocks::get_guide( $name ) ) {
+				$block['has_usage_guide'] = true;
+			}
 
 			if ( ! empty( $type->parent ) ) {
 				$block['parent'] = $type->parent;

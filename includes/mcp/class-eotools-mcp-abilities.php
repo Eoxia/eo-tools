@@ -40,6 +40,8 @@ class Eotools_Mcp_Abilities {
 	public static function get_groups() {
 		return array(
 			'content' => __( 'Contenus', 'eo-tools' ),
+			'preview' => __( 'Aperçu et vérification', 'eo-tools' ),
+			'media'   => __( 'Médias', 'eo-tools' ),
 			'blocks'  => __( 'Blocs', 'eo-tools' ),
 			'seo'     => __( 'SEO', 'eo-tools' ),
 		);
@@ -60,6 +62,10 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_Create_Draft_Page::class,
 			Abilities\Eotools_Mcp_Ability_Update_Draft::class,
 			Abilities\Eotools_Mcp_Ability_Propose_Update::class,
+			Abilities\Eotools_Mcp_Ability_Check_Render::class,
+			Abilities\Eotools_Mcp_Ability_Screenshot::class,
+			Abilities\Eotools_Mcp_Ability_Search_Images::class,
+			Abilities\Eotools_Mcp_Ability_Import_Image::class,
 			Abilities\Eotools_Mcp_Ability_List_Blocks::class,
 			Abilities\Eotools_Mcp_Ability_Get_Block::class,
 		);

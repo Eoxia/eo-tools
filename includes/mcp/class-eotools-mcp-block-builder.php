@@ -56,6 +56,13 @@ class Eotools_Mcp_Block_Builder {
 	private $warnings = array();
 
 	/**
+	 * Name of the block being built, for the extensions applied in wrapper().
+	 *
+	 * @var string
+	 */
+	private $current = '';
+
+	/**
 	 * Attributes supported by each builder, besides the wrapper ones when "wrapper" is true.
 	 *
 	 * @return array[]
@@ -229,7 +236,11 @@ class Eotools_Mcp_Block_Builder {
 			$allowed = $builders[ $name ]['attributes'];
 			if ( $builders[ $name ]['wrapper'] ) {
 				$allowed = array_merge( $allowed, self::WRAPPER_ATTRIBUTES );
+				foreach ( self::get_extensions( $name ) as $extension ) {
+					$allowed = array_merge( $allowed, $extension['attributes'] );
+				}
 			}
+			$this->current = $name;
 
 			$dropped = array_diff( array_keys( $attributes ), $allowed );
 			if ( $dropped ) {
@@ -401,16 +412,54 @@ class Eotools_Mcp_Block_Builder {
 	 */
 	private function wrapper( $attributes, $classes, $extra = array() ) {
 		$supports = $this->supports( $attributes, $classes );
+		$html     = array(
+			'class' => $supports['class'],
+			'style' => $supports['style'],
+			'id'    => $supports['id'],
+		);
 
-		return $this->html_attributes(
-			array_merge(
-				array(
-					'class' => $supports['class'],
-					'style' => $supports['style'],
-					'id'    => $supports['id'],
-				),
-				$extra
-			)
+		// Attributes added to core blocks by other plugins (e.g. EO Blocks summary on headings).
+		foreach ( self::get_extensions( $this->current ) as $extension ) {
+			$props = (array) call_user_func( $extension['props'], $attributes );
+			if ( ! empty( $props['class'] ) ) {
+				$html['class'] = array_values( array_unique( array_merge( $html['class'], (array) $props['class'] ) ) );
+			}
+			if ( ! empty( $props['attributes'] ) ) {
+				$html = array_merge( $html, (array) $props['attributes'] );
+			}
+		}
+
+		return $this->html_attributes( array_merge( $html, $extra ) );
+	}
+
+	/**
+	 * Extensions declared by other plugins for a block.
+	 *
+	 * @param string $name Block name.
+	 * @return array[] { attributes: string[], props: callable( array $attributes ): array{ class?: string[], attributes?: array } }
+	 */
+	public static function get_extensions( $name ) {
+		/**
+		 * Filters the attributes other plugins add to core blocks, and the HTML they produce.
+		 *
+		 * Each extension: array(
+		 *     'block'      => 'core/heading',
+		 *     'attributes' => array( 'displaySummary', 'summaryLabel' ),
+		 *     'props'      => callable receiving the block attributes, returning
+		 *                     array( 'class' => string[], 'attributes' => array ) for the block wrapper,
+		 * )
+		 *
+		 * The HTML must match what the plugin adds in the editor (blocks.getSaveContent.extraProps).
+		 *
+		 * @param array[] $extensions Extensions.
+		 */
+		$extensions = (array) apply_filters( 'eo_tools_mcp_block_extensions', array() );
+
+		return array_filter(
+			$extensions,
+			function ( $extension ) use ( $name ) {
+				return isset( $extension['block'], $extension['attributes'], $extension['props'] ) && $extension['block'] === $name && is_callable( $extension['props'] );
+			}
 		);
 	}
 

@@ -61,6 +61,34 @@ class Eotools_Mcp_Blocks {
 	}
 
 	/**
+	 * Usage guide of a block for the AI.
+	 *
+	 * EO Tools documents the main core blocks; other plugins (EO Blocks) document
+	 * their own blocks through the "eo_tools_mcp_block_guide" filter.
+	 *
+	 * @param string $name Block name.
+	 * @return string Guide, empty when the block has none.
+	 */
+	public static function get_guide( $name ) {
+		$guides = array(
+			'core/heading' => __( 'Le thème affiche souvent déjà le titre de la page en H1 : commencez le contenu en H2, puis H3 pour les sous-parties, sans sauter de niveau.', 'eo-tools' ),
+			'core/group'   => __( 'Conteneur de section. Section pleine largeur avec fond : "align": "full", une couleur de fond (backgroundColor ou style.color.background), des marges internes (style.spacing.padding) et "layout": {"type": "constrained"}. Éléments côte à côte sur une ligne : "layout": {"type": "flex", "flexWrap": "nowrap"}.', 'eo-tools' ),
+			'core/columns' => __( 'N\'accepte que des core/column. 2 à 4 colonnes en général ; largeur optionnelle par colonne ("width": "33.33%"). Sur mobile, les colonnes s\'empilent.', 'eo-tools' ),
+			'core/image'   => __( 'Importez d\'abord l\'image avec eo-tools/import-image (ou trouvez-la avec eo-tools/search-images) et utilisez le bloc renvoyé. Renseignez toujours "alt".', 'eo-tools' ),
+			'core/buttons' => __( 'Conteneur de core/button. Pour centrer : "layout": {"type": "flex", "justifyContent": "center"}.', 'eo-tools' ),
+			'core/button'  => __( 'Toujours dans un core/buttons, avec "text" et "url". Le style contour s\'obtient avec "className": "is-style-outline".', 'eo-tools' ),
+		);
+
+		/**
+		 * Filters the usage guide of a block for the AI.
+		 *
+		 * @param string $guide Guide (plain text or Markdown), empty when none.
+		 * @param string $name  Block name.
+		 */
+		return (string) apply_filters( 'eo_tools_mcp_block_guide', isset( $guides[ $name ] ) ? $guides[ $name ] : '', $name );
+	}
+
+	/**
 	 * Converts parsed blocks (parse_blocks()) to the simplified tree.
 	 *
 	 * Each node has a "path" (e.g. "2.0"), used by the writing abilities to target a block.

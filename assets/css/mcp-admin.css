@@ -468,3 +468,40 @@
 	width: 14px;
 	height: 14px;
 }
+
+/* Proposals tab */
+.eo-mcp-count {
+	display: inline-block;
+	min-width: 18px;
+	margin-left: 4px;
+	padding: 0 6px;
+	border-radius: 9px;
+	background: #6366f1;
+	color: #ffffff;
+	font-size: 11px;
+	line-height: 18px;
+	text-align: center;
+}
+
+.eo-mcp-proposals {
+	margin-top: 20px;
+}
+
+.eo-mcp-proposals td {
+	vertical-align: middle;
+}
+
+.eo-mcp-proposals .eo-mcp-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+.eo-mcp-proposals form {
+	margin: 0;
+}
+
+.eo-mcp-badge.is-warning {
+	background: #fef3c7;
+	color: #b45309;
+}
