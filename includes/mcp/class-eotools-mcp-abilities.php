@@ -44,6 +44,7 @@ class Eotools_Mcp_Abilities {
 			'preview' => __( 'Aperçu et vérification', 'eo-tools' ),
 			'media'   => __( 'Médias', 'eo-tools' ),
 			'blocks'  => __( 'Blocs', 'eo-tools' ),
+			'code'    => __( 'Code (snippets)', 'eo-tools' ),
 			'seo'     => __( 'SEO', 'eo-tools' ),
 		);
 	}
@@ -68,7 +69,7 @@ class Eotools_Mcp_Abilities {
 			),
 			Eotools_Mcp_Ability::RISK_SENSITIVE => array(
 				'label'       => __( 'Sensible', 'eo-tools' ),
-				'description' => __( 'L\'IA prépare des modifications du site en ligne (contenus publiés, modèles, en-tête, pied de page). Elles ne s\'appliquent qu\'après votre validation.', 'eo-tools' ),
+				'description' => __( 'L\'IA prépare des modifications du site en ligne (contenus publiés, modèles, en-tête, pied de page, code). Elles ne s\'appliquent qu\'après votre validation.', 'eo-tools' ),
 			),
 		);
 	}
@@ -111,6 +112,11 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_Import_Image::class,
 			Abilities\Eotools_Mcp_Ability_List_Blocks::class,
 			Abilities\Eotools_Mcp_Ability_Get_Block::class,
+			Abilities\Eotools_Mcp_Ability_List_Snippets::class,
+			Abilities\Eotools_Mcp_Ability_Get_Snippet::class,
+			Abilities\Eotools_Mcp_Ability_Read_Source::class,
+			Abilities\Eotools_Mcp_Ability_Search_Source::class,
+			Abilities\Eotools_Mcp_Ability_Propose_Snippet::class,
 		);
 
 		/**

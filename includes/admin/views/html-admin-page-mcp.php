@@ -10,6 +10,7 @@ use EoTools\Includes\Mcp\Eotools_Mcp_Abilities;
 use EoTools\Includes\Mcp\Eotools_Mcp_Adapter;
 use EoTools\Includes\Mcp\Eotools_Mcp_Proposals;
 use EoTools\Includes\Mcp\Eotools_Mcp_Templates;
+use EoTools\Includes\Mcp\Eotools_Mcp_Snippets;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -25,6 +26,7 @@ $risk_levels        = Eotools_Mcp_Abilities::get_risk_levels();
 $pending_proposals  = Eotools_Mcp_Proposals::get_all_pending();
 $pending_templates  = current_user_can( Eotools_Mcp_Templates::CAPABILITY ) ? Eotools_Mcp_Templates::get_all_pending() : array();
 $pending_count      = count( $pending_proposals ) + count( $pending_templates );
+$waiting_snippets   = Eotools_Mcp_Snippets::user_can() ? Eotools_Mcp_Snippets::count_waiting() : 0;
 $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' ) : admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' );
 ?>
 <div class="wrap eo-mcp-admin-wrapper">
@@ -34,6 +36,12 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 	<h2 class="nav-tab-wrapper">
 		<a href="?page=eo-tools-mcp&tab=setup" class="nav-tab <?php echo 'setup' === $active_tab ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Mise en place', 'eo-tools' ); ?></a>
 		<a href="?page=eo-tools-mcp&tab=abilities" class="nav-tab <?php echo 'abilities' === $active_tab ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Abilities', 'eo-tools' ); ?></a>
+		<a href="?page=eo-tools-mcp&tab=snippets" class="nav-tab <?php echo 'snippets' === $active_tab ? 'nav-tab-active' : ''; ?>">
+			<?php esc_html_e( 'Snippets', 'eo-tools' ); ?>
+			<?php if ( $waiting_snippets ) : ?>
+				<span class="eo-mcp-count"><?php echo esc_html( $waiting_snippets ); ?></span>
+			<?php endif; ?>
+		</a>
 		<a href="?page=eo-tools-mcp&tab=proposals" class="nav-tab <?php echo 'proposals' === $active_tab ? 'nav-tab-active' : ''; ?>">
 			<?php esc_html_e( 'Propositions', 'eo-tools' ); ?>
 			<?php if ( $pending_count ) : ?>
@@ -45,6 +53,10 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 	<?php if ( 'proposals' === $active_tab ) : ?>
 
 		<?php include EO_TOOLS_PATH . 'includes/admin/views/html-admin-mcp-proposals.php'; ?>
+
+	<?php elseif ( 'snippets' === $active_tab ) : ?>
+
+		<?php include EO_TOOLS_PATH . 'includes/admin/views/html-admin-mcp-snippets.php'; ?>
 
 	<?php elseif ( 'abilities' === $active_tab ) : ?>
 
