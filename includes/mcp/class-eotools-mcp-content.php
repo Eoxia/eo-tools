@@ -455,6 +455,18 @@ class Eotools_Mcp_Content {
 			'edit_link'    => get_edit_post_link( $post->ID, 'raw' ),
 			'preview_link' => get_preview_post_link( $post ),
 			'warnings'     => array_values( array_unique( $warnings ) ),
+			'next_step'    => self::check_hint( $post->ID ),
 		);
+	}
+
+	/**
+	 * Reminds the AI to check its work before sending the preview link.
+	 *
+	 * @param int $post_id Content or proposal ID.
+	 * @return string
+	 */
+	public static function check_hint( $post_id ) {
+		/* translators: %d: content ID. */
+		return sprintf( __( 'Vérifiez le rendu avec eo-tools/check-render (id %d) et corrigez les problèmes signalés avant de donner le lien d\'aperçu à l\'utilisateur.', 'eo-tools' ), $post_id );
 	}
 }

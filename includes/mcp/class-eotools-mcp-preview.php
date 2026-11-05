@@ -1,11 +1,10 @@
 <?php
 /**
- * Lets the AI check what it built: temporary preview links, render diagnostics
- * and screenshots.
+ * Lets the AI check what it built: temporary preview links and render diagnostics.
  *
  * A preview link holds a random token, valid for one content and a few minutes.
  * It shows a draft or a proposal without a WordPress session, so that EO Tools
- * itself and the screenshot service can load it.
+ * can load the page as a visitor sees it.
  *
  * @package EoTools
  */
@@ -20,8 +19,6 @@ class Eotools_Mcp_Preview {
 
 	const QUERY_VAR = 'eo_tools_preview';
 	const TTL       = 10 * MINUTE_IN_SECONDS;
-
-	const SCREENSHOT_SERVICE = 'https://s0.wp.com/mshots/v1/';
 
 	/**
 	 * Content ID unlocked by a valid token for the current request.
@@ -235,56 +232,5 @@ class Eotools_Mcp_Preview {
 	 */
 	private static function text( $node ) {
 		return trim( preg_replace( '/\s+/u', ' ', $node->textContent ) );
-	}
-
-	/* ---------------------------------------------------------------------
-	 * Screenshots
-	 * ------------------------------------------------------------------ */
-
-	/**
-	 * Takes a screenshot of the content with WordPress.com mShots.
-	 *
-	 * mShots builds the image in the background: the first requests return a
-	 * placeholder, so the service is polled for a few seconds.
-	 *
-	 * @param \WP_Post $post   Content.
-	 * @param string   $device desktop or mobile.
-	 * @return array|\WP_Error { body: binary image, mime: string }
-	 */
-	public static function screenshot( $post, $device = 'desktop' ) {
-		$size = 'mobile' === $device
-			? array( 'vpw' => 390, 'vph' => 1600, 'w' => 390, 'h' => 1600 )
-			: array( 'vpw' => 1280, 'vph' => 2400, 'w' => 1000, 'h' => 1875 );
-
-		$url = add_query_arg( $size, self::SCREENSHOT_SERVICE . rawurlencode( self::create_link( $post ) ) );
-
-		for ( $attempt = 0; $attempt < 10; $attempt++ ) {
-			if ( $attempt > 0 ) {
-				sleep( 3 );
-			}
-
-			$response = wp_remote_get(
-				$url,
-				array(
-					'timeout'     => 20,
-					'redirection' => 0,
-				)
-			);
-			if ( is_wp_error( $response ) ) {
-				continue;
-			}
-
-			$mime = (string) wp_remote_retrieve_header( $response, 'content-type' );
-			$body = wp_remote_retrieve_body( $response );
-
-			if ( 200 === wp_remote_retrieve_response_code( $response ) && preg_match( '#image/(jpeg|png)#', $mime ) && strlen( $body ) > 2000 ) {
-				return array(
-					'body' => $body,
-					'mime' => strtok( $mime, ';' ),
-				);
-			}
-		}
-
-		return new \WP_Error( 'eo_tools_screenshot', __( 'La capture d\'écran n\'a pas pu être générée à temps. Réessayez dans quelques secondes, ou utilisez eo-tools/check-render.', 'eo-tools' ) );
 	}
 }

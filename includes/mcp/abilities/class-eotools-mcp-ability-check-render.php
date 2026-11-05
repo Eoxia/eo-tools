@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Check_Render extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Affiche la page comme un visiteur (brouillon, proposition ou contenu publié) et signale les problèmes visibles : erreurs PHP, blocs vides, images cassées ou sans texte alternatif, liens vides, titres. Renvoie aussi le plan des titres. À utiliser après chaque création ou modification, avant de donner le lien à l\'utilisateur ; eo-tools/screenshot montre le résultat en image.', 'eo-tools' );
+		return __( 'Affiche la page comme un visiteur (brouillon, proposition ou contenu publié) et signale les problèmes visibles : erreurs PHP, blocs vides, images cassées ou sans texte alternatif, liens vides, titres. Renvoie aussi le plan des titres. À utiliser après chaque création ou modification, et corriger les problèmes avant de donner le lien d\'aperçu à l\'utilisateur.', 'eo-tools' );
 	}
 
 	public function get_group() {

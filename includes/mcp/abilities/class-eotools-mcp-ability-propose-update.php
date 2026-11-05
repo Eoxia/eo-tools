@@ -125,6 +125,7 @@ class Eotools_Mcp_Ability_Propose_Update extends Eotools_Mcp_Ability {
 			'preview_link' => get_preview_post_link( $proposal ),
 			'message'      => __( 'Modification enregistrée dans une proposition, le contenu publié n\'a pas changé. Donnez le lien d\'aperçu à l\'utilisateur : il pourra appliquer ou rejeter la modification depuis cette page.', 'eo-tools' ),
 			'warnings'     => array_values( array_unique( $warnings ) ),
+			'next_step'    => Eotools_Mcp_Content::check_hint( $proposal->ID ),
 		);
 	}
 }
