@@ -2,6 +2,7 @@
 namespace EoTools\Includes;
 
 use EoTools\Includes\Admin\Eotools_Menu;
+use EoTools\Includes\Admin\Eotools_Mcp_Page;
 
 if (!defined('ABSPATH')) {
 	exit;
@@ -12,6 +13,7 @@ class Eotools {
 
 	public function __construct() {
 		$eotools_menu = new Eotools_Menu();
+		$eotools_mcp_page = new Eotools_Mcp_Page();
 
 		if ( ! self::$initiated ) {
 			$this->init_hooks();
@@ -29,6 +31,17 @@ class Eotools {
 		}
 		add_action( 'eo_tools_daily_scan_cleanup_cron', array( $this, 'purge_scan_logs' ) );
 		
+		// MCP server
+		\EoTools\Includes\Mcp\Eotools_Mcp_Server::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Oauth::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Abilities::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Proposals::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Templates::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Styles::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Snippets::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Plugins::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Preview::init();
+
 		// Cookie Interceptor
 		\EoTools\Includes\Eotools_Cookie_Interceptor::init();
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_frontend_scripts' ) );
