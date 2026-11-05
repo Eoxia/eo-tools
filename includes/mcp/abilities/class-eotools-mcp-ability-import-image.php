@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Import_Image extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Ajoute une image à la médiathèque, depuis une photo Openverse ("openverse_id", trouvée avec eo-tools/search-images), une adresse publique ("url"), un SVG que vous dessinez ("svg" : formes, dégradés, motifs, icônes ; il est nettoyé) ou une image encodée en base64 ("data"). Renseignez toujours "alt". Renvoie l\'identifiant du média et un bloc core/image prêt à insérer.', 'eo-tools' );
+		return Eotools_Mcp_Media::get_source_rule() . ' ' . __( 'Cet outil ajoute une image à la médiathèque, depuis une photo Openverse ("openverse_id", trouvée avec eo-tools/search-images), une adresse publique ("url", par exemple une image générée par un autre outil), un SVG que vous dessinez ("svg" : formes, dégradés, motifs, icônes ; il est nettoyé) ou une image encodée en base64 ("data"). Renseignez toujours "alt". Renvoie l\'identifiant du média et un bloc core/image prêt à insérer.', 'eo-tools' );
 	}
 
 	public function get_group() {

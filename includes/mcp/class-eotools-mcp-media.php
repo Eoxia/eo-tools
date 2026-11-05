@@ -23,6 +23,16 @@ class Eotools_Mcp_Media {
 	const MAX_BYTES = 10485760;
 
 	/**
+	 * Rule given to the AI before adding images: the user chooses the image source,
+	 * because generating images (by the AI or another connector such as Figma) may cost credits.
+	 *
+	 * @return string
+	 */
+	public static function get_source_rule() {
+		return __( 'AVANT d\'ajouter des images, demandez TOUJOURS à l\'utilisateur quelle source il souhaite : (1) des photos libres et gratuites d\'Openverse (eo-tools/search-images), ou (2) des images que vous générez vous-même ou avec un autre outil connecté (Figma, générateur d\'images…), ce qui peut consommer des crédits. N\'utilisez que la source qu\'il a choisie, et redemandez pour chaque nouvelle demande d\'images.', 'eo-tools' );
+	}
+
+	/**
 	 * User agent sent to Openverse, which asks API clients to identify themselves.
 	 *
 	 * @return string

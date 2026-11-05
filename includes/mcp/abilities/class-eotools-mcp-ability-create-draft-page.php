@@ -26,6 +26,6 @@ class Eotools_Mcp_Ability_Create_Draft_Page extends Eotools_Mcp_Ability_Create_D
 	}
 
 	public function get_description() {
-		return __( 'Crée une page en brouillon (jamais publiée) avec son titre, son contenu en blocs et sa page parente. Privilégiez les blocs EO Blocks pour la mise en page. Renvoie le lien d\'édition et le lien d\'aperçu à donner à l\'utilisateur.', 'eo-tools' );
+		return __( 'Crée une page en brouillon (jamais publiée) avec son titre, son contenu en blocs et sa page parente. Privilégiez les blocs EO Blocks pour la mise en page. Renvoie le lien d\'édition et le lien d\'aperçu à donner à l\'utilisateur. Images : demandez d\'abord à l\'utilisateur s\'il veut des photos libres Openverse (gratuit) ou des images générées (peut consommer des crédits), voir eo-tools/import-image.', 'eo-tools' );
 	}
 }

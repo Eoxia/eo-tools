@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Search_Images extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Cherche des photos et illustrations sous licence libre sur Openverse (la banque d\'images libres de WordPress). Rédigez la recherche en anglais pour de meilleurs résultats. Importez ensuite l\'image choisie avec eo-tools/import-image et son "openverse_id" : le crédit de l\'auteur est ajouté automatiquement. Si vous savez produire une image vous-même (SVG…), utilisez directement eo-tools/import-image.', 'eo-tools' );
+		return Eotools_Mcp_Media::get_source_rule() . ' ' . __( 'Cet outil cherche des photos et illustrations sous licence libre sur Openverse (la banque d\'images libres de WordPress), gratuitement. Rédigez la recherche en anglais pour de meilleurs résultats. Importez ensuite l\'image choisie avec eo-tools/import-image et son "openverse_id" : le crédit de l\'auteur est ajouté automatiquement.', 'eo-tools' );
 	}
 
 	public function get_group() {
