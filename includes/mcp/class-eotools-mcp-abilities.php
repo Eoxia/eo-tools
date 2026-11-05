@@ -45,6 +45,7 @@ class Eotools_Mcp_Abilities {
 			'media'   => __( 'Médias', 'eo-tools' ),
 			'blocks'  => __( 'Blocs', 'eo-tools' ),
 			'plugins' => __( 'Extensions', 'eo-tools' ),
+			'updates' => __( 'Mises à jour', 'eo-tools' ),
 			'code'    => __( 'Code (snippets)', 'eo-tools' ),
 			'seo'     => __( 'SEO', 'eo-tools' ),
 		);
@@ -70,7 +71,7 @@ class Eotools_Mcp_Abilities {
 			),
 			Eotools_Mcp_Ability::RISK_SENSITIVE => array(
 				'label'       => __( 'Sensible', 'eo-tools' ),
-				'description' => __( 'L\'IA prépare des modifications du site en ligne (contenus publiés, modèles, en-tête, pied de page, code, extensions). Elles ne s\'appliquent qu\'après votre validation.', 'eo-tools' ),
+				'description' => __( 'L\'IA touche au site en ligne : elle prépare des modifications que vous validez (contenus publiés, modèles, code), installe des extensions sans les activer, et fait les mises à jour avec retour automatique en cas de problème.', 'eo-tools' ),
 			),
 		);
 	}
@@ -99,6 +100,8 @@ class Eotools_Mcp_Abilities {
 			'eo-tools/list-plugins'            => __( 'Liste les extensions installées et leur état.', 'eo-tools' ),
 			'eo-tools/search-plugins'          => __( 'Cherche des extensions gratuites sur wordpress.org.', 'eo-tools' ),
 			'eo-tools/install-plugin'          => __( 'Installe une extension de wordpress.org, sans l\'activer : vous l\'activez vous-même.', 'eo-tools' ),
+			'eo-tools/check-updates'           => __( 'Liste les mises à jour disponibles (WordPress, extensions, thèmes).', 'eo-tools' ),
+			'eo-tools/update-site'             => __( 'Met à jour le site, avec retour automatique à l\'ancienne version en cas de problème.', 'eo-tools' ),
 			'eo-tools/list-snippets'           => __( 'Liste les snippets de code du site et leur état.', 'eo-tools' ),
 			'eo-tools/get-snippet'             => __( 'Lit le code d\'un snippet.', 'eo-tools' ),
 			'eo-tools/read-source'             => __( 'Lit le code du thème et des extensions, sans rien modifier.', 'eo-tools' ),
@@ -148,6 +151,8 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_List_Plugins::class,
 			Abilities\Eotools_Mcp_Ability_Search_Plugins::class,
 			Abilities\Eotools_Mcp_Ability_Install_Plugin::class,
+			Abilities\Eotools_Mcp_Ability_Check_Updates::class,
+			Abilities\Eotools_Mcp_Ability_Update_Site::class,
 			Abilities\Eotools_Mcp_Ability_List_Snippets::class,
 			Abilities\Eotools_Mcp_Ability_Get_Snippet::class,
 			Abilities\Eotools_Mcp_Ability_Read_Source::class,
