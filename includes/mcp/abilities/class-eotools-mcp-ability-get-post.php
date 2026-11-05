@@ -8,6 +8,7 @@
 namespace EoTools\Includes\Mcp\Abilities;
 
 use EoTools\Includes\Mcp\Eotools_Mcp_Blocks;
+use EoTools\Includes\Mcp\Eotools_Mcp_Proposals;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -24,7 +25,7 @@ class Eotools_Mcp_Ability_Get_Post extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Lit un article, une page ou un autre contenu : titre, statut, auteur, extrait, catégories, étiquettes, image mise en avant et contenu sous forme d\'arborescence de blocs (nom, attributs, HTML, blocs enfants).', 'eo-tools' );
+		return __( 'Lit un article, une page ou un autre contenu : titre, statut, auteur, extrait, catégories, étiquettes, image mise en avant et contenu sous forme d\'arborescence de blocs (position "path", nom, attributs, HTML, blocs enfants). Indique aussi si une proposition de modification est en attente.', 'eo-tools' );
 	}
 
 	public function get_group() {
@@ -99,6 +100,20 @@ class Eotools_Mcp_Ability_Get_Post extends Eotools_Mcp_Ability {
 			) : null,
 			'terms'          => $this->get_terms( $post ),
 		);
+
+		if ( Eotools_Mcp_Proposals::is_proposal( $post ) ) {
+			$source               = Eotools_Mcp_Proposals::get_source( $post );
+			$data['proposal_of']  = $source ? $source->ID : null;
+			$data['preview_link'] = get_preview_post_link( $post );
+		} else {
+			$proposal = Eotools_Mcp_Proposals::get_for( $post->ID );
+			if ( $proposal ) {
+				$data['pending_proposal'] = array(
+					'proposal_id'  => $proposal->ID,
+					'preview_link' => get_preview_post_link( $proposal ),
+				);
+			}
+		}
 
 		if ( 'raw' !== $format ) {
 			$data['blocks'] = Eotools_Mcp_Blocks::to_tree( parse_blocks( $post->post_content ) );

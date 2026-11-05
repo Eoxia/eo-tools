@@ -63,11 +63,15 @@ class Eotools_Mcp_Blocks {
 	/**
 	 * Converts parsed blocks (parse_blocks()) to the simplified tree.
 	 *
+	 * Each node has a "path" (e.g. "2.0"), used by the writing abilities to target a block.
+	 *
 	 * @param array[] $blocks Parsed blocks.
+	 * @param string  $parent Path of the parent block.
 	 * @return array[]
 	 */
-	public static function to_tree( $blocks ) {
-		$tree = array();
+	public static function to_tree( $blocks, $parent = '' ) {
+		$tree  = array();
+		$index = 0;
 
 		foreach ( $blocks as $block ) {
 			$html = trim( (string) $block['innerHTML'] );
@@ -77,14 +81,20 @@ class Eotools_Mcp_Blocks {
 				continue;
 			}
 
-			$node = array( 'name' => empty( $block['blockName'] ) ? 'core/freeform' : $block['blockName'] );
+			$path = '' === $parent ? (string) $index : $parent . '.' . $index;
+			++$index;
+
+			$node = array(
+				'path' => $path,
+				'name' => empty( $block['blockName'] ) ? 'core/freeform' : $block['blockName'],
+			);
 
 			if ( ! empty( $block['attrs'] ) ) {
 				$node['attributes'] = $block['attrs'];
 			}
 
 			if ( ! empty( $block['innerBlocks'] ) ) {
-				$node['inner_blocks'] = self::to_tree( $block['innerBlocks'] );
+				$node['inner_blocks'] = self::to_tree( $block['innerBlocks'], $path );
 			} elseif ( '' !== $html ) {
 				$node['html'] = $html;
 			}

@@ -56,6 +56,10 @@ class Eotools_Mcp_Abilities {
 		$classes = array(
 			Abilities\Eotools_Mcp_Ability_List_Posts::class,
 			Abilities\Eotools_Mcp_Ability_Get_Post::class,
+			Abilities\Eotools_Mcp_Ability_Create_Draft_Post::class,
+			Abilities\Eotools_Mcp_Ability_Create_Draft_Page::class,
+			Abilities\Eotools_Mcp_Ability_Update_Draft::class,
+			Abilities\Eotools_Mcp_Ability_Propose_Update::class,
 			Abilities\Eotools_Mcp_Ability_List_Blocks::class,
 			Abilities\Eotools_Mcp_Ability_Get_Block::class,
 		);
