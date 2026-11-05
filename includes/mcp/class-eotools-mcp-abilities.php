@@ -44,6 +44,7 @@ class Eotools_Mcp_Abilities {
 			'preview' => __( 'Aperçu et vérification', 'eo-tools' ),
 			'media'   => __( 'Médias', 'eo-tools' ),
 			'blocks'  => __( 'Blocs', 'eo-tools' ),
+			'plugins' => __( 'Extensions', 'eo-tools' ),
 			'code'    => __( 'Code (snippets)', 'eo-tools' ),
 			'seo'     => __( 'SEO', 'eo-tools' ),
 		);
@@ -69,7 +70,7 @@ class Eotools_Mcp_Abilities {
 			),
 			Eotools_Mcp_Ability::RISK_SENSITIVE => array(
 				'label'       => __( 'Sensible', 'eo-tools' ),
-				'description' => __( 'L\'IA prépare des modifications du site en ligne (contenus publiés, modèles, en-tête, pied de page, code). Elles ne s\'appliquent qu\'après votre validation.', 'eo-tools' ),
+				'description' => __( 'L\'IA prépare des modifications du site en ligne (contenus publiés, modèles, en-tête, pied de page, code, extensions). Elles ne s\'appliquent qu\'après votre validation.', 'eo-tools' ),
 			),
 		);
 	}
@@ -95,6 +96,9 @@ class Eotools_Mcp_Abilities {
 			'eo-tools/import-image'            => __( 'Ajoute une image à la médiathèque (Openverse, adresse, SVG, image générée).', 'eo-tools' ),
 			'eo-tools/list-blocks'             => __( 'Liste les blocs disponibles (WordPress et EO Blocks).', 'eo-tools' ),
 			'eo-tools/get-block'               => __( 'Lit le mode d\'emploi d\'un bloc et ses réglages.', 'eo-tools' ),
+			'eo-tools/list-plugins'            => __( 'Liste les extensions installées et leur état.', 'eo-tools' ),
+			'eo-tools/search-plugins'          => __( 'Cherche des extensions gratuites sur wordpress.org.', 'eo-tools' ),
+			'eo-tools/install-plugin'          => __( 'Installe une extension de wordpress.org, sans l\'activer : vous l\'activez vous-même.', 'eo-tools' ),
 			'eo-tools/list-snippets'           => __( 'Liste les snippets de code du site et leur état.', 'eo-tools' ),
 			'eo-tools/get-snippet'             => __( 'Lit le code d\'un snippet.', 'eo-tools' ),
 			'eo-tools/read-source'             => __( 'Lit le code du thème et des extensions, sans rien modifier.', 'eo-tools' ),
@@ -141,6 +145,9 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_Import_Image::class,
 			Abilities\Eotools_Mcp_Ability_List_Blocks::class,
 			Abilities\Eotools_Mcp_Ability_Get_Block::class,
+			Abilities\Eotools_Mcp_Ability_List_Plugins::class,
+			Abilities\Eotools_Mcp_Ability_Search_Plugins::class,
+			Abilities\Eotools_Mcp_Ability_Install_Plugin::class,
 			Abilities\Eotools_Mcp_Ability_List_Snippets::class,
 			Abilities\Eotools_Mcp_Ability_Get_Snippet::class,
 			Abilities\Eotools_Mcp_Ability_Read_Source::class,
