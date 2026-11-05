@@ -2,12 +2,13 @@
 /**
  * "Propositions" tab of EO Tools > MCP: pending AI change proposals.
  *
- * Expects: $pending_proposals.
+ * Expects: $pending_proposals, $pending_templates.
  *
  * @package EoTools
  */
 
 use EoTools\Includes\Mcp\Eotools_Mcp_Proposals;
+use EoTools\Includes\Mcp\Eotools_Mcp_Templates;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -22,17 +23,82 @@ $done = isset( $_GET['done'] ) ? sanitize_key( wp_unslash( $_GET['done'] ) ) : '
 	<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'La proposition a été rejetée.', 'eo-tools' ); ?></p></div>
 <?php endif; ?>
 
-<p class="eo-mcp-intro"><?php esc_html_e( 'Les modifications proposées par une IA sur vos contenus publiés attendent ici votre validation. Rien n\'est publié tant que vous ne cliquez pas sur « Appliquer ».', 'eo-tools' ); ?></p>
+<p class="eo-mcp-intro"><?php esc_html_e( 'Les modifications proposées par une IA sur vos contenus publiés et vos modèles attendent ici votre validation. Rien n\'est publié tant que vous ne cliquez pas sur « Appliquer ».', 'eo-tools' ); ?></p>
 
-<?php if ( ! $pending_proposals ) : ?>
+<?php if ( ! $pending_proposals && ! $pending_templates ) : ?>
 
 	<div class="eo-mcp-card eo-mcp-empty">
 		<span class="dashicons dashicons-yes-alt"></span>
 		<h2><?php esc_html_e( 'Aucune proposition en attente', 'eo-tools' ); ?></h2>
 	</div>
 
-<?php else : ?>
+<?php endif; ?>
 
+<?php if ( $pending_templates ) : ?>
+
+	<h2 class="eo-mcp-group-title"><?php esc_html_e( 'Modèles du site', 'eo-tools' ); ?></h2>
+	<p class="description"><?php esc_html_e( 'Un modèle s\'applique à toutes les pages qui l\'utilisent : vérifiez l\'aperçu avant d\'appliquer. Vous pourrez revenir à la version du thème depuis l\'éditeur de site.', 'eo-tools' ); ?></p>
+	<table class="widefat striped eo-mcp-proposals">
+		<thead>
+			<tr>
+				<th><?php esc_html_e( 'Modèle', 'eo-tools' ); ?></th>
+				<th><?php esc_html_e( 'Proposée le', 'eo-tools' ); ?></th>
+				<th><?php esc_html_e( 'État', 'eo-tools' ); ?></th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach ( $pending_templates as $proposal ) : ?>
+				<?php
+				$template     = Eotools_Mcp_Templates::get_template( $proposal );
+				$nonce_action = 'eo_tools_proposal_' . $proposal->ID;
+				?>
+				<tr>
+					<td>
+						<strong><?php echo esc_html( $template ? $template->title : $proposal->post_title ); ?></strong>
+						<br><span class="description"><?php echo esc_html( $template && 'wp_template_part' === $template->type ? __( 'Partie de modèle', 'eo-tools' ) : __( 'Modèle de page', 'eo-tools' ) ); ?></span>
+					</td>
+					<td><?php echo esc_html( get_date_from_gmt( $proposal->post_modified_gmt, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ); ?></td>
+					<td>
+						<?php if ( ! $template ) : ?>
+							<span class="eo-mcp-badge is-warning"><?php esc_html_e( 'Modèle supprimé', 'eo-tools' ); ?></span>
+						<?php elseif ( Eotools_Mcp_Templates::has_conflict( $proposal, $template ) ) : ?>
+							<span class="eo-mcp-badge is-warning"><?php esc_html_e( 'Modèle modifié depuis', 'eo-tools' ); ?></span>
+						<?php else : ?>
+							<span class="eo-mcp-badge"><?php esc_html_e( 'En attente', 'eo-tools' ); ?></span>
+						<?php endif; ?>
+					</td>
+					<td class="eo-mcp-actions">
+						<a class="button" href="<?php echo esc_url( Eotools_Mcp_Templates::preview_url( $proposal ) ); ?>" target="_blank"><?php esc_html_e( 'Aperçu', 'eo-tools' ); ?></a>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="eo_tools_reject_template_proposal">
+							<input type="hidden" name="proposal" value="<?php echo esc_attr( $proposal->ID ); ?>">
+							<input type="hidden" name="eo_tools_from" value="admin">
+							<?php wp_nonce_field( $nonce_action ); ?>
+							<button type="submit" class="button" onclick="return confirm('<?php echo esc_js( __( 'Rejeter cette proposition ? Elle sera supprimée.', 'eo-tools' ) ); ?>');"><?php esc_html_e( 'Rejeter', 'eo-tools' ); ?></button>
+						</form>
+						<?php if ( $template ) : ?>
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+								<input type="hidden" name="action" value="eo_tools_apply_template_proposal">
+								<input type="hidden" name="proposal" value="<?php echo esc_attr( $proposal->ID ); ?>">
+								<input type="hidden" name="eo_tools_from" value="admin">
+								<?php wp_nonce_field( $nonce_action ); ?>
+								<button type="submit" class="button button-primary" onclick="return confirm('<?php echo esc_js( __( 'Appliquer cette modification au modèle ? Toutes les pages qui l\'utilisent changeront.', 'eo-tools' ) ); ?>');"><?php esc_html_e( 'Appliquer', 'eo-tools' ); ?></button>
+							</form>
+						<?php endif; ?>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+
+<?php endif; ?>
+
+<?php if ( $pending_proposals ) : ?>
+
+	<?php if ( $pending_templates ) : ?>
+		<h2 class="eo-mcp-group-title"><?php esc_html_e( 'Contenus', 'eo-tools' ); ?></h2>
+	<?php endif; ?>
 	<table class="widefat striped eo-mcp-proposals">
 		<thead>
 			<tr>

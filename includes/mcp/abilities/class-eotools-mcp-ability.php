@@ -91,12 +91,14 @@ abstract class Eotools_Mcp_Ability {
 	}
 
 	/**
-	 * Sensitive abilities must be explicitly enabled by an administrator.
+	 * Every ability works out of the box: an administrator can turn any of them off.
+	 *
+	 * Sensitive abilities only prepare changes that a human applies.
 	 *
 	 * @return bool
 	 */
 	public function is_enabled_by_default() {
-		return self::RISK_SENSITIVE !== $this->get_risk();
+		return true;
 	}
 
 	/**

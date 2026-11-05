@@ -40,10 +40,51 @@ class Eotools_Mcp_Abilities {
 	public static function get_groups() {
 		return array(
 			'content' => __( 'Contenus', 'eo-tools' ),
+			'site'    => __( 'Modèles du site', 'eo-tools' ),
 			'preview' => __( 'Aperçu et vérification', 'eo-tools' ),
 			'media'   => __( 'Médias', 'eo-tools' ),
 			'blocks'  => __( 'Blocs', 'eo-tools' ),
 			'seo'     => __( 'SEO', 'eo-tools' ),
+		);
+	}
+
+	/**
+	 * Risk levels, from the safest to the most sensitive.
+	 *
+	 * Every ability belongs to exactly one level, shown in the admin so that an
+	 * administrator can turn a whole level off (e.g. everything sensitive).
+	 *
+	 * @return array[] Label and description keyed by level.
+	 */
+	public static function get_risk_levels() {
+		return array(
+			Eotools_Mcp_Ability::RISK_READ      => array(
+				'label'       => __( 'Lecture', 'eo-tools' ),
+				'description' => __( 'L\'IA consulte le site. Elle ne modifie rien.', 'eo-tools' ),
+			),
+			Eotools_Mcp_Ability::RISK_WRITE     => array(
+				'label'       => __( 'Écriture', 'eo-tools' ),
+				'description' => __( 'L\'IA crée ou modifie des brouillons et ajoute des médias. Rien ne change pour vos visiteurs.', 'eo-tools' ),
+			),
+			Eotools_Mcp_Ability::RISK_SENSITIVE => array(
+				'label'       => __( 'Sensible', 'eo-tools' ),
+				'description' => __( 'L\'IA prépare des modifications du site en ligne (contenus publiés, modèles, en-tête, pied de page). Elles ne s\'appliquent qu\'après votre validation.', 'eo-tools' ),
+			),
+		);
+	}
+
+	/**
+	 * Abilities of a risk level.
+	 *
+	 * @param string $risk Risk level.
+	 * @return Eotools_Mcp_Ability[]
+	 */
+	public static function get_by_risk( $risk ) {
+		return array_filter(
+			self::get_all(),
+			function ( $ability ) use ( $risk ) {
+				return $ability->get_risk() === $risk;
+			}
 		);
 	}
 
@@ -62,6 +103,9 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_Create_Draft_Page::class,
 			Abilities\Eotools_Mcp_Ability_Update_Draft::class,
 			Abilities\Eotools_Mcp_Ability_Propose_Update::class,
+			Abilities\Eotools_Mcp_Ability_List_Templates::class,
+			Abilities\Eotools_Mcp_Ability_Get_Template::class,
+			Abilities\Eotools_Mcp_Ability_Propose_Template_Update::class,
 			Abilities\Eotools_Mcp_Ability_Check_Render::class,
 			Abilities\Eotools_Mcp_Ability_Search_Images::class,
 			Abilities\Eotools_Mcp_Ability_Import_Image::class,

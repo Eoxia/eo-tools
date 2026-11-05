@@ -189,6 +189,8 @@ class Eotools_Mcp_Page {
 				'header'        => __( 'En-tête HTTP', 'eo-tools' ),
 				'stdioConfig'   => __( 'Configuration pour un client local (via Node.js)', 'eo-tools' ),
 				'saved'         => __( 'Enregistré. Reconnectez votre IA pour qu\'elle voie la nouvelle liste d\'outils.', 'eo-tools' ),
+				/* translators: 1: enabled abilities, 2: abilities of the level. */
+				'levelCount'    => __( '%1$d / %2$d actives', 'eo-tools' ),
 			),
 		) );
 	}

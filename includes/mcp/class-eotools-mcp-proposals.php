@@ -293,7 +293,15 @@ class Eotools_Mcp_Proposals {
 		}
 
 		$rendered = true;
-		$conflict = self::has_conflict( $proposal, $source );
+		$banner   = array(
+			'proposal_id'   => $proposal->ID,
+			'title'         => __( 'Aperçu d\'une modification proposée par l\'IA', 'eo-tools' ),
+			'notice'        => '',
+			'current_link'  => get_permalink( $source ),
+			'conflict'      => self::has_conflict( $proposal, $source ) ? __( 'Attention : le contenu publié a été modifié depuis cette proposition. L\'appliquer remplacera ces changements.', 'eo-tools' ) : '',
+			'apply_action'  => 'eo_tools_apply_proposal',
+			'reject_action' => 'eo_tools_reject_proposal',
+		);
 
 		include EO_TOOLS_PATH . 'includes/templates/proposal-banner-template.php';
 	}

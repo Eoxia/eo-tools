@@ -2,7 +2,8 @@
 /**
  * Banner displayed on the preview of an AI change proposal.
  *
- * Expects: $proposal, $source, $conflict.
+ * Expects: $banner, with proposal_id, title, notice, current_link, conflict
+ * (message, empty when none), apply_action and reject_action.
  *
  * @package EoTools
  */
@@ -11,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$nonce_action = 'eo_tools_proposal_' . $proposal->ID;
+$nonce_action = 'eo_tools_proposal_' . $banner['proposal_id'];
 ?>
 <div class="eo-tools-proposal-banner" role="region" aria-label="<?php esc_attr_e( 'Proposition de modification', 'eo-tools' ); ?>">
 	<style>
@@ -69,25 +70,26 @@ $nonce_action = 'eo_tools_proposal_' . $proposal->ID;
 		}
 	</style>
 	<p>
-		<strong><?php esc_html_e( 'Aperçu d\'une modification proposée par l\'IA', 'eo-tools' ); ?></strong>
+		<strong><?php echo esc_html( $banner['title'] ); ?></strong>
+		<?php echo esc_html( $banner['notice'] ); ?>
 		<?php
-		/* translators: %s: link to the published content. */
-		printf( esc_html__( 'Rien n\'est encore publié. %s', 'eo-tools' ), '<a href="' . esc_url( get_permalink( $source ) ) . '" target="_blank">' . esc_html__( 'Voir la version actuelle', 'eo-tools' ) . '</a>' );
+		/* translators: %s: link to the current version. */
+		printf( esc_html__( 'Rien n\'est encore publié. %s', 'eo-tools' ), '<a href="' . esc_url( $banner['current_link'] ) . '" target="_blank">' . esc_html__( 'Voir la version actuelle', 'eo-tools' ) . '</a>' );
 		?>
-		<?php if ( $conflict ) : ?>
-			<span class="eo-tools-proposal-conflict"><?php esc_html_e( 'Attention : le contenu publié a été modifié depuis cette proposition. L\'appliquer remplacera ces changements.', 'eo-tools' ); ?></span>
+		<?php if ( $banner['conflict'] ) : ?>
+			<span class="eo-tools-proposal-conflict"><?php echo esc_html( $banner['conflict'] ); ?></span>
 		<?php endif; ?>
 	</p>
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-		<input type="hidden" name="action" value="eo_tools_reject_proposal">
-		<input type="hidden" name="proposal" value="<?php echo esc_attr( $proposal->ID ); ?>">
+		<input type="hidden" name="action" value="<?php echo esc_attr( $banner['reject_action'] ); ?>">
+		<input type="hidden" name="proposal" value="<?php echo esc_attr( $banner['proposal_id'] ); ?>">
 		<?php wp_nonce_field( $nonce_action ); ?>
 		<button type="submit" onclick="return confirm('<?php echo esc_js( __( 'Rejeter cette proposition ? Elle sera supprimée.', 'eo-tools' ) ); ?>');"><?php esc_html_e( 'Rejeter', 'eo-tools' ); ?></button>
 	</form>
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-		<input type="hidden" name="action" value="eo_tools_apply_proposal">
-		<input type="hidden" name="proposal" value="<?php echo esc_attr( $proposal->ID ); ?>">
+		<input type="hidden" name="action" value="<?php echo esc_attr( $banner['apply_action'] ); ?>">
+		<input type="hidden" name="proposal" value="<?php echo esc_attr( $banner['proposal_id'] ); ?>">
 		<?php wp_nonce_field( $nonce_action ); ?>
-		<button type="submit" class="is-primary" <?php echo $conflict ? 'onclick="return confirm(\'' . esc_js( __( 'Le contenu publié a changé depuis la proposition. Appliquer quand même ?', 'eo-tools' ) ) . '\');"' : ''; ?>><?php esc_html_e( 'Appliquer la modification', 'eo-tools' ); ?></button>
+		<button type="submit" class="is-primary" <?php echo $banner['conflict'] ? 'onclick="return confirm(\'' . esc_js( __( 'La version actuelle a changé depuis la proposition. Appliquer quand même ?', 'eo-tools' ) ) . '\');"' : ''; ?>><?php esc_html_e( 'Appliquer la modification', 'eo-tools' ); ?></button>
 	</form>
 </div>

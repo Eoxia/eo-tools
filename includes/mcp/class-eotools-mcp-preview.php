@@ -38,12 +38,32 @@ class Eotools_Mcp_Preview {
 	 * @return string
 	 */
 	public static function create_link( $post ) {
-		$token = wp_generate_password( 32, false, false );
-		set_transient( self::QUERY_VAR . '_' . hash( 'sha256', $token ), $post->ID, self::TTL );
-
 		$base = 'publish' === $post->post_status ? get_permalink( $post ) : get_preview_post_link( $post );
 
-		return add_query_arg( self::QUERY_VAR, $token, $base );
+		return add_query_arg( self::QUERY_VAR, self::create_token( $post->ID ), $base );
+	}
+
+	/**
+	 * Creates a temporary public preview link for a template proposal.
+	 *
+	 * @param \WP_Post $proposal Template proposal.
+	 * @return string
+	 */
+	public static function create_template_link( $proposal ) {
+		$base = get_post_meta( $proposal->ID, Eotools_Mcp_Templates::META_PREVIEW_URL, true );
+
+		return add_query_arg( self::QUERY_VAR, self::create_token( 'template:' . $proposal->ID ), $base ? $base : home_url( '/' ) );
+	}
+
+	/**
+	 * @param int|string $target Content ID, or "template:<proposal ID>".
+	 * @return string Token.
+	 */
+	private static function create_token( $target ) {
+		$token = wp_generate_password( 32, false, false );
+		set_transient( self::QUERY_VAR . '_' . hash( 'sha256', $token ), (string) $target, self::TTL );
+
+		return $token;
 	}
 
 	/**
@@ -55,14 +75,20 @@ class Eotools_Mcp_Preview {
 			return;
 		}
 
-		$post_id = (int) get_transient( self::QUERY_VAR . '_' . hash( 'sha256', $token ) );
-		if ( ! $post_id ) {
+		$target = (string) get_transient( self::QUERY_VAR . '_' . hash( 'sha256', $token ) );
+		if ( '' === $target ) {
 			return;
 		}
 
-		self::$post_id = $post_id;
+		if ( 0 === strpos( $target, 'template:' ) ) {
+			if ( ! Eotools_Mcp_Templates::start_preview( (int) substr( $target, 9 ) ) ) {
+				return;
+			}
+		} else {
+			self::$post_id = (int) $target;
+			add_filter( 'posts_results', array( __CLASS__, 'unlock_post' ), 10, 2 );
+		}
 
-		add_filter( 'posts_results', array( __CLASS__, 'unlock_post' ), 10, 2 );
 		add_filter( 'wp_robots', 'wp_robots_no_robots' );
 		add_filter( 'show_admin_bar', '__return_false' );
 		header( 'X-Robots-Tag: noindex, nofollow' );
@@ -97,8 +123,50 @@ class Eotools_Mcp_Preview {
 	 * @return array|\WP_Error
 	 */
 	public static function check( $post ) {
+		return self::check_url( self::create_link( $post ), $post, false );
+	}
+
+	/**
+	 * Loads a page of the site with a proposed template and looks for visible problems.
+	 *
+	 * The whole page is checked, since a template (or a header, a footer) is not limited to the content area.
+	 * Problems already present on the current page are listed apart, so that the AI
+	 * only fixes what its change caused.
+	 *
+	 * @param \WP_Post $proposal Template proposal.
+	 * @return array|\WP_Error
+	 */
+	public static function check_template( $proposal ) {
+		$result = self::check_url( self::create_template_link( $proposal ), $proposal, true );
+		if ( is_wp_error( $result ) || empty( $result['issues'] ) ) {
+			return $result;
+		}
+
+		$base    = get_post_meta( $proposal->ID, Eotools_Mcp_Templates::META_PREVIEW_URL, true );
+		$current = self::check_url( $base ? $base : home_url( '/' ), $proposal, true );
+		if ( is_wp_error( $current ) ) {
+			return $result;
+		}
+
+		$existing = array_values( array_intersect( $result['issues'], $current['issues'] ) );
+		if ( $existing ) {
+			$result['issues']          = array_values( array_diff( $result['issues'], $existing ) );
+			$result['existing_issues'] = $existing;
+			$result['note']            = __( '"existing_issues" sont déjà présents sur le site actuel : ils ne viennent pas de votre modification. Signalez-les à l\'utilisateur sans les corriger, sauf s\'il le demande.', 'eo-tools' );
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @param string   $url        Preview link.
+	 * @param \WP_Post $post       Content or template proposal checked.
+	 * @param bool     $whole_page Check the whole page instead of the content area.
+	 * @return array|\WP_Error
+	 */
+	private static function check_url( $url, $post, $whole_page ) {
 		$response = wp_remote_get(
-			self::create_link( $post ),
+			$url,
 			array(
 				'timeout'   => 30,
 				'sslverify' => apply_filters( 'https_local_ssl_verify', false ),
@@ -131,7 +199,7 @@ class Eotools_Mcp_Preview {
 		$xpath = new \DOMXPath( $dom );
 
 		// The content area of the theme, or the whole page.
-		$main = $xpath->query( '//*[contains(concat(" ", normalize-space(@class), " "), " wp-block-post-content ") or contains(concat(" ", normalize-space(@class), " "), " entry-content ")]' )->item( 0 );
+		$main = $whole_page ? null : $xpath->query( '//*[contains(concat(" ", normalize-space(@class), " "), " wp-block-post-content ") or contains(concat(" ", normalize-space(@class), " "), " entry-content ")]' )->item( 0 );
 		if ( ! $main ) {
 			$main = $dom->getElementsByTagName( 'body' )->item( 0 );
 		}

@@ -9,6 +9,7 @@ use EoTools\Includes\Admin\Eotools_Mcp_Page;
 use EoTools\Includes\Mcp\Eotools_Mcp_Abilities;
 use EoTools\Includes\Mcp\Eotools_Mcp_Adapter;
 use EoTools\Includes\Mcp\Eotools_Mcp_Proposals;
+use EoTools\Includes\Mcp\Eotools_Mcp_Templates;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -20,12 +21,10 @@ $adapter_version    = Eotools_Mcp_Adapter::get_version();
 $adapter_ready      = Eotools_Mcp_Adapter::STATUS_ACTIVE === $adapter_status;
 $can_proceed        = Eotools_Mcp_Adapter::STATUS_NOT_INSTALLED === $adapter_status ? Eotools_Mcp_Adapter::can_install() : Eotools_Mcp_Adapter::can_activate();
 $clients            = Eotools_Mcp_Page::get_clients();
-$risk_labels        = array(
-	'read'      => __( 'Lecture', 'eo-tools' ),
-	'write'     => __( 'Écriture', 'eo-tools' ),
-	'sensitive' => __( 'Sensible', 'eo-tools' ),
-);
+$risk_levels        = Eotools_Mcp_Abilities::get_risk_levels();
 $pending_proposals  = Eotools_Mcp_Proposals::get_all_pending();
+$pending_templates  = current_user_can( Eotools_Mcp_Templates::CAPABILITY ) ? Eotools_Mcp_Templates::get_all_pending() : array();
+$pending_count      = count( $pending_proposals ) + count( $pending_templates );
 $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' ) : admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' );
 ?>
 <div class="wrap eo-mcp-admin-wrapper">
@@ -37,8 +36,8 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 		<a href="?page=eo-tools-mcp&tab=abilities" class="nav-tab <?php echo 'abilities' === $active_tab ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Abilities', 'eo-tools' ); ?></a>
 		<a href="?page=eo-tools-mcp&tab=proposals" class="nav-tab <?php echo 'proposals' === $active_tab ? 'nav-tab-active' : ''; ?>">
 			<?php esc_html_e( 'Propositions', 'eo-tools' ); ?>
-			<?php if ( $pending_proposals ) : ?>
-				<span class="eo-mcp-count"><?php echo esc_html( count( $pending_proposals ) ); ?></span>
+			<?php if ( $pending_count ) : ?>
+				<span class="eo-mcp-count"><?php echo esc_html( $pending_count ); ?></span>
 			<?php endif; ?>
 		</a>
 	</h2>
@@ -50,7 +49,7 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 	<?php elseif ( 'abilities' === $active_tab ) : ?>
 
 		<div class="eo-mcp-abilities-toolbar">
-			<p><?php esc_html_e( 'Choisissez ce que votre IA a le droit de faire sur ce site. Les abilities désactivées sont invisibles pour toutes les IA connectées.', 'eo-tools' ); ?></p>
+			<p><?php esc_html_e( 'Choisissez ce que votre IA a le droit de faire sur ce site. Tout est actif par défaut ; les abilities désactivées sont invisibles pour toutes les IA connectées.', 'eo-tools' ); ?></p>
 			<div class="eo-mcp-abilities-bulk">
 				<button type="button" class="button" data-eo-mcp-bulk="1"><?php esc_html_e( 'Tout activer', 'eo-tools' ); ?></button>
 				<button type="button" class="button" data-eo-mcp-bulk="0"><?php esc_html_e( 'Tout désactiver', 'eo-tools' ); ?></button>
@@ -62,6 +61,36 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 				<?php esc_html_e( 'MCP Adapter n\'est pas actif : aucune IA ne peut encore utiliser ces abilities. Terminez la mise en place.', 'eo-tools' ); ?>
 			</p>
 		<?php endif; ?>
+		<div class="eo-mcp-levels">
+			<?php foreach ( $risk_levels as $level => $level_data ) : ?>
+				<?php
+				$level_abilities = Eotools_Mcp_Abilities::get_by_risk( $level );
+				if ( empty( $level_abilities ) ) {
+					continue;
+				}
+				$level_enabled = count( array_filter( $level_abilities, array( Eotools_Mcp_Abilities::class, 'is_enabled' ) ) );
+				?>
+				<div class="eo-mcp-card eo-mcp-level is-<?php echo esc_attr( $level ); ?>">
+					<span class="eo-mcp-risk is-<?php echo esc_attr( $level ); ?>"><?php echo esc_html( $level_data['label'] ); ?></span>
+					<p class="eo-mcp-level-description"><?php echo esc_html( $level_data['description'] ); ?></p>
+					<p class="eo-mcp-level-count" data-eo-mcp-level-count="<?php echo esc_attr( $level ); ?>">
+						<?php
+						/* translators: 1: enabled abilities, 2: abilities of the level. */
+						echo esc_html( sprintf( __( '%1$d / %2$d actives', 'eo-tools' ), $level_enabled, count( $level_abilities ) ) );
+						?>
+					</p>
+					<button type="button" class="button" data-eo-mcp-level="<?php echo esc_attr( $level ); ?>"
+						data-label-on="<?php /* translators: %s: risk level. */ echo esc_attr( sprintf( __( 'Activer « %s »', 'eo-tools' ), $level_data['label'] ) ); ?>"
+						data-label-off="<?php /* translators: %s: risk level. */ echo esc_attr( sprintf( __( 'Désactiver « %s »', 'eo-tools' ), $level_data['label'] ) ); ?>">
+						<?php
+						/* translators: %s: risk level. */
+						echo esc_html( sprintf( count( $level_abilities ) === $level_enabled ? __( 'Désactiver « %s »', 'eo-tools' ) : __( 'Activer « %s »', 'eo-tools' ), $level_data['label'] ) );
+						?>
+					</button>
+				</div>
+			<?php endforeach; ?>
+		</div>
+
 		<p class="eo-mcp-feedback" id="eo-mcp-abilities-feedback" role="status" aria-live="polite"></p>
 
 		<?php foreach ( Eotools_Mcp_Abilities::get_groups() as $group_slug => $group_label ) : ?>
@@ -84,13 +113,13 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 						<span class="eo-mcp-ability-header">
 							<span class="eo-mcp-ability-title"><?php echo esc_html( $ability->get_label() ); ?></span>
 							<span class="eo-mcp-switch">
-								<input type="checkbox" class="eo-mcp-ability-toggle" value="<?php echo esc_attr( $ability->get_name() ); ?>" <?php checked( Eotools_Mcp_Abilities::is_enabled( $ability ) ); ?>>
+								<input type="checkbox" class="eo-mcp-ability-toggle" value="<?php echo esc_attr( $ability->get_name() ); ?>" data-risk="<?php echo esc_attr( $risk ); ?>" <?php checked( Eotools_Mcp_Abilities::is_enabled( $ability ) ); ?>>
 								<span class="eo-mcp-switch-slider" aria-hidden="true"></span>
 							</span>
 						</span>
 						<span class="eo-mcp-ability-description"><?php echo esc_html( $ability->get_description() ); ?></span>
 						<span class="eo-mcp-ability-meta">
-							<span class="eo-mcp-risk is-<?php echo esc_attr( $risk ); ?>"><?php echo esc_html( $risk_labels[ $risk ] ); ?></span>
+							<span class="eo-mcp-risk is-<?php echo esc_attr( $risk ); ?>" title="<?php echo esc_attr( $risk_levels[ $risk ]['description'] ); ?>"><?php echo esc_html( $risk_levels[ $risk ]['label'] ); ?></span>
 							<code><?php echo esc_html( $ability->get_name() ); ?></code>
 						</span>
 					</label>

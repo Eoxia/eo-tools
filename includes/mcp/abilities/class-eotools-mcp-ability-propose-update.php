@@ -36,7 +36,7 @@ class Eotools_Mcp_Ability_Propose_Update extends Eotools_Mcp_Ability {
 	}
 
 	public function get_risk() {
-		return self::RISK_WRITE;
+		return self::RISK_SENSITIVE;
 	}
 
 	public function get_input_schema() {

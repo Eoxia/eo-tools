@@ -349,6 +349,7 @@
 							this.checked = state;
 						}
 					} );
+					refreshLevels();
 					$abilitiesFeedback.text( labels.saved );
 				} )
 				.fail( function ( xhr ) {
@@ -361,6 +362,35 @@
 
 		$toggles.on( 'change', function () {
 			saveAbilities( [ this.value ], this.checked );
+		} );
+
+		/* Risk levels: counters, and one button to turn a whole level on or off. */
+		function levelToggles( level ) {
+			return $toggles.filter( function () {
+				return $( this ).attr( 'data-risk' ) === level;
+			} );
+		}
+
+		function refreshLevels() {
+			$( '[data-eo-mcp-level]' ).each( function () {
+				var $button  = $( this );
+				var level    = $button.attr( 'data-eo-mcp-level' );
+				var $level   = levelToggles( level );
+				var enabled  = $level.filter( ':checked' ).length;
+				var allOn    = enabled === $level.length;
+
+				$( '[data-eo-mcp-level-count="' + level + '"]' ).text( labels.levelCount.replace( '%1$d', enabled ).replace( '%2$d', $level.length ) );
+				$button.text( $button.attr( allOn ? 'data-label-off' : 'data-label-on' ) );
+			} );
+		}
+
+		$( '[data-eo-mcp-level]' ).on( 'click', function () {
+			var $level = levelToggles( $( this ).attr( 'data-eo-mcp-level' ) );
+			var allOn  = $level.filter( ':checked' ).length === $level.length;
+
+			saveAbilities( $level.map( function () {
+				return this.value;
+			} ).get(), ! allOn );
 		} );
 
 		$( '[data-eo-mcp-bulk]' ).on( 'click', function () {
