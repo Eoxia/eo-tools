@@ -142,7 +142,7 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 					<span class="eo-mcp-step-number">2</span>
 					<div>
 						<h2><?php esc_html_e( 'Connecter votre IA', 'eo-tools' ); ?></h2>
-						<p><?php esc_html_e( 'Choisissez votre assistant et copiez la configuration générée pour vous.', 'eo-tools' ); ?></p>
+						<p><?php esc_html_e( 'Choisissez votre assistant et suivez les 3 étapes.', 'eo-tools' ); ?></p>
 					</div>
 				</div>
 				<div class="eo-mcp-step-body">
@@ -151,34 +151,44 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 					<?php else : ?>
 						<div class="eo-mcp-clients" role="radiogroup" aria-label="<?php esc_attr_e( 'Votre assistant IA', 'eo-tools' ); ?>">
 							<?php foreach ( $clients as $client_id => $client ) : ?>
-								<label class="eo-mcp-client <?php echo $client['available'] ? '' : 'is-disabled'; ?>" <?php echo $client['available'] ? '' : 'title="' . esc_attr( $client['help'] ) . '"'; ?>>
-									<input type="radio" name="eo-mcp-client" value="<?php echo esc_attr( $client_id ); ?>" <?php disabled( ! $client['available'] ); ?> <?php checked( 'claude-ai', $client_id ); ?>>
-									<span class="eo-mcp-client-label"><?php echo esc_html( $client['label'] ); ?></span>
-									<?php if ( ! $client['available'] ) : ?>
-										<span class="eo-mcp-client-badge"><?php esc_html_e( 'Bientôt', 'eo-tools' ); ?></span>
-									<?php endif; ?>
+								<label class="eo-mcp-client">
+									<input type="radio" name="eo-mcp-client" value="<?php echo esc_attr( $client_id ); ?>" <?php checked( Eotools_Mcp_Page::get_recommended_client(), $client_id ); ?>>
+									<span class="eo-mcp-client-text">
+										<span class="eo-mcp-client-label"><?php echo esc_html( $client['label'] ); ?></span>
+										<span class="eo-mcp-client-subtitle"><?php echo esc_html( $client['subtitle'] ); ?></span>
+									</span>
 								</label>
 							<?php endforeach; ?>
 						</div>
 
-						<p class="eo-mcp-status is-error" id="eo-mcp-client-unavailable" hidden>
-							<span class="dashicons dashicons-dismiss"></span>
-							<span class="eo-mcp-status-text"></span>
-						</p>
-
-						<button type="button" class="button button-primary button-hero" id="eo-mcp-create-connection" hidden>
-							<?php esc_html_e( 'Générer ma connexion', 'eo-tools' ); ?>
-						</button>
-						<p class="eo-mcp-feedback" id="eo-mcp-connection-feedback" role="status" aria-live="polite"></p>
-
-						<div class="eo-mcp-connection-result" id="eo-mcp-connection-result" hidden>
-							<p class="eo-mcp-status" id="eo-mcp-connection-test"></p>
-							<p id="eo-mcp-connection-help"></p>
-							<div id="eo-mcp-connection-snippets"></div>
-							<p class="eo-mcp-once" id="eo-mcp-connection-once">
-								<span class="dashicons dashicons-lock"></span>
-								<?php esc_html_e( 'Copiez cette configuration maintenant : le mot de passe ne sera plus jamais affiché. En cas de perte, générez simplement une nouvelle connexion.', 'eo-tools' ); ?>
+						<div class="eo-mcp-client-panel">
+							<p class="eo-mcp-status is-warning" id="eo-mcp-client-warning" hidden>
+								<span class="dashicons dashicons-warning"></span>
+								<span class="eo-mcp-status-text"></span>
 							</p>
+
+							<ol class="eo-mcp-client-steps" id="eo-mcp-client-steps"></ol>
+							<div id="eo-mcp-client-snippets"></div>
+
+							<div class="eo-mcp-client-actions">
+								<a class="button button-primary" id="eo-mcp-client-link" href="#" target="_blank" rel="noopener noreferrer" hidden></a>
+								<button type="button" class="button" id="eo-mcp-create-connection" hidden></button>
+							</div>
+
+							<p class="eo-mcp-status is-error" id="eo-mcp-client-unavailable" hidden>
+								<span class="dashicons dashicons-dismiss"></span>
+								<span class="eo-mcp-status-text"></span>
+							</p>
+							<p class="eo-mcp-feedback" id="eo-mcp-connection-feedback" role="status" aria-live="polite"></p>
+
+							<div class="eo-mcp-connection-result" id="eo-mcp-connection-result" hidden>
+								<p class="eo-mcp-status" id="eo-mcp-connection-test"></p>
+								<div id="eo-mcp-connection-snippets"></div>
+								<p class="eo-mcp-once">
+									<span class="dashicons dashicons-lock"></span>
+									<?php esc_html_e( 'Copiez cette configuration maintenant : le mot de passe ne sera plus jamais affiché. En cas de perte, générez simplement une nouvelle connexion.', 'eo-tools' ); ?>
+								</p>
+							</div>
 						</div>
 					<?php endif; ?>
 				</div>
@@ -189,11 +199,15 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 					<span class="eo-mcp-step-number">3</span>
 					<div>
 						<h2><?php esc_html_e( 'Vérifier la connexion', 'eo-tools' ); ?></h2>
-						<p><?php esc_html_e( 'Redémarrez votre IA puis demandez-lui : « Quels outils EO Tools peux-tu utiliser ? ». La connexion apparaîtra comme utilisée ci-dessous.', 'eo-tools' ); ?></p>
+						<p><?php esc_html_e( 'Dès que votre IA utilise la connexion, elle apparaît ici automatiquement.', 'eo-tools' ); ?></p>
 					</div>
 				</div>
 				<div class="eo-mcp-step-body">
 					<?php if ( $adapter_ready ) : ?>
+						<p class="eo-mcp-status is-success eo-mcp-connected" id="eo-mcp-connected" hidden>
+							<span class="dashicons dashicons-yes-alt"></span>
+							<span class="eo-mcp-status-text"></span>
+						</p>
 						<table class="widefat striped eo-mcp-connections">
 							<thead>
 								<tr>
@@ -205,11 +219,9 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 							</thead>
 							<tbody id="eo-mcp-connections-list"></tbody>
 						</table>
-						<p>
-							<button type="button" class="button" id="eo-mcp-refresh-connections">
-								<span class="dashicons dashicons-update"></span>
-								<?php esc_html_e( 'Actualiser', 'eo-tools' ); ?>
-							</button>
+						<p class="eo-mcp-auto-refresh">
+							<span class="dashicons dashicons-update"></span>
+							<?php esc_html_e( 'Mise à jour automatique', 'eo-tools' ); ?>
 						</p>
 					<?php else : ?>
 						<p class="eo-mcp-soon"><?php esc_html_e( 'Terminez d\'abord les étapes précédentes.', 'eo-tools' ); ?></p>

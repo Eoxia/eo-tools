@@ -34,55 +34,102 @@ class Eotools_Mcp_Page {
 	/**
 	 * Returns the supported AI clients.
 	 *
-	 * The "format" key tells the admin script which configuration snippet to build.
+	 * - format:   which snippet the admin script shows ("url", "claude-code" or "offline").
+	 * - oauth:    the client connects by itself through the OAuth screen (no secret to copy).
+	 * - password: the client needs an Application Password ("optional" = advanced fallback).
+	 * - steps:    short instructions, displayed as a numbered list.
 	 *
 	 * @return array[]
 	 */
 	public static function get_clients() {
 		return array(
-			'claude-ai'      => array(
-				'label'     => __( 'claude.ai', 'eo-tools' ),
-				'format'    => 'oauth',
-				'help'      => __( 'Dans claude.ai, ouvrez Paramètres > Connecteurs et cliquez sur « Ajouter un connecteur personnalisé ». Donnez-lui un nom, collez l\'adresse ci-dessous, puis cliquez sur « Se connecter » et autorisez l\'accès à votre site.', 'eo-tools' ),
-				'available' => true,
+			'claude'      => array(
+				'label'    => __( 'Claude', 'eo-tools' ),
+				'subtitle' => __( 'Web, Desktop et mobile', 'eo-tools' ),
+				'format'   => 'url',
+				'oauth'    => true,
+				'password' => false,
+				'steps'    => array(
+					__( 'Copiez l\'adresse du connecteur ci-dessous.', 'eo-tools' ),
+					__( 'Dans Claude, ouvrez Paramètres > Connecteurs > Ajouter un connecteur personnalisé, puis collez l\'adresse.', 'eo-tools' ),
+					__( 'Cliquez sur « Se connecter », puis sur « Autoriser » sur la page de votre site.', 'eo-tools' ),
+				),
+				'link'     => array(
+					'url'   => 'https://claude.ai/settings/connectors',
+					'label' => __( 'Ouvrir les connecteurs Claude', 'eo-tools' ),
+				),
 			),
-			'chatgpt'        => array(
-				'label'     => __( 'ChatGPT', 'eo-tools' ),
-				'format'    => 'oauth',
-				'help'      => __( 'Dans ChatGPT, ouvrez Paramètres > Applications et connecteurs, activez le mode développeur dans les paramètres avancés, puis créez un connecteur avec l\'adresse ci-dessous et l\'authentification OAuth. Autorisez ensuite l\'accès à votre site.', 'eo-tools' ),
-				'available' => true,
+			'chatgpt'     => array(
+				'label'    => __( 'ChatGPT', 'eo-tools' ),
+				'subtitle' => __( 'Web et Desktop', 'eo-tools' ),
+				'format'   => 'url',
+				'oauth'    => true,
+				'password' => false,
+				'steps'    => array(
+					__( 'Copiez l\'adresse du connecteur ci-dessous.', 'eo-tools' ),
+					__( 'Dans ChatGPT, ouvrez Paramètres > Applications et connecteurs, activez le mode développeur dans les paramètres avancés, puis créez un connecteur avec cette adresse (authentification OAuth).', 'eo-tools' ),
+					__( 'Cliquez sur « Se connecter », puis sur « Autoriser » sur la page de votre site.', 'eo-tools' ),
+				),
+				'link'     => null,
 			),
-			'claude-desktop' => array(
-				'label'     => __( 'Claude Desktop', 'eo-tools' ),
-				'format'    => 'npx-json',
-				'help'      => __( 'Dans Claude Desktop, ouvrez Paramètres > Développeur > Modifier la config. Collez ce bloc dans le fichier, enregistrez puis redémarrez Claude. Node.js doit être installé sur votre ordinateur.', 'eo-tools' ),
-				'available' => true,
+			'claude-code' => array(
+				'label'    => __( 'Claude Code', 'eo-tools' ),
+				'subtitle' => __( 'Terminal', 'eo-tools' ),
+				'format'   => 'claude-code',
+				'oauth'    => true,
+				'password' => false,
+				'steps'    => array(
+					__( 'Copiez la commande ci-dessous et lancez-la dans votre terminal.', 'eo-tools' ),
+					__( 'Dans Claude Code, tapez /mcp, choisissez le serveur EO Tools puis « Authenticate ».', 'eo-tools' ),
+					__( 'Cliquez sur « Autoriser » sur la page de votre site qui s\'ouvre.', 'eo-tools' ),
+				),
+				'link'     => null,
 			),
-			'claude-code'    => array(
-				'label'     => __( 'Claude Code', 'eo-tools' ),
-				'format'    => 'claude-cli',
-				'help'      => __( 'Lancez cette commande dans votre terminal, puis redémarrez Claude Code.', 'eo-tools' ),
-				'available' => true,
+			'other'       => array(
+				'label'    => __( 'Autre client', 'eo-tools' ),
+				'subtitle' => __( 'Cursor, VS Code…', 'eo-tools' ),
+				'format'   => 'url',
+				'oauth'    => true,
+				'password' => 'optional',
+				'steps'    => array(
+					__( 'Ajoutez un serveur MCP « HTTP » dans votre client et collez l\'adresse ci-dessous.', 'eo-tools' ),
+					__( 'Si votre client gère la connexion OAuth, il vous envoie sur votre site : cliquez sur « Autoriser ».', 'eo-tools' ),
+					__( 'Sinon, générez un mot de passe d\'application avec le bouton ci-dessous et utilisez l\'en-tête « Authorization » fourni.', 'eo-tools' ),
+				),
+				'link'     => null,
 			),
-			'cursor'         => array(
-				'label'     => __( 'Cursor', 'eo-tools' ),
-				'format'    => 'url-json',
-				'help'      => __( 'Dans Cursor, ouvrez Settings > MCP > Add new MCP server, ou collez ce bloc dans le fichier ~/.cursor/mcp.json.', 'eo-tools' ),
-				'available' => true,
-			),
-			'vscode'         => array(
-				'label'     => __( 'VS Code', 'eo-tools' ),
-				'format'    => 'vscode-json',
-				'help'      => __( 'Collez ce bloc dans le fichier .vscode/mcp.json de votre projet, puis démarrez le serveur depuis ce fichier.', 'eo-tools' ),
-				'available' => true,
-			),
-			'other'          => array(
-				'label'     => __( 'Autre client', 'eo-tools' ),
-				'format'    => 'raw',
-				'help'      => __( 'Renseignez ces informations dans votre client MCP (transport HTTP). Si votre client ne gère que les serveurs locaux, utilisez la configuration Claude Desktop.', 'eo-tools' ),
-				'available' => true,
+			'offline'     => array(
+				'label'    => __( 'Site local', 'eo-tools' ),
+				'subtitle' => __( 'Hors ligne', 'eo-tools' ),
+				'format'   => 'offline',
+				'oauth'    => false,
+				'password' => true,
+				'steps'    => array(
+					__( 'Cliquez sur « Générer ma configuration ».', 'eo-tools' ),
+					__( 'Claude Desktop : ouvrez Paramètres > Développeur > Modifier la config, collez le bloc, enregistrez et redémarrez Claude (Node.js doit être installé).', 'eo-tools' ),
+					__( 'Claude Code : lancez la commande dans votre terminal.', 'eo-tools' ),
+				),
+				'link'     => null,
 			),
 		);
+	}
+
+	/**
+	 * Client selected by default: claude.ai and ChatGPT cannot reach a local or non-HTTPS site.
+	 *
+	 * @return string
+	 */
+	public static function get_recommended_client() {
+		return self::is_site_reachable_online() ? 'claude' : 'offline';
+	}
+
+	/**
+	 * Whether online AI services (claude.ai, ChatGPT) can reach this site.
+	 *
+	 * @return bool
+	 */
+	public static function is_site_reachable_online() {
+		return ! Eotools_Mcp_Connections::is_local_site() && wp_is_using_https();
 	}
 
 	public function add_submenu() {
@@ -107,8 +154,8 @@ class Eotools_Mcp_Page {
 		$server_name = sanitize_title( get_bloginfo( 'name' ) );
 
 		$oauth_warning = '';
-		if ( Eotools_Mcp_Connections::is_local_site() || ! wp_is_using_https() ) {
-			$oauth_warning = __( 'claude.ai et ChatGPT se connectent depuis Internet : votre site doit être accessible publiquement en HTTPS, ce qui n\'est pas le cas de ce site. Utilisez ce mode de connexion sur votre site en ligne.', 'eo-tools' );
+		if ( ! self::is_site_reachable_online() ) {
+			$oauth_warning = __( 'Claude et ChatGPT se connectent depuis Internet : votre site doit être accessible publiquement en HTTPS, ce qui n\'est pas le cas de ce site. Choisissez plutôt « Site local ».', 'eo-tools' );
 		}
 
 		wp_localize_script( 'eo-tools-mcp-admin-js', 'eoToolsMcpAdmin', array(
@@ -123,6 +170,12 @@ class Eotools_Mcp_Page {
 			'labels'                  => array(
 				'installing'    => __( 'Installation en cours…', 'eo-tools' ),
 				'generating'    => __( 'Génération et test de la connexion…', 'eo-tools' ),
+				'connected'     => __( 'Votre IA est connectée ! Demandez-lui par exemple : « Liste les dernières pages de mon site ».', 'eo-tools' ),
+				'terminal'      => __( 'Terminal', 'eo-tools' ),
+				'genConfig'     => __( 'Générer ma configuration', 'eo-tools' ),
+				'genPassword'   => __( 'Générer un mot de passe d\'application', 'eo-tools' ),
+				'desktopConfig' => __( 'Claude Desktop – claude_desktop_config.json', 'eo-tools' ),
+				'codeCommand'   => __( 'Claude Code – commande à lancer', 'eo-tools' ),
 				'error'         => __( 'Une erreur est survenue.', 'eo-tools' ),
 				'copy'          => __( 'Copier', 'eo-tools' ),
 				'copied'        => __( 'Copié !', 'eo-tools' ),
@@ -169,8 +222,8 @@ class Eotools_Mcp_Page {
 		$clients   = self::get_clients();
 		$client_id = isset( $_POST['client'] ) ? sanitize_key( wp_unslash( $_POST['client'] ) ) : '';
 
-		// OAuth clients connect by themselves, they do not need an Application Password.
-		if ( ! isset( $clients[ $client_id ] ) || ! $clients[ $client_id ]['available'] || 'oauth' === $clients[ $client_id ]['format'] ) {
+		// OAuth-only clients connect by themselves, they do not need an Application Password.
+		if ( ! isset( $clients[ $client_id ] ) || ! $clients[ $client_id ]['password'] ) {
 			wp_send_json_error( array( 'message' => __( 'Client IA inconnu.', 'eo-tools' ) ) );
 		}
 

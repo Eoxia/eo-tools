@@ -82,40 +82,41 @@
 		return json( { mcpServers: servers } );
 	}
 
-	function buildSnippets( format, connection ) {
-		var servers = {};
+	function claudeCodeCommand( authorization ) {
+		var command = 'claude mcp add --transport http ' + data.serverName + ' "' + data.endpoint + '"';
 
-		switch ( format ) {
-			case 'npx-json':
-				return [ codeBlock( 'claude_desktop_config.json', stdioConfig( connection ) ) ];
+		return authorization ? command + ' --header "Authorization: ' + authorization + '"' : command;
+	}
 
-			case 'claude-cli':
-				return [ codeBlock( 'Terminal', 'claude mcp add --transport http ' + data.serverName + ' "' + connection.endpoint + '" --header "Authorization: ' + connection.authorization + '"' ) ];
-
-			case 'url-json':
-				servers[ data.serverName ] = {
-					url: connection.endpoint,
-					headers: { Authorization: connection.authorization }
-				};
-				return [ codeBlock( 'mcp.json', json( { mcpServers: servers } ) ) ];
-
-			case 'vscode-json':
-				servers[ data.serverName ] = {
-					type: 'http',
-					url: connection.endpoint,
-					headers: { Authorization: connection.authorization }
-				};
-				return [ codeBlock( '.vscode/mcp.json', json( { servers: servers } ) ) ];
-
-			default:
-				return [
-					codeBlock( labels.endpoint, connection.endpoint ),
-					codeBlock( labels.username, connection.username ),
-					codeBlock( labels.password, connection.password ),
-					codeBlock( labels.header, 'Authorization: ' + connection.authorization ),
-					codeBlock( labels.stdioConfig, stdioConfig( connection ) )
-				];
+	/**
+	 * Snippets shown as soon as a client is selected (no secret involved).
+	 */
+	function clientSnippets( client ) {
+		if ( 'claude-code' === client.format ) {
+			return [ codeBlock( labels.terminal, claudeCodeCommand() ) ];
 		}
+		if ( 'url' === client.format ) {
+			return [ codeBlock( labels.connectorUrl, data.endpoint ) ];
+		}
+		return [];
+	}
+
+	/**
+	 * Snippets shown once an Application Password has been generated.
+	 */
+	function passwordSnippets( client, connection ) {
+		if ( 'offline' === client.format ) {
+			return [
+				codeBlock( labels.desktopConfig, stdioConfig( connection ) ),
+				codeBlock( labels.codeCommand, claudeCodeCommand( connection.authorization ) )
+			];
+		}
+
+		return [
+			codeBlock( labels.username, connection.username ),
+			codeBlock( labels.password, connection.password ),
+			codeBlock( labels.header, 'Authorization: ' + connection.authorization )
+		];
 	}
 
 	/* ---------------------------------------------------------------------
@@ -193,13 +194,13 @@
 			$installFeedback.addClass( 'is-error' ).text( message );
 		}
 
-		/* Step 2: create a connection. */
+		/* Step 2: connect an AI client. */
 		var $createButton   = $( '#eo-mcp-create-connection' );
 		var $createFeedback = $( '#eo-mcp-connection-feedback' );
 		var $result         = $( '#eo-mcp-connection-result' );
-
-		var $unavailable = $( '#eo-mcp-client-unavailable' );
-		var $test        = $( '#eo-mcp-connection-test' );
+		var $warning        = $( '#eo-mcp-client-warning' );
+		var $unavailable    = $( '#eo-mcp-client-unavailable' );
+		var $link           = $( '#eo-mcp-client-link' );
 
 		function setStatus( $el, status, message ) {
 			var icon = 'ok' === status ? 'yes-alt' : ( 'warning' === status ? 'warning' : 'dismiss' );
@@ -212,42 +213,50 @@
 				.prop( 'hidden', false );
 		}
 
-		/*
-		 * OAuth clients (claude.ai, ChatGPT) only need the connector URL: they handle the
-		 * authorization themselves. Other clients need a generated Application Password.
-		 */
+		function showMessage( $el, message ) {
+			$el.find( '.eo-mcp-status-text' ).text( message );
+			$el.prop( 'hidden', ! message );
+		}
+
+		function currentClient() {
+			return data.clients[ $( 'input[name="eo-mcp-client"]:checked' ).val() ];
+		}
+
 		function selectClient() {
-			var client = data.clients[ $( 'input[name="eo-mcp-client"]:checked' ).val() ];
+			var client = currentClient();
+			var $steps = $( '#eo-mcp-client-steps' ).empty();
 
 			$createFeedback.removeClass( 'is-error' ).text( '' );
 			$result.prop( 'hidden', true );
-			$unavailable.prop( 'hidden', true );
-			$createButton.prop( 'hidden', true );
 
 			if ( ! client ) {
 				return;
 			}
 
-			if ( 'oauth' === client.format ) {
-				if ( data.oauthWarning ) {
-					setStatus( $test, 'warning', data.oauthWarning );
-				} else {
-					$test.prop( 'hidden', true );
-				}
-				$( '#eo-mcp-connection-help' ).text( client.help );
-				$( '#eo-mcp-connection-snippets' ).empty().append( codeBlock( labels.connectorUrl, data.endpoint ) );
-				$( '#eo-mcp-connection-once' ).prop( 'hidden', true );
-				$result.prop( 'hidden', false );
-				return;
+			client.steps.forEach( function ( step ) {
+				$( '<li>' ).text( step ).appendTo( $steps );
+			} );
+			$( '#eo-mcp-client-snippets' ).empty().append( clientSnippets( client ) );
+
+			// Claude and ChatGPT reach the site from the Internet.
+			showMessage( $warning, 'url' === client.format && client.oauth ? data.oauthWarning : '' );
+
+			if ( client.link ) {
+				$link.attr( 'href', client.link.url ).text( client.link.label ).prop( 'hidden', false );
+			} else {
+				$link.prop( 'hidden', true );
 			}
 
-			if ( data.appPasswordsUnavailable ) {
-				$unavailable.find( '.eo-mcp-status-text' ).text( data.appPasswordsUnavailable );
-				$unavailable.prop( 'hidden', false );
-				return;
+			if ( client.password && data.appPasswordsUnavailable ) {
+				$createButton.prop( 'hidden', true );
+				showMessage( $unavailable, data.appPasswordsUnavailable );
+			} else {
+				showMessage( $unavailable, '' );
+				$createButton
+					.text( 'offline' === client.format ? labels.genConfig : labels.genPassword )
+					.toggleClass( 'button-primary', true === client.password )
+					.prop( 'hidden', ! client.password );
 			}
-
-			$createButton.prop( 'hidden', false );
 		}
 
 		$( 'input[name="eo-mcp-client"]' ).on( 'change', selectClient );
@@ -271,10 +280,8 @@
 					var connection = response.data;
 
 					$createFeedback.text( '' );
-					setStatus( $test, connection.test.status, connection.test.message );
-					$( '#eo-mcp-connection-help' ).text( client.help );
-					$( '#eo-mcp-connection-snippets' ).empty().append( buildSnippets( client.format, connection ) );
-					$( '#eo-mcp-connection-once' ).prop( 'hidden', false );
+					setStatus( $( '#eo-mcp-connection-test' ), connection.test.status, connection.test.message );
+					$( '#eo-mcp-connection-snippets' ).empty().append( passwordSnippets( client, connection ) );
 					$result.prop( 'hidden', false );
 
 					renderConnections( connection.connections );
@@ -287,24 +294,39 @@
 				} );
 		} );
 
-		/* Step 3: follow connections usage. */
-		var $refreshButton = $( '#eo-mcp-refresh-connections' );
-
-		$refreshButton.on( 'click', function () {
-			$refreshButton.prop( 'disabled', true );
-			post( 'eo_tools_mcp_get_connections' )
-				.done( function ( response ) {
-					if ( response.success ) {
-						renderConnections( response.data.connections );
-					}
-				} )
-				.always( function () {
-					$refreshButton.prop( 'disabled', false );
-				} );
-		} );
-
+		/* Step 3: follow connections usage, refreshed automatically. */
 		if ( $( '#eo-mcp-connections-list' ).length ) {
+			var lastSeen = function ( connections ) {
+				return connections.reduce( function ( max, connection ) {
+					return Math.max( max, connection.last_seen );
+				}, 0 );
+			};
+			var baseline  = lastSeen( data.connections );
+			var startedAt = Date.now();
+
 			renderConnections( data.connections );
+
+			var timer = setInterval( function () {
+				// Stop polling after 30 minutes; skip while the tab is hidden.
+				if ( Date.now() - startedAt > 30 * 60 * 1000 ) {
+					clearInterval( timer );
+					return;
+				}
+				if ( document.hidden ) {
+					return;
+				}
+
+				post( 'eo_tools_mcp_get_connections' ).done( function ( response ) {
+					if ( ! response.success ) {
+						return;
+					}
+					renderConnections( response.data.connections );
+
+					if ( lastSeen( response.data.connections ) > baseline ) {
+						showMessage( $( '#eo-mcp-connected' ), labels.connected );
+					}
+				} );
+			}, 5000 );
 		}
 
 		/* Abilities tab: enable / disable abilities. */

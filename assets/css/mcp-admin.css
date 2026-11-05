@@ -409,3 +409,62 @@
 	outline: 2px solid #6366f1;
 	outline-offset: 2px;
 }
+
+/* Client tiles with subtitle */
+.eo-mcp-client-text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.eo-mcp-client-subtitle {
+	font-size: 12px;
+	color: #64748b;
+}
+
+/* Instructions of the selected client */
+.eo-mcp-client-panel {
+	padding: 20px;
+	border-radius: 8px;
+	background: #f8fafc;
+}
+
+.eo-mcp-client-steps {
+	margin: 0 0 16px 20px;
+	line-height: 1.6;
+}
+
+.eo-mcp-client-steps li {
+	margin-bottom: 6px;
+}
+
+.eo-mcp-client-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.eo-mcp-client-panel .eo-mcp-code {
+	background: #ffffff;
+}
+
+/* Step 3 */
+.eo-mcp-connected {
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: #ecfdf5;
+}
+
+.eo-mcp-auto-refresh {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 12px;
+	color: #94a3b8;
+}
+
+.eo-mcp-auto-refresh .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
