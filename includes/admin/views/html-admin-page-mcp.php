@@ -11,6 +11,7 @@ use EoTools\Includes\Mcp\Eotools_Mcp_Adapter;
 use EoTools\Includes\Mcp\Eotools_Mcp_Proposals;
 use EoTools\Includes\Mcp\Eotools_Mcp_Templates;
 use EoTools\Includes\Mcp\Eotools_Mcp_Snippets;
+use EoTools\Includes\Mcp\Eotools_Mcp_Styles;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -25,7 +26,8 @@ $clients            = Eotools_Mcp_Page::get_clients();
 $risk_levels        = Eotools_Mcp_Abilities::get_risk_levels();
 $pending_proposals  = Eotools_Mcp_Proposals::get_all_pending();
 $pending_templates  = current_user_can( Eotools_Mcp_Templates::CAPABILITY ) ? Eotools_Mcp_Templates::get_all_pending() : array();
-$pending_count      = count( $pending_proposals ) + count( $pending_templates );
+$pending_styles     = current_user_can( Eotools_Mcp_Styles::CAPABILITY ) ? Eotools_Mcp_Styles::get_pending() : null;
+$pending_count      = count( $pending_proposals ) + count( $pending_templates ) + ( $pending_styles ? 1 : 0 );
 $waiting_snippets   = Eotools_Mcp_Snippets::user_can() ? Eotools_Mcp_Snippets::count_waiting() : 0;
 $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' ) : admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' );
 ?>

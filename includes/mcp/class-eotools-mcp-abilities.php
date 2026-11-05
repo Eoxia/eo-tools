@@ -41,6 +41,7 @@ class Eotools_Mcp_Abilities {
 		return array(
 			'content' => __( 'Contenus', 'eo-tools' ),
 			'site'    => __( 'Modèles du site', 'eo-tools' ),
+			'styles'  => __( 'Styles et polices', 'eo-tools' ),
 			'preview' => __( 'Aperçu et vérification', 'eo-tools' ),
 			'media'   => __( 'Médias', 'eo-tools' ),
 			'blocks'  => __( 'Blocs', 'eo-tools' ),
@@ -71,7 +72,7 @@ class Eotools_Mcp_Abilities {
 			),
 			Eotools_Mcp_Ability::RISK_SENSITIVE => array(
 				'label'       => __( 'Sensible', 'eo-tools' ),
-				'description' => __( 'L\'IA touche au site en ligne : elle prépare des modifications que vous validez (contenus publiés, modèles, code), installe des extensions sans les activer, et fait les mises à jour avec retour automatique en cas de problème.', 'eo-tools' ),
+				'description' => __( 'L\'IA touche au site en ligne : elle prépare des modifications que vous validez (contenus publiés, modèles, styles, code), installe des extensions sans les activer, et fait les mises à jour avec retour automatique en cas de problème.', 'eo-tools' ),
 			),
 		);
 	}
@@ -92,6 +93,10 @@ class Eotools_Mcp_Abilities {
 			'eo-tools/list-templates'          => __( 'Liste les modèles du site : pages, en-tête, pied de page…', 'eo-tools' ),
 			'eo-tools/get-template'            => __( 'Lit le contenu d\'un modèle ou d\'une partie de modèle.', 'eo-tools' ),
 			'eo-tools/propose-template-update' => __( 'Propose une modification d\'un modèle (en-tête, pied de page…), que vous validez.', 'eo-tools' ),
+			'eo-tools/get-styles'              => __( 'Lit les styles du site : couleurs, polices, tailles, espacements.', 'eo-tools' ),
+			'eo-tools/propose-styles-update'   => __( 'Propose de nouveaux styles (palette, typo…), que vous prévisualisez et validez.', 'eo-tools' ),
+			'eo-tools/search-fonts'            => __( 'Cherche une police dans Google Fonts.', 'eo-tools' ),
+			'eo-tools/install-font'            => __( 'Installe une police Google Fonts, hébergée sur le site (RGPD).', 'eo-tools' ),
 			'eo-tools/check-render'            => __( 'Vérifie le rendu d\'une page et signale les erreurs visibles.', 'eo-tools' ),
 			'eo-tools/search-images'           => __( 'Cherche des photos libres et gratuites sur Openverse.', 'eo-tools' ),
 			'eo-tools/import-image'            => __( 'Ajoute une image à la médiathèque (Openverse, adresse, SVG, image générée).', 'eo-tools' ),
@@ -143,6 +148,10 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_List_Templates::class,
 			Abilities\Eotools_Mcp_Ability_Get_Template::class,
 			Abilities\Eotools_Mcp_Ability_Propose_Template_Update::class,
+			Abilities\Eotools_Mcp_Ability_Get_Styles::class,
+			Abilities\Eotools_Mcp_Ability_Propose_Styles_Update::class,
+			Abilities\Eotools_Mcp_Ability_Search_Fonts::class,
+			Abilities\Eotools_Mcp_Ability_Install_Font::class,
 			Abilities\Eotools_Mcp_Ability_Check_Render::class,
 			Abilities\Eotools_Mcp_Ability_Search_Images::class,
 			Abilities\Eotools_Mcp_Ability_Import_Image::class,

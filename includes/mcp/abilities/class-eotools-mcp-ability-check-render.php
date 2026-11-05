@@ -9,6 +9,7 @@ namespace EoTools\Includes\Mcp\Abilities;
 
 use EoTools\Includes\Mcp\Eotools_Mcp_Preview;
 use EoTools\Includes\Mcp\Eotools_Mcp_Templates;
+use EoTools\Includes\Mcp\Eotools_Mcp_Styles;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -50,13 +51,18 @@ class Eotools_Mcp_Ability_Check_Render extends Eotools_Mcp_Ability {
 					'minimum'     => 1,
 					'description' => __( 'À la place de "id" : proposition de modèle renvoyée par eo-tools/propose-template-update. Toute la page est vérifiée (en-tête et pied de page compris).', 'eo-tools' ),
 				),
+				'styles_proposal_id'   => array(
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => __( 'À la place de "id" : proposition de styles renvoyée par eo-tools/propose-styles-update. Toute la page est vérifiée, contrastes des couleurs compris.', 'eo-tools' ),
+				),
 			),
 			'additionalProperties' => false,
 		);
 	}
 
 	public function has_permission( $input ) {
-		if ( ! empty( $input['template_proposal_id'] ) ) {
+		if ( ! empty( $input['template_proposal_id'] ) || ! empty( $input['styles_proposal_id'] ) ) {
 			return current_user_can( Eotools_Mcp_Templates::CAPABILITY );
 		}
 
@@ -71,6 +77,15 @@ class Eotools_Mcp_Ability_Check_Render extends Eotools_Mcp_Ability {
 			}
 
 			return Eotools_Mcp_Preview::check_template( $proposal );
+		}
+
+		if ( ! empty( $input['styles_proposal_id'] ) ) {
+			$proposal = Eotools_Mcp_Styles::get_proposal( (int) $input['styles_proposal_id'] );
+			if ( ! $proposal ) {
+				return new \WP_Error( 'eo_tools_proposal_not_found', __( 'Proposition de styles introuvable (appliquée ou rejetée ?).', 'eo-tools' ) );
+			}
+
+			return Eotools_Mcp_Preview::check_styles( $proposal );
 		}
 
 		$post = empty( $input['id'] ) ? null : get_post( (int) $input['id'] );

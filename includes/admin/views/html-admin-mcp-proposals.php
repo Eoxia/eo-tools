@@ -9,6 +9,7 @@
 
 use EoTools\Includes\Mcp\Eotools_Mcp_Proposals;
 use EoTools\Includes\Mcp\Eotools_Mcp_Templates;
+use EoTools\Includes\Mcp\Eotools_Mcp_Styles;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -23,14 +24,59 @@ $done = isset( $_GET['done'] ) ? sanitize_key( wp_unslash( $_GET['done'] ) ) : '
 	<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'La proposition a été rejetée.', 'eo-tools' ); ?></p></div>
 <?php endif; ?>
 
-<p class="eo-mcp-intro"><?php esc_html_e( 'Les modifications proposées par une IA sur vos contenus publiés et vos modèles attendent ici votre validation. Rien n\'est publié tant que vous ne cliquez pas sur « Appliquer ».', 'eo-tools' ); ?></p>
+<p class="eo-mcp-intro"><?php esc_html_e( 'Les modifications proposées par une IA sur vos contenus publiés, vos modèles et vos styles attendent ici votre validation. Rien n\'est publié tant que vous ne cliquez pas sur « Appliquer ».', 'eo-tools' ); ?></p>
 
-<?php if ( ! $pending_proposals && ! $pending_templates ) : ?>
+<?php if ( ! $pending_proposals && ! $pending_templates && empty( $pending_styles ) ) : ?>
 
 	<div class="eo-mcp-card eo-mcp-empty">
 		<span class="dashicons dashicons-yes-alt"></span>
 		<h2><?php esc_html_e( 'Aucune proposition en attente', 'eo-tools' ); ?></h2>
 	</div>
+
+<?php endif; ?>
+
+<?php if ( ! empty( $pending_styles ) ) : ?>
+
+	<?php
+	$styles_summary = get_post_meta( $pending_styles->ID, Eotools_Mcp_Styles::META_SUMMARY, true );
+	$styles_nonce   = 'eo_tools_proposal_' . $pending_styles->ID;
+	?>
+	<h2 class="eo-mcp-group-title"><?php esc_html_e( 'Styles du site', 'eo-tools' ); ?></h2>
+	<p class="description"><?php esc_html_e( 'Les styles s\'appliquent à tout le site : vérifiez l\'aperçu avant d\'appliquer. Vous pourrez revenir en arrière depuis l\'historique des styles de l\'éditeur de site.', 'eo-tools' ); ?></p>
+	<table class="widefat striped eo-mcp-proposals">
+		<tbody>
+			<tr>
+				<td>
+					<strong><?php echo esc_html( $styles_summary ? $styles_summary : __( 'Nouveaux styles', 'eo-tools' ) ); ?></strong>
+				</td>
+				<td><?php echo esc_html( get_date_from_gmt( $pending_styles->post_modified_gmt, get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ); ?></td>
+				<td>
+					<?php if ( Eotools_Mcp_Styles::has_conflict( $pending_styles ) ) : ?>
+						<span class="eo-mcp-badge is-warning"><?php esc_html_e( 'Styles modifiés depuis', 'eo-tools' ); ?></span>
+					<?php else : ?>
+						<span class="eo-mcp-badge"><?php esc_html_e( 'En attente', 'eo-tools' ); ?></span>
+					<?php endif; ?>
+				</td>
+				<td class="eo-mcp-actions">
+					<a class="button" href="<?php echo esc_url( Eotools_Mcp_Styles::preview_url( $pending_styles ) ); ?>" target="_blank"><?php esc_html_e( 'Aperçu', 'eo-tools' ); ?></a>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="eo_tools_reject_styles_proposal">
+						<input type="hidden" name="proposal" value="<?php echo esc_attr( $pending_styles->ID ); ?>">
+						<input type="hidden" name="eo_tools_from" value="admin">
+						<?php wp_nonce_field( $styles_nonce ); ?>
+						<button type="submit" class="button" onclick="return confirm('<?php echo esc_js( __( 'Rejeter cette proposition ? Elle sera supprimée.', 'eo-tools' ) ); ?>');"><?php esc_html_e( 'Rejeter', 'eo-tools' ); ?></button>
+					</form>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="eo_tools_apply_styles_proposal">
+						<input type="hidden" name="proposal" value="<?php echo esc_attr( $pending_styles->ID ); ?>">
+						<input type="hidden" name="eo_tools_from" value="admin">
+						<?php wp_nonce_field( $styles_nonce ); ?>
+						<button type="submit" class="button button-primary" onclick="return confirm('<?php echo esc_js( __( 'Appliquer ces styles à tout le site ?', 'eo-tools' ) ); ?>');"><?php esc_html_e( 'Appliquer', 'eo-tools' ); ?></button>
+					</form>
+				</td>
+			</tr>
+		</tbody>
+	</table>
 
 <?php endif; ?>
 
@@ -96,7 +142,7 @@ $done = isset( $_GET['done'] ) ? sanitize_key( wp_unslash( $_GET['done'] ) ) : '
 
 <?php if ( $pending_proposals ) : ?>
 
-	<?php if ( $pending_templates ) : ?>
+	<?php if ( $pending_templates || ! empty( $pending_styles ) ) : ?>
 		<h2 class="eo-mcp-group-title"><?php esc_html_e( 'Contenus', 'eo-tools' ); ?></h2>
 	<?php endif; ?>
 	<table class="widefat striped eo-mcp-proposals">

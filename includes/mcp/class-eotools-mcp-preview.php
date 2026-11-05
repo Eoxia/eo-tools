@@ -56,6 +56,18 @@ class Eotools_Mcp_Preview {
 	}
 
 	/**
+	 * Creates a temporary public preview link for a global styles proposal.
+	 *
+	 * @param \WP_Post $proposal Styles proposal.
+	 * @return string
+	 */
+	public static function create_styles_link( $proposal ) {
+		$base = get_post_meta( $proposal->ID, Eotools_Mcp_Styles::META_PREVIEW_URL, true );
+
+		return add_query_arg( self::QUERY_VAR, self::create_token( 'styles:' . $proposal->ID ), $base ? $base : home_url( '/' ) );
+	}
+
+	/**
 	 * @param int|string $target Content ID, or "template:<proposal ID>".
 	 * @return string Token.
 	 */
@@ -82,6 +94,10 @@ class Eotools_Mcp_Preview {
 
 		if ( 0 === strpos( $target, 'template:' ) ) {
 			if ( ! Eotools_Mcp_Templates::start_preview( (int) substr( $target, 9 ) ) ) {
+				return;
+			}
+		} elseif ( 0 === strpos( $target, 'styles:' ) ) {
+			if ( ! Eotools_Mcp_Styles::start_preview( (int) substr( $target, 7 ) ) ) {
 				return;
 			}
 		} else {
@@ -137,13 +153,49 @@ class Eotools_Mcp_Preview {
 	 * @return array|\WP_Error
 	 */
 	public static function check_template( $proposal ) {
-		$result = self::check_url( self::create_template_link( $proposal ), $proposal, true );
+		$base = get_post_meta( $proposal->ID, Eotools_Mcp_Templates::META_PREVIEW_URL, true );
+
+		return self::check_against_live( self::create_template_link( $proposal ), $base ? $base : home_url( '/' ), $proposal );
+	}
+
+	/**
+	 * Loads a page of the site with proposed global styles and looks for visible problems.
+	 *
+	 * @param \WP_Post $proposal Styles proposal.
+	 * @return array|\WP_Error
+	 */
+	public static function check_styles( $proposal ) {
+		$base   = get_post_meta( $proposal->ID, Eotools_Mcp_Styles::META_PREVIEW_URL, true );
+		$result = self::check_against_live( self::create_styles_link( $proposal ), $base ? $base : home_url( '/' ), $proposal );
+		if ( ! is_wp_error( $result ) ) {
+			$result['contrast'] = Eotools_Mcp_Styles::contrast_report( $proposal );
+			foreach ( $result['contrast'] as $pair ) {
+				if ( ! $pair['ok'] ) {
+					/* translators: 1: color pair, 2: contrast ratio. */
+					$result['issues'][] = sprintf( __( 'Contraste insuffisant : %1$s (%2$s:1, il faut au moins 4.5:1).', 'eo-tools' ), $pair['pair'], $pair['ratio'] );
+				}
+			}
+			$result['note_styles'] = __( 'Cette vérification ne juge pas l\'esthétique : vérifiez aussi la lisibilité des tailles de texte et l\'harmonie des couleurs.', 'eo-tools' );
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Checks a whole page with a proposal and lists apart the problems the live page already has.
+	 *
+	 * @param string   $preview_url Preview link (with token).
+	 * @param string   $live_url    Same page without the proposal.
+	 * @param \WP_Post $proposal    Proposal.
+	 * @return array|\WP_Error
+	 */
+	private static function check_against_live( $preview_url, $live_url, $proposal ) {
+		$result = self::check_url( $preview_url, $proposal, true );
 		if ( is_wp_error( $result ) || empty( $result['issues'] ) ) {
 			return $result;
 		}
 
-		$base    = get_post_meta( $proposal->ID, Eotools_Mcp_Templates::META_PREVIEW_URL, true );
-		$current = self::check_url( $base ? $base : home_url( '/' ), $proposal, true );
+		$current = self::check_url( $live_url, $proposal, true );
 		if ( is_wp_error( $current ) ) {
 			return $result;
 		}
