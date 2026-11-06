@@ -110,7 +110,7 @@ class Eotools_Mcp_Ability_Propose_Template_Update extends Eotools_Mcp_Ability_Te
 			'title'        => $template->title,
 			'proposal_id'  => $proposal->ID,
 			'preview_link' => Eotools_Mcp_Templates::preview_url( $proposal ),
-			'message'      => __( 'Modification enregistrée dans une proposition, le site n\'a pas changé. Donnez le lien d\'aperçu à l\'utilisateur (il doit être connecté en administrateur) : il pourra appliquer ou rejeter la modification depuis cette page, ou depuis EO Tools > MCP > Propositions.', 'eo-tools' ),
+			'message'      => __( 'Modification enregistrée dans une proposition, le site n\'a pas changé. Donnez le lien d\'aperçu à l\'utilisateur (il doit être connecté en administrateur) : il pourra appliquer ou rejeter la modification depuis cette page, ou depuis EO Tools > MCP > À valider.', 'eo-tools' ),
 			'warnings'     => array_values( array_unique( $warnings ) ),
 			/* translators: %d: proposal ID. */
 			'next_step'    => sprintf( __( 'Vérifiez le rendu avec eo-tools/check-render (template_proposal_id %d) et corrigez les problèmes signalés avant de donner le lien d\'aperçu à l\'utilisateur.', 'eo-tools' ), $proposal->ID ),
