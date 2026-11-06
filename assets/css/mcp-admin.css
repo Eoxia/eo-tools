@@ -539,6 +539,17 @@
 	margin: 0;
 }
 
+/* AI drafts */
+.eo-mcp-ai-drafts-actions {
+	display: flex;
+	gap: 8px;
+	margin: 20px 0;
+}
+
+.eo-mcp-ai-drafts .eo-mcp-proposals .check-column {
+	vertical-align: middle;
+}
+
 .eo-mcp-badge.is-warning {
 	background: #fef3c7;
 	color: #b45309;

@@ -7,6 +7,7 @@
 
 namespace EoTools\Includes\Mcp\Abilities;
 
+use EoTools\Includes\Mcp\Eotools_Mcp_Ai_Drafts;
 use EoTools\Includes\Mcp\Eotools_Mcp_Content;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -80,8 +81,12 @@ abstract class Eotools_Mcp_Ability_Create_Draft extends Eotools_Mcp_Ability {
 			return $post_id;
 		}
 
+		Eotools_Mcp_Ai_Drafts::mark( $post_id );
 		Eotools_Mcp_Content::apply_relations( $post_id, $input, $warnings );
 
-		return Eotools_Mcp_Content::response( get_post( $post_id ), $warnings );
+		$response               = Eotools_Mcp_Content::response( get_post( $post_id ), $warnings );
+		$response['validation'] = __( 'Ce brouillon n\'est pas publié. L\'utilisateur peut publier en une fois tous les brouillons créés par l\'IA depuis EO Tools > MCP > Brouillons IA.', 'eo-tools' );
+
+		return $response;
 	}
 }
