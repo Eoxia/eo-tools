@@ -85,7 +85,7 @@ abstract class Eotools_Mcp_Ability_Create_Draft extends Eotools_Mcp_Ability {
 		Eotools_Mcp_Content::apply_relations( $post_id, $input, $warnings );
 
 		$response               = Eotools_Mcp_Content::response( get_post( $post_id ), $warnings );
-		$response['validation'] = __( 'Ce brouillon n\'est pas publié. L\'utilisateur peut publier en une fois tous les brouillons créés par l\'IA depuis EO Tools > MCP > À valider, ou avec le bouton « Valider » de la liste des pages / articles.', 'eo-tools' );
+		$response['validation'] = __( 'Ce brouillon n\'est pas publié. L\'utilisateur peut publier en une fois tous les brouillons créés par l\'IA depuis EO Tools > MCP > À valider, ou avec l\'action « Valider proposition IA » de la liste des pages / articles.', 'eo-tools' );
 
 		return $response;
 	}
