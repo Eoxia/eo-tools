@@ -154,7 +154,7 @@ class Eotools_Mcp_Seo {
 			'low_seo_score'         => array(
 				'severity'    => 'warning',
 				/* translators: %s: SEO plugin name. */
-				'label'       => sprintf( __( 'Score SEO %s faible', 'eo-tools' ), $plugin ),
+				'label'       => sprintf( __( 'Score SEO faible (%s)', 'eo-tools' ), $plugin ),
 				/* translators: %s: SEO plugin name. */
 				'description' => sprintf( __( '%s a calculé un score SEO « à améliorer » (40/100 ou moins) pour la requête cible.', 'eo-tools' ), $plugin ),
 				'requires'    => 'seo_score',
