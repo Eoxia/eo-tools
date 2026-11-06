@@ -783,7 +783,6 @@ class Eotools_Mcp_Seo {
 		}
 
 		$types  = self::get_post_types();
-		$yoast  = self::has_yoast();
 		$counts = array();
 		foreach ( $types as $type ) {
 			$counts[ $type ] = (int) wp_count_posts( $type )->publish;
@@ -803,42 +802,17 @@ class Eotools_Mcp_Seo {
 			)
 		);
 
-		$front_page = 'page' === get_option( 'show_on_front' ) ? (int) get_option( 'page_on_front' ) : 0;
-		$posts_page = 'page' === get_option( 'show_on_front' ) ? (int) get_option( 'page_for_posts' ) : 0;
-		$keywords   = $yoast && self::yoast_option( 'keyword_analysis_active', true );
+		$context = self::get_context();
 
 		$posts    = array();
 		$paths    = array();
 		$contents = array();
 		foreach ( $query->posts as $post ) {
-			$link  = get_permalink( $post );
-			$item  = array(
-				'id'    => $post->ID,
-				'type'  => $post->post_type,
-				'title' => $post->post_title,
-				'link'  => $link,
-			);
-			$text  = trim( preg_replace( '/\s+/u', ' ', html_entity_decode( wp_strip_all_tags( strip_shortcodes( $post->post_content ) ), ENT_QUOTES, 'UTF-8' ) ) );
-			$words = '' === $text ? 0 : count( preg_split( '/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY ) );
+			$item = self::build_item( $post, $context );
 
-			$item['seo_title'] = self::seo_title( $post, $post->ID === $front_page );
-			if ( $yoast ) {
-				$item['meta_description'] = self::meta_description( $post );
-				$item['focus_keyword']    = (string) get_post_meta( $post->ID, '_yoast_wpseo_focuskw', true );
-				$score                    = get_post_meta( $post->ID, '_yoast_wpseo_linkdex', true );
-				$item['seo_score']        = '' === $score ? null : (int) $score;
-				$item['noindex']          = self::is_noindex( $post );
-				$item['canonical']        = (string) get_post_meta( $post->ID, '_yoast_wpseo_canonical', true );
-			} else {
-				$item['noindex'] = false;
-			}
-			$item['words']              = $words;
-			$item['h1_in_content']      = preg_match_all( '/<h1[\s>]/i', $post->post_content );
-			$item['images_without_alt'] = self::count_images_without_alt( $post->post_content );
-
-			$posts[ $post->ID ]                    = $item;
-			$paths[ self::normalize_path( $link ) ] = $post->ID;
-			$contents[ $post->ID ]                 = $post->post_content;
+			$posts[ $post->ID ]                            = $item;
+			$paths[ self::normalize_path( $item['link'] ) ] = $post->ID;
+			$contents[ $post->ID ]                         = $post->post_content;
 		}
 
 		// Internal links between contents, menus and templates.
@@ -861,60 +835,18 @@ class Eotools_Mcp_Seo {
 		$titles       = array();
 		$descriptions = array();
 		foreach ( $posts as $id => &$item ) {
-			$indexable = ! $item['noindex'] && ( empty( $item['canonical'] ) || self::normalize_path( $item['canonical'] ) === self::normalize_path( $item['link'] ) );
-
 			$item['internal_links_out'] = $outbound[ $id ];
-			$item['linked_from_site']   = isset( $inbound[ $id ] ) || $id === $front_page;
+			$item['linked_from_site']   = isset( $inbound[ $id ] ) || $id === $context['front_page'];
 
-			if ( $item['noindex'] ) {
-				$issues['noindex'][] = $id;
-			}
-			if ( ! empty( $item['canonical'] ) && ! $item['noindex'] && ! $indexable ) {
-				$issues['canonical_elsewhere'][] = $id;
-			}
-			if ( ! $indexable ) {
-				continue;
+			foreach ( self::content_issues( $item, $context ) as $issue ) {
+				$issues[ $issue ][] = $id;
 			}
 
-			$length = mb_strlen( $item['seo_title'] );
-			if ( $length < self::TITLE_MIN || $length > self::TITLE_MAX ) {
-				$issues['title_length'][] = $id;
-			}
-			$titles[ mb_strtolower( $item['seo_title'] ) ][] = $id;
-
-			if ( $yoast ) {
-				$length = mb_strlen( $item['meta_description'] );
-				if ( 0 === $length ) {
-					$issues['missing_description'][] = $id;
-				} else {
-					if ( $length < self::DESC_MIN || $length > self::DESC_MAX ) {
-						$issues['description_length'][] = $id;
-					}
+			if ( self::is_indexable( $item ) ) {
+				$titles[ mb_strtolower( $item['seo_title'] ) ][] = $id;
+				if ( ! empty( $item['meta_description'] ) ) {
 					$descriptions[ mb_strtolower( $item['meta_description'] ) ][] = $id;
 				}
-				if ( $keywords && '' === $item['focus_keyword'] && $id !== $posts_page ) {
-					$issues['missing_focus_keyword'][] = $id;
-				}
-				if ( null !== $item['seo_score'] && '' !== $item['focus_keyword'] && $item['seo_score'] <= 40 ) {
-					$issues['low_seo_score'][] = $id;
-				}
-			}
-			// The home page is often built in its template: it is audited in "indexing".
-			$listing = in_array( $id, array( $front_page, $posts_page ), true );
-			if ( $item['words'] < self::THIN_WORDS && ! $listing ) {
-				$issues['thin_content'][] = $id;
-			}
-			if ( $item['h1_in_content'] ) {
-				$issues['h1_in_content'][] = $id;
-			}
-			if ( $item['images_without_alt'] ) {
-				$issues['images_without_alt'][] = $id;
-			}
-			if ( ! $item['linked_from_site'] ) {
-				$issues['orphan'][] = $id;
-			}
-			if ( ! $item['internal_links_out'] && ! $listing ) {
-				$issues['no_internal_links'][] = $id;
 			}
 		}
 		unset( $item );
@@ -949,6 +881,587 @@ class Eotools_Mcp_Seo {
 		set_transient( self::CACHE_KEY, $scan, self::CACHE_TTL );
 
 		return $scan;
+	}
+
+	/**
+	 * Site settings the content analysis depends on.
+	 *
+	 * @return array Keys: yoast, keywords, front_page, posts_page.
+	 */
+	private static function get_context() {
+		$yoast = self::has_yoast();
+		$pages = 'page' === get_option( 'show_on_front' );
+
+		return array(
+			'yoast'      => $yoast,
+			'keywords'   => $yoast && self::yoast_option( 'keyword_analysis_active', true ),
+			'front_page' => $pages ? (int) get_option( 'page_on_front' ) : 0,
+			'posts_page' => $pages ? (int) get_option( 'page_for_posts' ) : 0,
+		);
+	}
+
+	/**
+	 * SEO data of one content (without the links between contents).
+	 *
+	 * @param \WP_Post $post    Content.
+	 * @param array    $context Result of get_context().
+	 * @return array
+	 */
+	private static function build_item( $post, $context ) {
+		$item = array(
+			'id'    => $post->ID,
+			'type'  => $post->post_type,
+			'title' => $post->post_title,
+			'link'  => get_permalink( $post ),
+		);
+
+		$item['seo_title'] = self::seo_title( $post, $post->ID === $context['front_page'] );
+		if ( $context['yoast'] ) {
+			$item['meta_description'] = self::meta_description( $post );
+			$item['focus_keyword']    = (string) get_post_meta( $post->ID, '_yoast_wpseo_focuskw', true );
+			$score                    = get_post_meta( $post->ID, '_yoast_wpseo_linkdex', true );
+			$item['seo_score']        = '' === $score ? null : (int) $score;
+			$item['noindex']          = self::is_noindex( $post );
+			$item['canonical']        = (string) get_post_meta( $post->ID, '_yoast_wpseo_canonical', true );
+		} else {
+			$item['noindex'] = false;
+		}
+		$item['words']              = self::count_words( self::plain_text( $post->post_content ) );
+		$item['h1_in_content']      = preg_match_all( '/<h1[\s>]/i', $post->post_content );
+		$item['images_without_alt'] = self::count_images_without_alt( $post->post_content );
+
+		return $item;
+	}
+
+	/**
+	 * @param array $item Result of build_item().
+	 * @return bool Whether search engines may index the content.
+	 */
+	private static function is_indexable( $item ) {
+		return ! $item['noindex'] && ( empty( $item['canonical'] ) || self::normalize_path( $item['canonical'] ) === self::normalize_path( $item['link'] ) );
+	}
+
+	/**
+	 * Issues of one content, except the duplicates (they need the whole site).
+	 *
+	 * @param array $item    Result of build_item() plus "internal_links_out" and "linked_from_site".
+	 * @param array $context Result of get_context().
+	 * @return string[] Issue types.
+	 */
+	private static function content_issues( $item, $context ) {
+		$issues = array();
+		$id     = $item['id'];
+
+		if ( $item['noindex'] ) {
+			$issues[] = 'noindex';
+		}
+		if ( ! self::is_indexable( $item ) ) {
+			if ( ! $item['noindex'] ) {
+				$issues[] = 'canonical_elsewhere';
+			}
+
+			return $issues;
+		}
+
+		$length = mb_strlen( $item['seo_title'] );
+		if ( $length < self::TITLE_MIN || $length > self::TITLE_MAX ) {
+			$issues[] = 'title_length';
+		}
+
+		if ( $context['yoast'] ) {
+			$length = mb_strlen( $item['meta_description'] );
+			if ( 0 === $length ) {
+				$issues[] = 'missing_description';
+			} elseif ( $length < self::DESC_MIN || $length > self::DESC_MAX ) {
+				$issues[] = 'description_length';
+			}
+			if ( $context['keywords'] && '' === $item['focus_keyword'] && $id !== $context['posts_page'] ) {
+				$issues[] = 'missing_focus_keyword';
+			}
+			if ( null !== $item['seo_score'] && '' !== $item['focus_keyword'] && $item['seo_score'] <= 40 ) {
+				$issues[] = 'low_seo_score';
+			}
+		}
+
+		// The home page is often built in its template: it is audited in "indexing".
+		$listing = in_array( $id, array( $context['front_page'], $context['posts_page'] ), true );
+		if ( $item['words'] < self::THIN_WORDS && ! $listing ) {
+			$issues[] = 'thin_content';
+		}
+		if ( $item['h1_in_content'] ) {
+			$issues[] = 'h1_in_content';
+		}
+		if ( $item['images_without_alt'] ) {
+			$issues[] = 'images_without_alt';
+		}
+		if ( ! $item['linked_from_site'] ) {
+			$issues[] = 'orphan';
+		}
+		if ( ! $item['internal_links_out'] && ! $listing ) {
+			$issues[] = 'no_internal_links';
+		}
+
+		return $issues;
+	}
+
+	/**
+	 * @param string $content Content HTML (or block markup).
+	 * @return string Visible text.
+	 */
+	private static function plain_text( $content ) {
+		return trim( preg_replace( '/\s+/u', ' ', html_entity_decode( wp_strip_all_tags( strip_shortcodes( $content ) ), ENT_QUOTES, 'UTF-8' ) ) );
+	}
+
+	/**
+	 * @param string $text Plain text.
+	 * @return int
+	 */
+	private static function count_words( $text ) {
+		return '' === $text ? 0 : count( preg_split( '/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY ) );
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Audit of one content
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * Finds the content of an address of the site.
+	 *
+	 * @param string $url Address.
+	 * @return \WP_Post|null
+	 */
+	public static function find_post_by_url( $url ) {
+		if ( self::normalize_path( $url ) === self::normalize_path( home_url( '/' ) ) ) {
+			$front = self::get_context()['front_page'];
+
+			return $front ? get_post( $front ) : null;
+		}
+
+		$id = url_to_postid( $url );
+
+		return $id ? get_post( $id ) : null;
+	}
+
+	/**
+	 * Detailed SEO audit of one content (published, draft or pending).
+	 *
+	 * @param \WP_Post $post    Content.
+	 * @param string   $keyword Target query to check, instead of the Yoast one.
+	 * @param bool     $refresh Rescan the site (used for duplicates) instead of using the cache.
+	 * @return array
+	 */
+	public static function audit_post( $post, $keyword = '', $refresh = false ) {
+		$context   = self::get_context();
+		$types     = self::get_issue_types();
+		$published = 'publish' === $post->post_status;
+		$findings  = array();
+
+		$item = self::build_item( $post, $context );
+		$html = self::render_content( $post );
+
+		// Links.
+		$inbound  = self::inbound_links( $post, $item['link'] );
+		$outbound = self::outbound_links( $html, $post->ID );
+
+		$item['internal_links_out'] = count( $outbound['internal'] );
+		$item['linked_from_site']   = $inbound['in_navigation'] || $inbound['contents'] || $post->ID === $context['front_page'];
+
+		// Same issues as the site audit.
+		foreach ( self::content_issues( $item, $context ) as $issue ) {
+			if ( isset( $types[ $issue ] ) ) {
+				$findings[] = self::finding( $types[ $issue ]['severity'], $types[ $issue ]['label'] . ' : ' . $types[ $issue ]['description'] );
+			}
+		}
+
+		// Duplicates among the other published contents.
+		$duplicates = array();
+		if ( self::is_indexable( $item ) ) {
+			$scan = self::scan( $refresh );
+			foreach ( array( 'seo_title' => 'duplicate_title', 'meta_description' => 'duplicate_description' ) as $field => $issue ) {
+				if ( empty( $item[ $field ] ) || ! isset( $types[ $issue ] ) ) {
+					continue;
+				}
+				$same = array();
+				foreach ( $scan['posts'] as $other ) {
+					if ( $other['id'] !== $post->ID && isset( $other[ $field ] ) && mb_strtolower( $other[ $field ] ) === mb_strtolower( $item[ $field ] ) && self::is_indexable( $other ) ) {
+						$same[] = array(
+							'id'    => $other['id'],
+							'title' => $other['title'],
+							'link'  => $other['link'],
+						);
+					}
+				}
+				if ( $same ) {
+					$duplicates[ $field ] = array_slice( $same, 0, 10 );
+					$findings[]           = self::finding( $types[ $issue ]['severity'], $types[ $issue ]['label'] . ' : ' . $types[ $issue ]['description'] );
+				}
+			}
+		}
+
+		// Headings.
+		$outline = self::outline( $html );
+		$level   = 1;
+		foreach ( $outline as $heading ) {
+			if ( $heading['level'] > $level + 1 ) {
+				/* translators: 1: heading level, 2: heading text, 3: expected level. */
+				$findings[] = self::finding( 'info', sprintf( __( 'Niveau de titre sauté : H%1$d « %2$s » après un H%3$d.', 'eo-tools' ), $heading['level'], $heading['text'], $level ) );
+				break;
+			}
+			$level = $heading['level'];
+		}
+		if ( $item['words'] >= 600 && ! in_array( 2, wp_list_pluck( $outline, 'level' ), true ) ) {
+			$findings[] = self::finding( 'info', __( 'Contenu long sans sous-titre H2 : il est plus difficile à parcourir.', 'eo-tools' ) );
+		}
+
+		// Links.
+		if ( $outbound['to_unpublished'] ) {
+			/* translators: %d: number of links. */
+			$findings[] = self::finding( 'warning', sprintf( _n( '%d lien interne vers un contenu non publié : il mènera à une erreur 404 pour les visiteurs.', '%d liens internes vers des contenus non publiés : ils mèneront à une erreur 404 pour les visiteurs.', count( $outbound['to_unpublished'] ), 'eo-tools' ), count( $outbound['to_unpublished'] ) ) );
+		}
+		if ( $outbound['unknown'] ) {
+			/* translators: %d: number of links. */
+			$findings[] = self::finding( 'info', sprintf( _n( '%d lien interne vers une adresse qui ne correspond à aucun contenu (archive, fichier ou lien cassé, à vérifier).', '%d liens internes vers des adresses qui ne correspondent à aucun contenu (archives, fichiers ou liens cassés, à vérifier).', count( $outbound['unknown'] ), 'eo-tools' ), count( $outbound['unknown'] ) ) );
+		}
+
+		// Featured image.
+		$thumbnail = get_post_thumbnail_id( $post );
+		$featured  = null;
+		if ( $thumbnail ) {
+			$featured = array(
+				'id'  => $thumbnail,
+				'url' => wp_get_attachment_image_url( $thumbnail, 'full' ),
+				'alt' => (string) get_post_meta( $thumbnail, '_wp_attachment_image_alt', true ),
+			);
+		} elseif ( post_type_supports( $post->post_type, 'thumbnail' ) ) {
+			$findings[] = self::finding( 'info', __( 'Pas d\'image mise en avant : elle sert souvent d\'image de partage sur les réseaux sociaux et dans les listes d\'articles.', 'eo-tools' ) );
+		}
+
+		// Target query.
+		$keyword = '' !== trim( $keyword ) ? trim( $keyword ) : ( isset( $item['focus_keyword'] ) ? $item['focus_keyword'] : '' );
+		$keyword_report = '' === $keyword ? null : self::keyword_report( $keyword, $post, $item, $html, $outline );
+		if ( $keyword_report ) {
+			foreach ( $keyword_report['missing_in'] as $place ) {
+				/* translators: 1: target query, 2: place. */
+				$findings[] = self::finding( 'info', sprintf( __( 'La requête « %1$s » n\'apparaît pas dans : %2$s.', 'eo-tools' ), $keyword, $place ) );
+			}
+		}
+
+		// The page as visitors and search engines see it.
+		$rendered = null;
+		if ( post_password_required( $post ) ) {
+			$findings[] = self::finding( 'warning', __( 'Contenu protégé par mot de passe : les moteurs n\'en voient pas le texte.', 'eo-tools' ) );
+		} elseif ( is_post_type_viewable( $post->post_type ) ) {
+			$response = self::fetch( $published ? $item['link'] : Eotools_Mcp_Preview::create_link( $post ) );
+			if ( is_wp_error( $response ) ) {
+				$rendered = array( 'error' => $response->get_error_message() );
+			} else {
+				$rendered           = self::analyze_html( (string) wp_remote_retrieve_body( $response ) );
+				$rendered['status'] = (int) wp_remote_retrieve_response_code( $response );
+				$page_findings      = self::html_findings( $rendered, __( 'Page', 'eo-tools' ) );
+				if ( ! $published ) {
+					// The preview of a draft is always "noindex": this is not a problem of the content.
+					$rendered['robots'] = null;
+					$page_findings      = array_filter(
+						$page_findings,
+						function ( $finding ) {
+							return false === strpos( $finding['message'], 'noindex' );
+						}
+					);
+				}
+				$findings = array_merge( $findings, array_values( $page_findings ) );
+			}
+		}
+
+		if ( ! $published ) {
+			/* translators: %s: post status. */
+			$findings[] = self::finding( 'info', sprintf( __( 'Contenu non publié (%s) : les moteurs ne le verront qu\'après publication. Les liens entrants et les doublons seront à revérifier ensuite.', 'eo-tools' ), $post->post_status ) );
+		}
+
+		$summary = array_fill_keys( self::SEVERITIES, 0 );
+		foreach ( $findings as $finding ) {
+			$summary[ $finding['severity'] ] += 1;
+		}
+
+		$data = array(
+			'id'               => $post->ID,
+			'type'             => $post->post_type,
+			'status'           => $post->post_status,
+			'title'            => $post->post_title,
+			'link'             => $item['link'],
+			'slug'             => $post->post_name,
+			'modified'         => get_post_modified_time( 'c', true, $post ),
+			'seo_title'        => $item['seo_title'],
+			'seo_title_length' => mb_strlen( $item['seo_title'] ),
+		);
+		if ( $context['yoast'] ) {
+			$readability = get_post_meta( $post->ID, '_yoast_wpseo_content_score', true );
+
+			$data['meta_description']        = $item['meta_description'];
+			$data['meta_description_length'] = mb_strlen( $item['meta_description'] );
+			$data['focus_keyword']           = $item['focus_keyword'];
+			$data['seo_score']               = $item['seo_score'];
+			$data['readability_score']       = '' === $readability ? null : (int) $readability;
+			$data['cornerstone']             = '1' === (string) get_post_meta( $post->ID, '_yoast_wpseo_is_cornerstone', true );
+			$data['noindex']                 = $item['noindex'];
+			$data['canonical']               = $item['canonical'];
+		}
+		$data['excerpt']            = $post->post_excerpt;
+		$data['words']              = $item['words'];
+		$data['outline']            = $outline;
+		$data['images_without_alt'] = $item['images_without_alt'];
+		$data['featured_image']     = $featured;
+		$data['links']              = array(
+			'linked_from'     => $inbound['contents'],
+			'in_navigation'   => $inbound['in_navigation'],
+			'internal'        => array_slice( $outbound['internal'], 0, 50 ),
+			'to_unpublished'  => $outbound['to_unpublished'],
+			'unknown'         => array_slice( $outbound['unknown'], 0, 20 ),
+			'external'        => array_slice( $outbound['external'], 0, 30 ),
+			'external_count'  => count( $outbound['external'] ),
+		);
+		$data['duplicates'] = $duplicates;
+		$data['keyword']    = $keyword_report;
+		$data['rendered']   = $rendered;
+
+		return array(
+			'site'       => home_url( '/' ),
+			'seo_plugin' => $context['yoast'] ? 'Yoast SEO ' . WPSEO_VERSION : null,
+			'generated'  => gmdate( 'c' ),
+			'summary'    => $summary,
+			'content'    => $data,
+			'findings'   => $findings,
+			'next_steps' => __( 'Ce sont des constats : fais-en un bilan priorisé et des recommandations concrètes. Pour corriger : eo-tools/get-post, puis eo-tools/update-draft (brouillon) ou eo-tools/propose-update (contenu publié).', 'eo-tools' ),
+		);
+	}
+
+	/**
+	 * Content as displayed (blocks, patterns and shortcodes rendered).
+	 *
+	 * @param \WP_Post $post Content.
+	 * @return string
+	 */
+	private static function render_content( $post ) {
+		global $wp_query;
+
+		$previous_post = isset( $GLOBALS['post'] ) ? $GLOBALS['post'] : null;
+		$GLOBALS['post'] = $post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restored below.
+		setup_postdata( $post );
+
+		$html = apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook.
+
+		$GLOBALS['post'] = $previous_post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+		if ( $previous_post ) {
+			setup_postdata( $previous_post );
+		} elseif ( $wp_query ) {
+			$wp_query->reset_postdata();
+		}
+
+		return (string) $html;
+	}
+
+	/**
+	 * Headings of a content, in order.
+	 *
+	 * @param string $html Rendered content.
+	 * @return array[] Level and text.
+	 */
+	private static function outline( $html ) {
+		$outline = array();
+		if ( preg_match_all( '#<h([1-6])\b[^>]*>(.*?)</h\1>#is', $html, $matches, PREG_SET_ORDER ) ) {
+			foreach ( array_slice( $matches, 0, 100 ) as $match ) {
+				$outline[] = array(
+					'level' => (int) $match[1],
+					'text'  => mb_substr( self::clean( $match[2] ), 0, 150 ),
+				);
+			}
+		}
+
+		return $outline;
+	}
+
+	/**
+	 * Contents, menus and templates that link to a content.
+	 *
+	 * @param \WP_Post $post Content.
+	 * @param string   $link Its address.
+	 * @return array Keys "contents" (up to 20) and "in_navigation".
+	 */
+	private static function inbound_links( $post, $link ) {
+		global $wpdb;
+
+		$path  = self::normalize_path( $link );
+		$paths = '/' === $path ? array() : array( $path => $post->ID );
+		$posts = array(
+			$post->ID => array( 'type' => $post->post_type ),
+		);
+
+		// Candidates found with a cheap text search, then checked link by link.
+		$like   = array( '%page_id=' . $post->ID . '%', '%?p=' . $post->ID . '%', '%"id":' . $post->ID . '%' );
+		if ( $paths ) {
+			$like[] = '%' . $wpdb->esc_like( wp_parse_url( $link, PHP_URL_PATH ) ) . '%';
+		}
+		$where = implode( ' OR ', array_fill( 0, count( $like ), 'post_content LIKE %s' ) );
+		$types = self::get_post_types();
+		$in    = implode( ', ', array_fill( 0, count( $types ), '%s' ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Placeholders built above.
+		$candidates = $wpdb->get_results( $wpdb->prepare( "SELECT ID, post_title, post_type, post_content FROM {$wpdb->posts} WHERE post_status = 'publish' AND ID <> %d AND post_type IN ( $in ) AND ( $where ) LIMIT 300", array_merge( array( $post->ID ), $types, $like ) ) );
+
+		$contents = array();
+		foreach ( $candidates as $candidate ) {
+			if ( self::link_targets( $candidate->post_content, $paths, $posts ) ) {
+				$contents[] = array(
+					'id'    => (int) $candidate->ID,
+					'type'  => $candidate->post_type,
+					'title' => $candidate->post_title,
+					'link'  => get_permalink( (int) $candidate->ID ),
+				);
+			}
+		}
+
+		return array(
+			'contents'      => array_slice( $contents, 0, 20 ),
+			'in_navigation' => (bool) self::navigation_targets( $paths, $posts ),
+		);
+	}
+
+	/**
+	 * Links of a content, sorted by target.
+	 *
+	 * @param string $html    Rendered content.
+	 * @param int    $post_id Content ID (links to itself are ignored).
+	 * @return array Keys "internal", "to_unpublished", "unknown" and "external".
+	 */
+	private static function outbound_links( $html, $post_id ) {
+		$home   = strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+		$result = array(
+			'internal'       => array(),
+			'to_unpublished' => array(),
+			'unknown'        => array(),
+			'external'       => array(),
+		);
+		$seen   = array();
+
+		if ( ! preg_match_all( '#<a\b[^>]*href\s*=\s*["\']([^"\']+)["\'][^>]*>(.*?)</a>#is', $html, $matches, PREG_SET_ORDER ) ) {
+			return $result;
+		}
+
+		foreach ( $matches as $match ) {
+			$href = html_entity_decode( trim( $match[1] ), ENT_QUOTES, 'UTF-8' );
+			if ( '' === $href || '#' === $href[0] || preg_match( '/^(mailto|tel|javascript):/i', $href ) || isset( $seen[ $href ] ) ) {
+				continue;
+			}
+			$seen[ $href ] = true;
+			$anchor        = mb_substr( self::clean( $match[2] ), 0, 100 );
+			$host          = wp_parse_url( $href, PHP_URL_HOST );
+
+			if ( $host && strtolower( $host ) !== $home ) {
+				$result['external'][] = array(
+					'url'    => $href,
+					'anchor' => $anchor,
+				);
+				continue;
+			}
+
+			if ( $host ) {
+				$url = $href;
+			} elseif ( '/' === $href[0] ) {
+				// Absolute path: from the root of the domain, even when WordPress is in a sub-folder.
+				$url = preg_replace( '#^(https?://[^/]+).*$#i', '$1', home_url() ) . $href;
+			} else {
+				$url = home_url( '/' . $href );
+			}
+			$target = self::find_post_by_url( $url );
+			if ( $target && $target->ID === $post_id ) {
+				continue;
+			}
+			if ( ! $target ) {
+				$result['unknown'][] = array(
+					'url'    => $href,
+					'anchor' => $anchor,
+				);
+				continue;
+			}
+
+			$link = array(
+				'url'    => $href,
+				'anchor' => $anchor,
+				'id'     => $target->ID,
+				'title'  => $target->post_title,
+				'status' => $target->post_status,
+			);
+			if ( 'publish' === $target->post_status ) {
+				$result['internal'][] = $link;
+			} else {
+				$result['to_unpublished'][] = $link;
+			}
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Where a target query appears in a content.
+	 *
+	 * @param string   $keyword Target query.
+	 * @param \WP_Post $post    Content.
+	 * @param array    $item    Result of build_item().
+	 * @param string   $html    Rendered content.
+	 * @param array[]  $outline Headings.
+	 * @return array
+	 */
+	private static function keyword_report( $keyword, $post, $item, $html, $outline ) {
+		$normalize = function ( $text ) {
+			return mb_strtolower( remove_accents( (string) $text ) );
+		};
+		$needle    = $normalize( $keyword );
+
+		$text  = self::plain_text( $html );
+		$words = self::count_words( $text );
+		$count = '' === $needle ? 0 : substr_count( $normalize( $text ), $needle );
+
+		$alts = preg_match_all( '/<img\b[^>]*\balt\s*=\s*["\']([^"\']*)["\']/i', $html, $matches ) ? implode( ' ', $matches[1] ) : '';
+		$subs = implode(
+			' ',
+			wp_list_pluck(
+				array_filter(
+					$outline,
+					function ( $heading ) {
+						return $heading['level'] > 1;
+					}
+				),
+				'text'
+			)
+		);
+
+		$places = array(
+			'seo_title'      => array( __( 'le titre SEO', 'eo-tools' ), $item['seo_title'] ),
+			'title'          => array( __( 'le titre du contenu', 'eo-tools' ), $post->post_title ),
+			'slug'           => array( __( 'l\'adresse (slug)', 'eo-tools' ), str_replace( '-', ' ', $post->post_name ) ),
+			'introduction'   => array( __( 'l\'introduction (100 premiers mots)', 'eo-tools' ), implode( ' ', array_slice( preg_split( '/\s+/u', $text ), 0, 100 ) ) ),
+			'subheadings'    => array( __( 'les sous-titres', 'eo-tools' ), $subs ),
+			'image_alts'     => array( __( 'les textes alternatifs des images', 'eo-tools' ), $alts ),
+		);
+		if ( array_key_exists( 'meta_description', $item ) ) {
+			$places['meta_description'] = array( __( 'la méta description', 'eo-tools' ), $item['meta_description'] );
+		}
+
+		$found   = array();
+		$missing = array();
+		foreach ( $places as $key => $place ) {
+			$found[ $key ] = '' !== $needle && false !== strpos( $normalize( $place[1] ), $needle );
+			if ( ! $found[ $key ] && ( 'image_alts' !== $key || '' !== $alts ) ) {
+				$missing[] = $place[0];
+			}
+		}
+
+		return array(
+			'keyword'     => $keyword,
+			'occurrences' => $count,
+			'density'     => $words ? round( 100 * $count * max( 1, count( preg_split( '/\s+/u', $needle ) ) ) / $words, 2 ) : 0,
+			'found_in'    => $found,
+			'missing_in'  => $missing,
+		);
 	}
 
 	/**
