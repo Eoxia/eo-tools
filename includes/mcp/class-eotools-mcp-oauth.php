@@ -458,7 +458,12 @@ class Eotools_Mcp_Oauth {
 	 * @return int|false
 	 */
 	public static function authenticate_bearer( $user_id ) {
-		if ( $user_id || ! Eotools_Mcp_Server::is_mcp_request() ) {
+		// user_can() below runs the "user_has_cap" filters, and some plugins call
+		// wp_get_current_user() there (e.g. Yoast SEO with Site Kit), which runs this
+		// filter again: without this guard the request loops until memory runs out.
+		static $running = false;
+
+		if ( $running || $user_id || ! Eotools_Mcp_Server::is_mcp_request() ) {
 			return $user_id;
 		}
 
@@ -467,8 +472,12 @@ class Eotools_Mcp_Oauth {
 			return $user_id;
 		}
 
-		$grant = Eotools_Mcp_Oauth_Store::get_by_access_token( trim( substr( $header, 7 ) ) );
-		if ( ! $grant || ! user_can( (int) $grant->user_id, self::CAPABILITY ) ) {
+		$running = true;
+		$grant   = Eotools_Mcp_Oauth_Store::get_by_access_token( trim( substr( $header, 7 ) ) );
+		$allowed = $grant && user_can( (int) $grant->user_id, self::CAPABILITY );
+		$running = false;
+
+		if ( ! $allowed ) {
 			self::$invalid_token = true;
 			return $user_id;
 		}
