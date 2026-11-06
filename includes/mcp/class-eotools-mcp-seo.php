@@ -125,7 +125,7 @@ class Eotools_Mcp_Seo {
 			'orphan'                => array(
 				'severity'    => 'warning',
 				'label'       => __( 'Contenu orphelin', 'eo-tools' ),
-				'description' => __( 'Aucun autre contenu, menu ou modèle du site ne fait de lien vers ce contenu : les moteurs le trouvent difficilement.', 'eo-tools' ),
+				'description' => __( 'Aucun autre contenu, menu ou modèle du site ne fait de lien vers ce contenu (les listes d\'articles et les archives ne comptent pas) : les moteurs lui donnent peu d\'importance.', 'eo-tools' ),
 			),
 			'no_internal_links'     => array(
 				'severity'    => 'info',
@@ -261,8 +261,8 @@ class Eotools_Mcp_Seo {
 		$settings = array(
 			'search_engines_allowed' => $public,
 			'permalink_structure'    => $permalinks,
-			'site_title'             => $name,
-			'tagline'                => $description,
+			'site_title'             => self::clean( $name ),
+			'tagline'                => self::clean( $description ),
 			'language'               => get_locale(),
 			'https'                  => $https,
 			'site_icon'              => has_site_icon(),
@@ -427,7 +427,9 @@ class Eotools_Mcp_Seo {
 				$body                 = (string) wp_remote_retrieve_body( $response );
 				$sitemap['status']    = (int) wp_remote_retrieve_response_code( $response );
 				$sitemap['sitemaps']  = preg_match_all( '#<sitemap>\s*<loc>([^<]+)</loc>#i', $body, $matches ) ? array_slice( array_map( 'html_entity_decode', $matches[1] ), 0, 50 ) : array();
-				$sitemap['url_count'] = preg_match_all( '#<url>#i', $body );
+				if ( ! $sitemap['sitemaps'] ) {
+					$sitemap['url_count'] = preg_match_all( '#<url>#i', $body );
+				}
 				if ( 200 !== $sitemap['status'] ) {
 					/* translators: %d: HTTP status code. */
 					$findings[] = self::finding( 'critical', sprintf( __( 'Le plan de site XML répond avec le code HTTP %d.', 'eo-tools' ), $sitemap['status'] ) );
@@ -1194,52 +1196,68 @@ class Eotools_Mcp_Seo {
 
 		$since = gmdate( 'Y-m-d H:i:s', time() - 30 * DAY_IN_SECONDS + (int) ( get_option( 'gmt_offset' ) * HOUR_IN_SECONDS ) );
 		$hits  = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $logs l WHERE l.created_at >= %s AND l.url NOT LIKE '%%preview=true%%'", $since ) );
-		$top   = $wpdb->get_results(
+		$rows     = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT l.url, COUNT(*) AS hits, MAX(l.created_at) AS last_seen
 				FROM $logs l $join
 				WHERE l.created_at >= %s $untreated_only
-				GROUP BY l.url ORDER BY hits DESC LIMIT 20",
+				GROUP BY l.url ORDER BY hits DESC, last_seen DESC LIMIT 1000",
 				$since
 			),
 			ARRAY_A
 		);
-		$untreated = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(DISTINCT l.url) FROM $logs l $join
-				WHERE l.created_at >= %s $untreated_only",
-				$since
-			)
-		);
-		$statuses  = $has_redirections ? $wpdb->get_results( "SELECT status, COUNT(*) AS total FROM $redirections GROUP BY status", ARRAY_A ) : array();
+		$statuses = $has_redirections ? $wpdb->get_results( "SELECT status, COUNT(*) AS total FROM $redirections GROUP BY status", ARRAY_A ) : array();
 		// phpcs:enable
+
+		// Robots probing for weak spots (phpinfo.php, .env…) are not broken links.
+		$untreated = array();
+		$probes    = 0;
+		foreach ( (array) $rows as $row ) {
+			if ( self::is_probe( $row['url'] ) ) {
+				++$probes;
+				continue;
+			}
+			$untreated[] = array(
+				'url'       => $row['url'],
+				'hits'      => (int) $row['hits'],
+				'last_seen' => $row['last_seen'],
+			);
+		}
 
 		$findings = array();
 		if ( $untreated ) {
 			/* translators: %d: number of addresses. */
-			$findings[] = self::finding( 'warning', sprintf( __( '%d adresse(s) en erreur 404 ces 30 derniers jours sans redirection : à rediriger depuis EO Tools > 404-Erreur.', 'eo-tools' ), $untreated ) );
+			$findings[] = self::finding( 'warning', sprintf( __( '%d adresse(s) en erreur 404 ces 30 derniers jours sans redirection : liens cassés ou anciennes adresses, à rediriger depuis EO Tools > 404-Erreur.', 'eo-tools' ), count( $untreated ) ) );
+		}
+		if ( $probes ) {
+			/* translators: %d: number of addresses. */
+			$findings[] = self::finding( 'info', sprintf( __( '%d adresse(s) en 404 sont des tentatives de robots cherchant des failles (fichiers .php, .env…) : sans effet sur le SEO, ne pas les rediriger.', 'eo-tools' ), $probes ) );
 		}
 
 		return array(
 			'data'     => array(
-				'available'         => true,
-				'period_days'       => 30,
-				'hits_404'          => $hits,
-				'untreated_urls'    => $untreated,
-				'top_untreated'     => array_map(
-					function ( $row ) {
-						return array(
-							'url'       => $row['url'],
-							'hits'      => (int) $row['hits'],
-							'last_seen' => $row['last_seen'],
-						);
-					},
-					(array) $top
-				),
-				'redirections'      => wp_list_pluck( (array) $statuses, 'total', 'status' ),
-				'admin_page'        => admin_url( 'admin.php?page=eo-tools-404-errors' ),
+				'available'      => true,
+				'period_days'    => 30,
+				'hits_404'       => $hits,
+				'untreated_urls' => count( $untreated ),
+				'top_untreated'  => array_slice( $untreated, 0, 20 ),
+				'robot_probes'   => $probes,
+				'redirections'   => wp_list_pluck( (array) $statuses, 'total', 'status' ),
+				'admin_page'     => admin_url( 'admin.php?page=eo-tools-404-errors' ),
 			),
 			'findings' => $findings,
 		);
+	}
+
+	/**
+	 * Whether a 404 address looks like a robot probing for weak spots.
+	 *
+	 * @param string $url Requested address.
+	 * @return bool
+	 */
+	private static function is_probe( $url ) {
+		$path = strtolower( (string) wp_parse_url( $url, PHP_URL_PATH ) );
+
+		return (bool) preg_match( '#\.(php\d?|asp|aspx|jsp|cgi|env|ini|log|sql|bak|old|swp|zip|tar|gz|rar|7z|ya?ml|config|xml\.bak)$|/[._]|/(wp-admin|wp-includes|wp-login|xmlrpc|cgi-bin|phpmyadmin|pma|adminer|server-status|server-info|actuator|vendor|\.git|\.well-known/security)\b|phpinfo|/info$#', $path );
 	}
 }
