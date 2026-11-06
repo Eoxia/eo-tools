@@ -28,9 +28,9 @@ $risk_levels        = Eotools_Mcp_Abilities::get_risk_levels();
 $pending_proposals  = Eotools_Mcp_Proposals::get_all_pending();
 $pending_templates  = current_user_can( Eotools_Mcp_Templates::CAPABILITY ) ? Eotools_Mcp_Templates::get_all_pending() : array();
 $pending_styles     = current_user_can( Eotools_Mcp_Styles::CAPABILITY ) ? Eotools_Mcp_Styles::get_pending() : null;
-$pending_count      = count( $pending_proposals ) + count( $pending_templates ) + ( $pending_styles ? 1 : 0 );
-$waiting_snippets   = Eotools_Mcp_Snippets::user_can() ? Eotools_Mcp_Snippets::count_waiting() : 0;
 $ai_drafts          = Eotools_Mcp_Ai_Drafts::get_waiting();
+$pending_count      = count( $ai_drafts ) + count( $pending_proposals ) + count( $pending_templates ) + ( $pending_styles ? 1 : 0 );
+$waiting_snippets   = Eotools_Mcp_Snippets::user_can() ? Eotools_Mcp_Snippets::count_waiting() : 0;
 $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' ) : admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' );
 ?>
 <div class="wrap eo-mcp-admin-wrapper">
@@ -47,15 +47,9 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 			<?php endif; ?>
 		</a>
 		<a href="?page=eo-tools-mcp&tab=proposals" class="nav-tab <?php echo 'proposals' === $active_tab ? 'nav-tab-active' : ''; ?>">
-			<?php esc_html_e( 'Propositions', 'eo-tools' ); ?>
+			<?php esc_html_e( 'À valider', 'eo-tools' ); ?>
 			<?php if ( $pending_count ) : ?>
 				<span class="eo-mcp-count"><?php echo esc_html( $pending_count ); ?></span>
-			<?php endif; ?>
-		</a>
-		<a href="?page=eo-tools-mcp&tab=drafts" class="nav-tab <?php echo 'drafts' === $active_tab ? 'nav-tab-active' : ''; ?>">
-			<?php esc_html_e( 'Brouillons IA', 'eo-tools' ); ?>
-			<?php if ( $ai_drafts ) : ?>
-				<span class="eo-mcp-count"><?php echo esc_html( count( $ai_drafts ) ); ?></span>
 			<?php endif; ?>
 		</a>
 	</h2>
@@ -63,10 +57,6 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 	<?php if ( 'proposals' === $active_tab ) : ?>
 
 		<?php include EO_TOOLS_PATH . 'includes/admin/views/html-admin-mcp-proposals.php'; ?>
-
-	<?php elseif ( 'drafts' === $active_tab ) : ?>
-
-		<?php include EO_TOOLS_PATH . 'includes/admin/views/html-admin-mcp-ai-drafts.php'; ?>
 
 	<?php elseif ( 'snippets' === $active_tab ) : ?>
 

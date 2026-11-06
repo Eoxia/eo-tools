@@ -91,7 +91,7 @@ class Eotools_Mcp_Ability_Propose_Styles_Update extends Eotools_Mcp_Ability {
 			'preview_link' => Eotools_Mcp_Styles::preview_url( $proposal ),
 			'user_styles'  => $result['user_data'],
 			'warnings'     => $result['warnings'],
-			'message'      => __( 'Styles enregistrés dans une proposition, le site n\'a pas changé. Donnez le lien d\'aperçu à l\'utilisateur (connecté en administrateur) : il pourra appliquer ou rejeter les nouveaux styles depuis cette page, ou depuis EO Tools > MCP > Propositions.', 'eo-tools' ),
+			'message'      => __( 'Styles enregistrés dans une proposition, le site n\'a pas changé. Donnez le lien d\'aperçu à l\'utilisateur (connecté en administrateur) : il pourra appliquer ou rejeter les nouveaux styles depuis cette page, ou depuis EO Tools > MCP > À valider.', 'eo-tools' ),
 			/* translators: %d: proposal ID. */
 			'next_step'    => sprintf( __( 'Vérifiez le rendu et les contrastes avec eo-tools/check-render (styles_proposal_id %d) et corrigez les problèmes avant de donner le lien à l\'utilisateur.', 'eo-tools' ), $proposal->ID ),
 		);

@@ -323,7 +323,7 @@ class Eotools_Mcp_Proposals {
 	}
 
 	/**
-	 * Whether the request comes from the "Propositions" tab of EO Tools > MCP.
+	 * Whether the request comes from the "À valider" tab of EO Tools > MCP.
 	 *
 	 * @return bool
 	 */
@@ -332,7 +332,7 @@ class Eotools_Mcp_Proposals {
 	}
 
 	/**
-	 * URL of the "Propositions" tab.
+	 * URL of the "À valider" tab.
 	 *
 	 * @param string $done Action just performed (applied or rejected).
 	 * @return string

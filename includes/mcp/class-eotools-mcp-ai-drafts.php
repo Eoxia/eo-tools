@@ -1,10 +1,11 @@
 <?php
 /**
- * Drafts created by an AI, validated in bulk by a human.
+ * Drafts created by an AI, validated by a human.
  *
- * Every content created through MCP is marked. The "Brouillons IA" tab of
- * EO Tools > MCP lists the ones still waiting (draft or pending) so that a
- * human can publish or trash them in one click. The AI itself never publishes.
+ * Every content created through MCP is marked. The ones still waiting (draft
+ * or pending) are listed in the "À valider" tab of EO Tools > MCP, where a
+ * human publishes or trashes them in bulk, and get a quick "Valider" link in
+ * the Pages / Posts lists. The AI itself never publishes.
  *
  * @package EoTools
  */
@@ -22,8 +23,6 @@ class Eotools_Mcp_Ai_Drafts {
 	 */
 	const META_CREATED = '_eo_tools_ai_created';
 
-	const NONCE_ACTION = 'eo_tools_ai_drafts';
-
 	/**
 	 * Statuses of a content still waiting for a human.
 	 */
@@ -31,9 +30,14 @@ class Eotools_Mcp_Ai_Drafts {
 
 	const MAX_LISTED = 300;
 
+	const QUICK_ACTION = 'eo_tools_publish_ai_draft';
+	const QUICK_ARG    = 'eo_tools_ai_published';
+
 	public static function init() {
-		add_action( 'admin_post_eo_tools_ai_drafts', array( __CLASS__, 'handle_bulk' ) );
+		add_action( 'admin_post_' . self::QUICK_ACTION, array( __CLASS__, 'handle_quick_publish' ) );
 		add_filter( 'display_post_states', array( __CLASS__, 'post_states' ), 10, 2 );
+		add_action( 'admin_notices', array( __CLASS__, 'render_quick_notice' ) );
+		add_filter( 'removable_query_args', array( __CLASS__, 'removable_query_args' ) );
 	}
 
 	/**
@@ -92,7 +96,7 @@ class Eotools_Mcp_Ai_Drafts {
 		$groups = array();
 
 		foreach ( $posts as $post ) {
-			$created = (int) get_post_meta( $post->ID, self::META_CREATED, true );
+			$created = self::get_created( $post );
 			$day     = wp_date( 'Y-m-d', $created ? $created : strtotime( $post->post_date_gmt . ' UTC' ) );
 
 			$groups[ $day ][] = $post;
@@ -102,7 +106,7 @@ class Eotools_Mcp_Ai_Drafts {
 	}
 
 	/**
-	 * Local creation time of an AI-created content.
+	 * Creation time of an AI-created content.
 	 *
 	 * @param \WP_Post $post Post.
 	 * @return int Timestamp.
@@ -112,53 +116,15 @@ class Eotools_Mcp_Ai_Drafts {
 	}
 
 	/**
-	 * URL of the "Brouillons IA" tab.
+	 * Whether the current user may publish this content.
 	 *
-	 * @param array $args Extra query args.
-	 * @return string
+	 * @param \WP_Post $post Post.
+	 * @return bool
 	 */
-	public static function admin_url( $args = array() ) {
-		return add_query_arg( $args, admin_url( 'admin.php?page=eo-tools-mcp&tab=drafts' ) );
-	}
+	public static function can_publish( $post ) {
+		$type = get_post_type_object( $post->post_type );
 
-	/* ---------------------------------------------------------------------
-	 * Human validation
-	 * ------------------------------------------------------------------ */
-
-	/**
-	 * Publishes or trashes the selected AI drafts (human action from the admin tab).
-	 */
-	public static function handle_bulk() {
-		check_admin_referer( self::NONCE_ACTION );
-
-		$action = isset( $_POST['bulk_action'] ) ? sanitize_key( wp_unslash( $_POST['bulk_action'] ) ) : '';
-		$ids    = isset( $_POST['drafts'] ) ? array_unique( array_map( 'absint', (array) wp_unslash( $_POST['drafts'] ) ) ) : array();
-
-		if ( ! in_array( $action, array( 'publish', 'trash' ), true ) || ! $ids ) {
-			wp_safe_redirect( self::admin_url( array( 'done' => 'none' ) ) );
-			exit;
-		}
-
-		$posts = array();
-		foreach ( $ids as $id ) {
-			$post = get_post( $id );
-			if ( $post && self::is_ai_draft( $post ) ) {
-				$posts[] = $post;
-			}
-		}
-
-		$result = 'publish' === $action ? self::publish( $posts ) : self::trash( $posts );
-
-		wp_safe_redirect(
-			self::admin_url(
-				array(
-					'done'   => 'publish' === $action ? 'published' : 'trashed',
-					'count'  => $result['done'],
-					'failed' => $result['failed'] + count( $ids ) - count( $posts ),
-				)
-			)
-		);
-		exit;
+		return $type && current_user_can( 'edit_post', $post->ID ) && current_user_can( $type->cap->publish_posts );
 	}
 
 	/**
@@ -181,8 +147,7 @@ class Eotools_Mcp_Ai_Drafts {
 		$result = array( 'done' => 0, 'failed' => 0 );
 
 		foreach ( $posts as $post ) {
-			$type = get_post_type_object( $post->post_type );
-			if ( ! $type || ! current_user_can( 'edit_post', $post->ID ) || ! current_user_can( $type->cap->publish_posts ) ) {
+			if ( ! self::can_publish( $post ) ) {
 				++$result['failed'];
 				continue;
 			}
@@ -225,18 +190,114 @@ class Eotools_Mcp_Ai_Drafts {
 		return $result;
 	}
 
+	/* ---------------------------------------------------------------------
+	 * Pages / Posts lists
+	 * ------------------------------------------------------------------ */
+
 	/**
-	 * Adds "Créé par l'IA" next to the title of AI drafts in admin lists.
+	 * Adds "Créé par l'IA" next to the title of AI drafts, with a quick "Valider" link in the lists.
 	 *
 	 * @param string[] $states Post states.
 	 * @param \WP_Post $post   Post.
 	 * @return string[]
 	 */
 	public static function post_states( $states, $post ) {
-		if ( in_array( $post->post_status, self::WAITING_STATUSES, true ) && '' !== get_post_meta( $post->ID, self::META_CREATED, true ) ) {
-			$states['eo_tools_ai_draft'] = __( 'Créé par l\'IA', 'eo-tools' );
+		if ( ! in_array( $post->post_status, self::WAITING_STATUSES, true ) || '' === get_post_meta( $post->ID, self::META_CREATED, true ) ) {
+			return $states;
 		}
 
+		$state = esc_html__( 'Créé par l\'IA', 'eo-tools' );
+
+		// The states are displayed as HTML only in the Pages / Posts lists: elsewhere they are escaped.
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( $screen && 'edit' === $screen->base && self::can_publish( $post ) ) {
+			$state .= sprintf(
+				' <a href="%1$s" class="button button-small eo-tools-ai-validate" aria-label="%2$s">%3$s</a>',
+				esc_url( self::quick_publish_url( $post ) ),
+				/* translators: %s: post title. */
+				esc_attr( sprintf( __( 'Publier « %s »', 'eo-tools' ), get_the_title( $post ) ) ),
+				esc_html__( 'Valider', 'eo-tools' )
+			);
+		}
+
+		$states['eo_tools_ai_draft'] = $state;
+
 		return $states;
+	}
+
+	/**
+	 * @param \WP_Post $post Post.
+	 * @return string
+	 */
+	public static function quick_publish_url( $post ) {
+		return wp_nonce_url(
+			add_query_arg(
+				array(
+					'action' => self::QUICK_ACTION,
+					'post'   => $post->ID,
+				),
+				admin_url( 'admin-post.php' )
+			),
+			self::QUICK_ACTION . '_' . $post->ID
+		);
+	}
+
+	/**
+	 * Publishes one AI draft from the "Valider" link, then goes back to the list.
+	 */
+	public static function handle_quick_publish() {
+		$post_id = isset( $_GET['post'] ) ? absint( $_GET['post'] ) : 0;
+		check_admin_referer( self::QUICK_ACTION . '_' . $post_id );
+
+		$post = get_post( $post_id );
+		if ( ! $post || ! self::is_ai_draft( $post ) ) {
+			wp_die( esc_html__( 'Ce brouillon n\'existe plus ou a déjà été publié.', 'eo-tools' ), '', array( 'response' => 404, 'back_link' => true ) );
+		}
+		if ( ! self::can_publish( $post ) ) {
+			wp_die( esc_html__( 'Vous n\'avez pas le droit de publier ce contenu.', 'eo-tools' ), '', array( 'response' => 403 ) );
+		}
+
+		$result = self::publish( array( $post ) );
+		if ( ! $result['done'] ) {
+			wp_die( esc_html__( 'Le contenu n\'a pas pu être publié.', 'eo-tools' ), '', array( 'back_link' => true ) );
+		}
+
+		$back = wp_get_referer();
+		if ( ! $back ) {
+			$back = admin_url( 'edit.php?post_type=' . $post->post_type );
+		}
+
+		wp_safe_redirect( add_query_arg( self::QUICK_ARG, $post->ID, $back ) );
+		exit;
+	}
+
+	/**
+	 * Confirms the quick publication in the list.
+	 */
+	public static function render_quick_notice() {
+		$post_id = isset( $_GET[ self::QUICK_ARG ] ) ? absint( $_GET[ self::QUICK_ARG ] ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display only.
+		$post    = $post_id ? get_post( $post_id ) : null;
+
+		if ( ! $post || ! current_user_can( 'edit_post', $post->ID ) ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-success is-dismissible"><p>%s <a href="%s" target="_blank">%s</a></p></div>',
+			/* translators: %s: post title. */
+			esc_html( sprintf( __( '« %s » est publié.', 'eo-tools' ), get_the_title( $post ) ) ),
+			esc_url( get_permalink( $post ) ),
+			esc_html__( 'Voir', 'eo-tools' )
+		);
+	}
+
+	/**
+	 * @param string[] $args Query args removed from the URL after display.
+	 * @return string[]
+	 */
+	public static function removable_query_args( $args ) {
+		$args[] = self::QUICK_ARG;
+
+		return $args;
 	}
 }
