@@ -112,6 +112,8 @@ class Eotools_Mcp_Abilities {
 			'eo-tools/read-source'             => __( 'Lit le code du thème et des extensions, sans rien modifier.', 'eo-tools' ),
 			'eo-tools/search-source'           => __( 'Cherche un texte dans le code du thème et des extensions.', 'eo-tools' ),
 			'eo-tools/propose-snippet'         => __( 'Propose du code CSS, JS ou PHP en dernier recours, que vous activez vous-même.', 'eo-tools' ),
+			'eo-tools/audit-site-seo'          => __( 'Fait le bilan SEO du site : réglages, indexation, contenus, erreurs 404.', 'eo-tools' ),
+			'eo-tools/list-seo-issues'         => __( 'Liste les contenus touchés par un problème SEO (méta description absente, contenu orphelin…).', 'eo-tools' ),
 		);
 	}
 
@@ -167,6 +169,8 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_Read_Source::class,
 			Abilities\Eotools_Mcp_Ability_Search_Source::class,
 			Abilities\Eotools_Mcp_Ability_Propose_Snippet::class,
+			Abilities\Eotools_Mcp_Ability_Audit_Site_Seo::class,
+			Abilities\Eotools_Mcp_Ability_List_Seo_Issues::class,
 		);
 
 		/**
