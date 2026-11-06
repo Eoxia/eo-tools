@@ -4,7 +4,8 @@
  *
  * EO Tools only collects facts and flags objective problems; the connected AI
  * analyses them and writes the recommendations. Works with WordPress alone and
- * reads the Yoast SEO data when Yoast is active.
+ * reads the data of the active SEO plugin through a provider (Yoast SEO,
+ * SEOKEY… see includes/mcp/seo/).
  *
  * @package EoTools
  */
@@ -12,6 +13,7 @@
 namespace EoTools\Includes\Mcp;
 
 use EoTools\Includes\Mcp\Abilities\Eotools_Mcp_Ability_List_Posts;
+use EoTools\Includes\Mcp\Seo\Eotools_Mcp_Seo_Provider;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -23,29 +25,57 @@ class Eotools_Mcp_Seo {
 	const CACHE_TTL   = 900;
 	const MAX_POSTS   = 3000;
 	const THIN_WORDS  = 300;
-	const TITLE_MIN   = 30;
-	const TITLE_MAX   = 65;
-	const DESC_MIN    = 120;
-	const DESC_MAX    = 160;
 	const SECTIONS    = array( 'settings', 'indexing', 'content', 'errors' );
 	const SEVERITIES  = array( 'critical', 'warning', 'info' );
 
 	/**
-	 * @return bool
+	 * Source of the SEO data: the first active SEO plugin, or WordPress alone.
+	 *
+	 * @return Eotools_Mcp_Seo_Provider
 	 */
-	public static function has_yoast() {
-		return defined( 'WPSEO_VERSION' ) && function_exists( 'wpseo_replace_vars' ) && class_exists( '\WPSEO_Options' );
+	public static function get_provider() {
+		static $provider = null;
+
+		if ( null === $provider ) {
+			/**
+			 * SEO plugins EO Tools can read, in order of preference.
+			 *
+			 * To support another plugin, add a class extending Eotools_Mcp_Seo_Provider.
+			 *
+			 * @param string[] $classes Provider class names.
+			 */
+			$classes = apply_filters(
+				'eo_tools_seo_providers',
+				array(
+					Seo\Eotools_Mcp_Seo_Provider_Yoast::class,
+					Seo\Eotools_Mcp_Seo_Provider_Seokey::class,
+				)
+			);
+
+			$provider = new Eotools_Mcp_Seo_Provider();
+			foreach ( (array) $classes as $class ) {
+				if ( is_string( $class ) && is_subclass_of( $class, Eotools_Mcp_Seo_Provider::class ) ) {
+					$candidate = new $class();
+					if ( $candidate->is_active() ) {
+						$provider = $candidate;
+						break;
+					}
+				}
+			}
+		}
+
+		return $provider;
 	}
 
 	/**
-	 * Yoast option, or a default when Yoast is missing.
+	 * Name and version of the SEO plugin used, or null without SEO plugin.
 	 *
-	 * @param string $key     Option key.
-	 * @param mixed  $default Default value.
-	 * @return mixed
+	 * @return string|null
 	 */
-	private static function yoast_option( $key, $default = '' ) {
-		return self::has_yoast() ? \WPSEO_Options::get( $key, $default ) : $default;
+	public static function get_seo_plugin_label() {
+		$provider = self::get_provider();
+
+		return 'wordpress' === $provider->get_id() ? null : trim( $provider->get_name() . ' ' . $provider->get_version() );
 	}
 
 	/**
@@ -63,25 +93,37 @@ class Eotools_Mcp_Seo {
 	 * @return array[] Label, severity and description keyed by issue type.
 	 */
 	public static function get_issue_types() {
+		$provider = self::get_provider();
+		$limits   = $provider->get_limits();
+		$plugin   = $provider->get_name();
+
 		$types = array(
 			'missing_description'   => array(
 				'severity'    => 'warning',
 				'label'       => __( 'Méta description absente', 'eo-tools' ),
-				'description' => __( 'Ni méta description propre au contenu, ni modèle Yoast pour ce type de contenu : Google choisit lui-même un extrait.', 'eo-tools' ),
-				'yoast'       => true,
+				/* translators: %s: SEO plugin name. */
+				'description' => sprintf( __( 'Ni méta description propre au contenu, ni modèle %s pour ce type de contenu : Google choisit lui-même un extrait.', 'eo-tools' ), $plugin ),
+				'requires'    => 'meta_description',
+			),
+			'no_custom_description' => array(
+				'severity'    => 'info',
+				'label'       => __( 'Méta description générée automatiquement', 'eo-tools' ),
+				/* translators: %s: SEO plugin name. */
+				'description' => sprintf( __( 'Aucune méta description n\'a été rédigée : %s en génère une à partir du début du contenu, rarement aussi incitative qu\'une description écrite.', 'eo-tools' ), $plugin ),
+				'requires'    => 'auto_description',
 			),
 			'description_length'    => array(
 				'severity'    => 'info',
 				/* translators: 1: minimum length, 2: maximum length. */
-				'label'       => sprintf( __( 'Méta description hors de %1$d à %2$d caractères', 'eo-tools' ), self::DESC_MIN, self::DESC_MAX ),
+				'label'       => sprintf( __( 'Méta description hors de %1$d à %2$d caractères', 'eo-tools' ), $limits['description_min'], $limits['description_max'] ),
 				'description' => __( 'Trop courte, elle est peu incitative ; trop longue, elle est coupée dans les résultats.', 'eo-tools' ),
-				'yoast'       => true,
+				'requires'    => 'meta_description',
 			),
 			'duplicate_description' => array(
 				'severity'    => 'warning',
 				'label'       => __( 'Méta description en double', 'eo-tools' ),
 				'description' => __( 'Plusieurs contenus indexables ont la même méta description.', 'eo-tools' ),
-				'yoast'       => true,
+				'requires'    => 'meta_description',
 			),
 			'duplicate_title'       => array(
 				'severity'    => 'warning',
@@ -91,20 +133,31 @@ class Eotools_Mcp_Seo {
 			'title_length'          => array(
 				'severity'    => 'info',
 				/* translators: 1: minimum length, 2: maximum length. */
-				'label'       => sprintf( __( 'Titre SEO hors de %1$d à %2$d caractères', 'eo-tools' ), self::TITLE_MIN, self::TITLE_MAX ),
+				'label'       => sprintf( __( 'Titre SEO hors de %1$d à %2$d caractères', 'eo-tools' ), $limits['title_min'], $limits['title_max'] ),
 				'description' => __( 'Trop court, il est peu descriptif ; trop long, il est coupé dans les résultats.', 'eo-tools' ),
+			),
+			'no_custom_title'       => array(
+				'severity'    => 'info',
+				'label'       => __( 'Titre SEO non personnalisé', 'eo-tools' ),
+				/* translators: %s: SEO plugin name. */
+				'description' => sprintf( __( 'Aucun titre SEO n\'a été rédigé : %s utilise le titre du contenu, qui n\'est pas forcément optimisé pour les moteurs.', 'eo-tools' ), $plugin ),
+				'requires'    => 'auto_title',
 			),
 			'missing_focus_keyword' => array(
 				'severity'    => 'info',
-				'label'       => __( 'Pas de requête cible Yoast', 'eo-tools' ),
-				'description' => __( 'Aucune requête cible n\'est renseignée : Yoast ne peut pas analyser l\'optimisation du contenu.', 'eo-tools' ),
-				'yoast'       => true,
+				/* translators: %s: SEO plugin name. */
+				'label'       => sprintf( __( 'Pas de requête cible (%s)', 'eo-tools' ), $plugin ),
+				/* translators: %s: SEO plugin name. */
+				'description' => sprintf( __( 'Aucune requête cible (mot-clé principal) n\'est renseignée dans %s : l\'optimisation du contenu ne peut pas être analysée.', 'eo-tools' ), $plugin ),
+				'requires'    => 'focus_keyword',
 			),
 			'low_seo_score'         => array(
 				'severity'    => 'warning',
-				'label'       => __( 'Score SEO Yoast faible', 'eo-tools' ),
-				'description' => __( 'Yoast a calculé un score SEO « à améliorer » (40/100 ou moins) pour la requête cible.', 'eo-tools' ),
-				'yoast'       => true,
+				/* translators: %s: SEO plugin name. */
+				'label'       => sprintf( __( 'Score SEO %s faible', 'eo-tools' ), $plugin ),
+				/* translators: %s: SEO plugin name. */
+				'description' => sprintf( __( '%s a calculé un score SEO « à améliorer » (40/100 ou moins) pour la requête cible.', 'eo-tools' ), $plugin ),
+				'requires'    => 'seo_score',
 			),
 			'thin_content'          => array(
 				'severity'    => 'warning',
@@ -136,26 +189,22 @@ class Eotools_Mcp_Seo {
 				'severity'    => 'info',
 				'label'       => __( 'Exclu des moteurs (noindex)', 'eo-tools' ),
 				'description' => __( 'Contenu publié mais exclu des résultats de recherche. Normal pour certaines pages (mentions légales, remerciements…), à vérifier pour les autres.', 'eo-tools' ),
-				'yoast'       => true,
+				'requires'    => 'noindex',
 			),
 			'canonical_elsewhere'   => array(
 				'severity'    => 'info',
 				'label'       => __( 'URL canonique vers une autre page', 'eo-tools' ),
 				'description' => __( 'Le contenu indique aux moteurs qu\'une autre adresse est la version de référence : il ne sera pas indexé lui-même.', 'eo-tools' ),
-				'yoast'       => true,
+				'requires'    => 'canonical',
 			),
 		);
 
-		if ( ! self::has_yoast() ) {
-			$types = array_filter(
-				$types,
-				function ( $type ) {
-					return empty( $type['yoast'] );
-				}
-			);
-		}
-
-		return $types;
+		return array_filter(
+			$types,
+			function ( $type ) use ( $provider ) {
+				return empty( $type['requires'] ) || $provider->supports( $type['requires'] );
+			}
+		);
 	}
 
 	/**
@@ -174,7 +223,7 @@ class Eotools_Mcp_Seo {
 
 		$result = array(
 			'site'        => home_url( '/' ),
-			'seo_plugin'  => self::has_yoast() ? 'Yoast SEO ' . WPSEO_VERSION : null,
+			'seo_plugin'  => self::get_seo_plugin_label(),
 			'generated'   => gmdate( 'c' ),
 			'summary'     => array_fill_keys( self::SEVERITIES, 0 ),
 		);
@@ -271,31 +320,22 @@ class Eotools_Mcp_Seo {
 		);
 
 		if ( ! $plugins ) {
-			$findings[] = self::finding( 'warning', __( 'Aucune extension SEO active : impossible de définir des méta descriptions, et les titres SEO sont ceux de WordPress. Yoast SEO est recommandé (eo-tools/search-plugins, eo-tools/install-plugin).', 'eo-tools' ) );
+			$findings[] = self::finding( 'warning', __( 'Aucune extension SEO active : impossible de définir des méta descriptions, et les titres SEO sont ceux de WordPress. Installez une extension SEO, par exemple SEOKEY ou Yoast SEO (eo-tools/search-plugins, eo-tools/install-plugin).', 'eo-tools' ) );
 		} elseif ( count( $plugins ) > 1 ) {
 			/* translators: %s: plugin names. */
 			$findings[] = self::finding( 'critical', sprintf( __( 'Plusieurs extensions SEO sont actives (%s) : balises en double, à garder une seule.', 'eo-tools' ), implode( ', ', $plugins ) ) );
 		}
 
-		if ( self::has_yoast() ) {
-			$yoast = self::get_yoast_settings();
+		$provider = self::get_provider();
+		if ( 'wordpress' !== $provider->get_id() ) {
+			$plugin_settings = $provider->get_settings( self::get_post_types() );
 
-			if ( ! $yoast['xml_sitemap'] ) {
-				$findings[] = self::finding( 'warning', __( 'Le plan de site XML de Yoast est désactivé (Yoast SEO > Réglages > Fonctionnalités du site).', 'eo-tools' ) );
-			}
-			if ( '' === $yoast['organization']['name'] ) {
-				$findings[] = self::finding( 'info', __( 'Yoast : le nom de l\'organisation ou de la personne derrière le site n\'est pas renseigné (données structurées, Knowledge Graph).', 'eo-tools' ) );
-			}
-			if ( 'company' === $yoast['organization']['type'] && ! $yoast['organization']['logo'] ) {
-				$findings[] = self::finding( 'info', __( 'Yoast : pas de logo d\'organisation (données structurées).', 'eo-tools' ) );
-			}
-			foreach ( $yoast['post_types'] as $type => $config ) {
-				if ( $config['noindex'] ) {
-					/* translators: %s: content type. */
-					$findings[] = self::finding( 'info', sprintf( __( 'Yoast : le type de contenu « %s » est exclu des moteurs (noindex) pour tout le site.', 'eo-tools' ), $type ) );
-				}
-			}
-			$settings['yoast'] = $yoast;
+			$settings['seo_plugin_used']        = $provider->get_name();
+			$settings[ $provider->get_id() ]   = $plugin_settings['data'];
+			$findings                          = array_merge( $findings, $plugin_settings['findings'] );
+		} elseif ( $plugins ) {
+			/* translators: %s: plugin names. */
+			$findings[] = self::finding( 'info', sprintf( __( 'EO Tools ne sait pas encore lire les réglages de %s : titres SEO et méta descriptions sont analysés tels que WordPress les affiche.', 'eo-tools' ), implode( ', ', $plugins ) ) );
 		}
 
 		return array(
@@ -312,6 +352,7 @@ class Eotools_Mcp_Seo {
 	private static function get_seo_plugins() {
 		$known = array(
 			'Yoast SEO'           => defined( 'WPSEO_VERSION' ),
+			'SEOKEY'              => defined( 'SEOKEY_VERSION' ),
 			'Rank Math'           => defined( 'RANK_MATH_VERSION' ),
 			'All in One SEO'      => defined( 'AIOSEO_VERSION' ),
 			'SEOPress'            => defined( 'SEOPRESS_VERSION' ),
@@ -320,41 +361,6 @@ class Eotools_Mcp_Seo {
 		);
 
 		return array_keys( array_filter( $known ) );
-	}
-
-	/**
-	 * Yoast settings that matter for an audit.
-	 *
-	 * @return array
-	 */
-	private static function get_yoast_settings() {
-		$post_types = array();
-		foreach ( self::get_post_types() as $type ) {
-			$post_types[ $type ] = array(
-				'title_template'       => (string) self::yoast_option( 'title-' . $type ),
-				'description_template' => (string) self::yoast_option( 'metadesc-' . $type ),
-				'noindex'              => (bool) self::yoast_option( 'noindex-' . $type, false ),
-			);
-		}
-
-		$type = (string) self::yoast_option( 'company_or_person', 'company' );
-
-		return array(
-			'title_separator'  => (string) self::yoast_option( 'separator' ),
-			'website_name'     => (string) self::yoast_option( 'website_name' ),
-			'xml_sitemap'      => (bool) self::yoast_option( 'enable_xml_sitemap', true ),
-			'keyword_analysis' => (bool) self::yoast_option( 'keyword_analysis_active', true ),
-			'organization'     => array(
-				'type' => $type,
-				'name' => 'company' === $type ? (string) self::yoast_option( 'company_name' ) : (string) get_the_author_meta( 'display_name', (int) self::yoast_option( 'company_or_person_user_id', 0 ) ),
-				'logo' => '' !== (string) self::yoast_option( 'company_logo' ),
-			),
-			'verification'     => array(
-				'google' => '' !== (string) self::yoast_option( 'googleverify' ),
-				'bing'   => '' !== (string) self::yoast_option( 'msverify' ),
-			),
-			'post_types'       => $post_types,
-		);
 	}
 
 	/**
@@ -517,25 +523,7 @@ class Eotools_Mcp_Seo {
 	 * @return array
 	 */
 	private static function get_sitemap() {
-		if ( self::has_yoast() && self::yoast_option( 'enable_xml_sitemap', true ) ) {
-			return array(
-				'provider' => 'Yoast SEO',
-				'url'      => home_url( '/sitemap_index.xml' ),
-			);
-		}
-
-		$server = function_exists( 'wp_sitemaps_get_server' ) ? wp_sitemaps_get_server() : null;
-		if ( $server && $server->sitemaps_enabled() ) {
-			return array(
-				'provider' => 'WordPress',
-				'url'      => get_sitemap_url( 'index' ),
-			);
-		}
-
-		return array(
-			'provider' => null,
-			'url'      => null,
-		);
+		return self::get_provider()->get_sitemap();
 	}
 
 	/**
@@ -679,8 +667,8 @@ class Eotools_Mcp_Seo {
 			$findings[] = self::finding( $config['severity'], sprintf( _n( '%1$d contenu : %2$s.', '%1$d contenus : %2$s.', count( $ids ), 'eo-tools' ), count( $ids ), $config['label'] ) );
 		}
 
-		if ( ! self::has_yoast() ) {
-			$findings[] = self::finding( 'warning', __( 'Sans extension SEO, aucun contenu n\'a de méta description.', 'eo-tools' ) );
+		if ( ! self::get_provider()->supports( 'meta_description' ) ) {
+			$findings[] = self::finding( 'warning', __( 'Sans extension SEO prise en charge, aucun contenu n\'a de méta description.', 'eo-tools' ) );
 		}
 		if ( $scan['images_without_alt_in_library'] ) {
 			/* translators: %d: number of images. */
@@ -718,7 +706,7 @@ class Eotools_Mcp_Seo {
 	public static function list_issue( $issue, $post_type, $page, $per_page, $refresh ) {
 		$types = self::get_issue_types();
 		if ( ! isset( $types[ $issue ] ) ) {
-			return new \WP_Error( 'eo_tools_seo_issue', __( 'Type de problème inconnu, ou indisponible sans Yoast SEO.', 'eo-tools' ) );
+			return new \WP_Error( 'eo_tools_seo_issue', __( 'Type de problème inconnu, ou indisponible avec l\'extension SEO de ce site.', 'eo-tools' ) );
 		}
 
 		$scan = self::scan( $refresh );
@@ -776,7 +764,7 @@ class Eotools_Mcp_Seo {
 	 */
 	public static function scan( $refresh = false ) {
 		if ( ! $refresh ) {
-			$cached = get_transient( self::CACHE_KEY );
+			$cached = get_transient( self::CACHE_KEY . '_' . self::get_provider()->get_id() );
 			if ( is_array( $cached ) ) {
 				return $cached;
 			}
@@ -878,7 +866,7 @@ class Eotools_Mcp_Seo {
 			'issues'                        => array_filter( $issues ),
 		);
 
-		set_transient( self::CACHE_KEY, $scan, self::CACHE_TTL );
+		set_transient( self::CACHE_KEY . '_' . self::get_provider()->get_id(), $scan, self::CACHE_TTL );
 
 		return $scan;
 	}
@@ -886,15 +874,16 @@ class Eotools_Mcp_Seo {
 	/**
 	 * Site settings the content analysis depends on.
 	 *
-	 * @return array Keys: yoast, keywords, front_page, posts_page.
+	 * @return array Keys: provider, limits, keywords, front_page, posts_page.
 	 */
 	private static function get_context() {
-		$yoast = self::has_yoast();
-		$pages = 'page' === get_option( 'show_on_front' );
+		$provider = self::get_provider();
+		$pages    = 'page' === get_option( 'show_on_front' );
 
 		return array(
-			'yoast'      => $yoast,
-			'keywords'   => $yoast && self::yoast_option( 'keyword_analysis_active', true ),
+			'provider'   => $provider,
+			'limits'     => $provider->get_limits(),
+			'keywords'   => $provider->supports( 'focus_keyword' ) && $provider->expects_focus_keyword(),
 			'front_page' => $pages ? (int) get_option( 'page_on_front' ) : 0,
 			'posts_page' => $pages ? (int) get_option( 'page_for_posts' ) : 0,
 		);
@@ -908,23 +897,33 @@ class Eotools_Mcp_Seo {
 	 * @return array
 	 */
 	private static function build_item( $post, $context ) {
-		$item = array(
+		$provider = $context['provider'];
+		$item     = array(
 			'id'    => $post->ID,
 			'type'  => $post->post_type,
 			'title' => $post->post_title,
 			'link'  => get_permalink( $post ),
 		);
 
-		$item['seo_title'] = self::seo_title( $post, $post->ID === $context['front_page'] );
-		if ( $context['yoast'] ) {
-			$item['meta_description'] = self::meta_description( $post );
-			$item['focus_keyword']    = (string) get_post_meta( $post->ID, '_yoast_wpseo_focuskw', true );
-			$score                    = get_post_meta( $post->ID, '_yoast_wpseo_linkdex', true );
-			$item['seo_score']        = '' === $score ? null : (int) $score;
-			$item['noindex']          = self::is_noindex( $post );
-			$item['canonical']        = (string) get_post_meta( $post->ID, '_yoast_wpseo_canonical', true );
-		} else {
-			$item['noindex'] = false;
+		$item['seo_title'] = $provider->get_seo_title( $post, $post->ID === $context['front_page'] );
+		if ( $provider->supports( 'auto_title' ) ) {
+			$item['custom_title'] = $provider->has_custom_title( $post );
+		}
+		if ( $provider->supports( 'meta_description' ) ) {
+			$item['meta_description'] = $provider->get_meta_description( $post );
+		}
+		if ( $provider->supports( 'auto_description' ) ) {
+			$item['custom_description'] = $provider->has_custom_description( $post );
+		}
+		if ( $provider->supports( 'focus_keyword' ) ) {
+			$item['focus_keyword'] = $provider->get_focus_keyword( $post );
+		}
+		if ( $provider->supports( 'seo_score' ) ) {
+			$item['seo_score'] = $provider->get_seo_score( $post );
+		}
+		$item['noindex'] = $provider->is_noindex( $post );
+		if ( $provider->supports( 'canonical' ) ) {
+			$item['canonical'] = $provider->get_canonical( $post );
 		}
 		$item['words']              = self::count_words( self::plain_text( $post->post_content ) );
 		$item['h1_in_content']      = preg_match_all( '/<h1[\s>]/i', $post->post_content );
@@ -951,6 +950,7 @@ class Eotools_Mcp_Seo {
 	private static function content_issues( $item, $context ) {
 		$issues = array();
 		$id     = $item['id'];
+		$limits = $context['limits'];
 
 		if ( $item['noindex'] ) {
 			$issues[] = 'noindex';
@@ -964,23 +964,29 @@ class Eotools_Mcp_Seo {
 		}
 
 		$length = mb_strlen( $item['seo_title'] );
-		if ( $length < self::TITLE_MIN || $length > self::TITLE_MAX ) {
+		if ( $length < $limits['title_min'] || $length > $limits['title_max'] ) {
 			$issues[] = 'title_length';
 		}
+		if ( isset( $item['custom_title'] ) && ! $item['custom_title'] ) {
+			$issues[] = 'no_custom_title';
+		}
 
-		if ( $context['yoast'] ) {
+		if ( isset( $item['meta_description'] ) ) {
 			$length = mb_strlen( $item['meta_description'] );
 			if ( 0 === $length ) {
 				$issues[] = 'missing_description';
-			} elseif ( $length < self::DESC_MIN || $length > self::DESC_MAX ) {
+			} elseif ( $length < $limits['description_min'] || $length > $limits['description_max'] ) {
 				$issues[] = 'description_length';
 			}
-			if ( $context['keywords'] && '' === $item['focus_keyword'] && $id !== $context['posts_page'] ) {
-				$issues[] = 'missing_focus_keyword';
-			}
-			if ( null !== $item['seo_score'] && '' !== $item['focus_keyword'] && $item['seo_score'] <= 40 ) {
-				$issues[] = 'low_seo_score';
-			}
+		}
+		if ( isset( $item['custom_description'] ) && ! $item['custom_description'] && ! empty( $item['meta_description'] ) ) {
+			$issues[] = 'no_custom_description';
+		}
+		if ( $context['keywords'] && '' === $item['focus_keyword'] && $id !== $context['posts_page'] ) {
+			$issues[] = 'missing_focus_keyword';
+		}
+		if ( isset( $item['seo_score'] ) && '' !== $item['focus_keyword'] && $item['seo_score'] <= 40 ) {
+			$issues[] = 'low_seo_score';
 		}
 
 		// The home page is often built in its template: it is audited in "indexing".
@@ -1169,6 +1175,17 @@ class Eotools_Mcp_Seo {
 					);
 				}
 				$findings = array_merge( $findings, array_values( $page_findings ) );
+
+				// What the page really shows must match what the SEO plugin says.
+				$plugin = $context['provider']->get_name();
+				if ( 200 === $rendered['status'] && ! empty( $rendered['title'] ) && ! self::same_text( $rendered['title'], $item['seo_title'] ) ) {
+					/* translators: 1: title shown on the page, 2: expected title, 3: SEO plugin name. */
+					$findings[] = self::finding( 'warning', sprintf( __( 'Le titre affiché par la page (« %1$s ») n\'est pas le titre SEO attendu (« %2$s », calculé d\'après %3$s) : réglage de l\'extension SEO, thème ou autre extension qui le remplace.', 'eo-tools' ), $rendered['title'], $item['seo_title'], $plugin ) );
+				}
+				if ( 200 === $rendered['status'] && ! empty( $item['meta_description'] ) && ! self::same_text( (string) $rendered['description'], $item['meta_description'] ) ) {
+					/* translators: %s: SEO plugin name. */
+					$findings[] = self::finding( 'warning', sprintf( __( 'La méta description affichée par la page n\'est pas celle de %s (absente ou remplacée) : vérifiez la configuration de l\'extension SEO.', 'eo-tools' ), $plugin ) );
+				}
 			}
 		}
 
@@ -1176,6 +1193,10 @@ class Eotools_Mcp_Seo {
 			/* translators: %s: post status. */
 			$findings[] = self::finding( 'info', sprintf( __( 'Contenu non publié (%s) : les moteurs ne le verront qu\'après publication. Les liens entrants et les doublons seront à revérifier ensuite.', 'eo-tools' ), $post->post_status ) );
 		}
+
+		// Data of the SEO plugin (scores, its own audit…).
+		$details  = $context['provider']->get_post_details( $post );
+		$findings = array_merge( $findings, $details['findings'] );
 
 		$summary = array_fill_keys( self::SEVERITIES, 0 );
 		foreach ( $findings as $finding ) {
@@ -1193,18 +1214,17 @@ class Eotools_Mcp_Seo {
 			'seo_title'        => $item['seo_title'],
 			'seo_title_length' => mb_strlen( $item['seo_title'] ),
 		);
-		if ( $context['yoast'] ) {
-			$readability = get_post_meta( $post->ID, '_yoast_wpseo_content_score', true );
-
+		if ( isset( $item['meta_description'] ) ) {
 			$data['meta_description']        = $item['meta_description'];
 			$data['meta_description_length'] = mb_strlen( $item['meta_description'] );
-			$data['focus_keyword']           = $item['focus_keyword'];
-			$data['seo_score']               = $item['seo_score'];
-			$data['readability_score']       = '' === $readability ? null : (int) $readability;
-			$data['cornerstone']             = '1' === (string) get_post_meta( $post->ID, '_yoast_wpseo_is_cornerstone', true );
-			$data['noindex']                 = $item['noindex'];
-			$data['canonical']               = $item['canonical'];
 		}
+		foreach ( array( 'focus_keyword', 'seo_score', 'noindex', 'canonical' ) as $field ) {
+			if ( array_key_exists( $field, $item ) ) {
+				$data[ $field ] = $item[ $field ];
+			}
+		}
+		$data['recommended_lengths'] = $context['limits'];
+		$data                        = array_merge( $data, $details['data'] );
 		$data['excerpt']            = $post->post_excerpt;
 		$data['words']              = $item['words'];
 		$data['outline']            = $outline;
@@ -1225,7 +1245,7 @@ class Eotools_Mcp_Seo {
 
 		return array(
 			'site'       => home_url( '/' ),
-			'seo_plugin' => $context['yoast'] ? 'Yoast SEO ' . WPSEO_VERSION : null,
+			'seo_plugin' => self::get_seo_plugin_label(),
 			'generated'  => gmdate( 'c' ),
 			'summary'    => $summary,
 			'content'    => $data,
@@ -1465,63 +1485,18 @@ class Eotools_Mcp_Seo {
 	}
 
 	/**
-	 * Title shown in search results.
+	 * Whether two texts are the same once typography is ignored (dashes, quotes, spaces, case).
 	 *
-	 * @param \WP_Post $post       Content.
-	 * @param bool     $front_page Whether the content is the home page.
-	 * @return string
-	 */
-	private static function seo_title( $post, $front_page = false ) {
-		if ( self::has_yoast() ) {
-			$template = (string) get_post_meta( $post->ID, '_yoast_wpseo_title', true );
-			if ( '' === $template ) {
-				$template = (string) self::yoast_option( 'title-' . $post->post_type );
-			}
-			if ( '' !== $template ) {
-				return self::clean( wpseo_replace_vars( $template, $post ) );
-			}
-		}
-
-		// Same parts as wp_get_document_title().
-		$separator = apply_filters( 'document_title_separator', '-' );
-		$site_name = get_bloginfo( 'name', 'display' );
-		$tagline   = get_bloginfo( 'description', 'display' );
-		$parts     = $front_page ? array( $site_name, $tagline ) : array( $post->post_title, $site_name );
-
-		return self::clean( implode( ' ' . $separator . ' ', array_filter( $parts, 'strlen' ) ) );
-	}
-
-	/**
-	 * Meta description (Yoast only).
-	 *
-	 * @param \WP_Post $post Content.
-	 * @return string
-	 */
-	private static function meta_description( $post ) {
-		$template = (string) get_post_meta( $post->ID, '_yoast_wpseo_metadesc', true );
-		if ( '' === $template ) {
-			$template = (string) self::yoast_option( 'metadesc-' . $post->post_type );
-		}
-
-		return '' === $template ? '' : self::clean( wpseo_replace_vars( $template, $post ) );
-	}
-
-	/**
-	 * Whether Yoast excludes the content from search engines.
-	 *
-	 * @param \WP_Post $post Content.
+	 * @param string $a Text.
+	 * @param string $b Text.
 	 * @return bool
 	 */
-	private static function is_noindex( $post ) {
-		$value = (string) get_post_meta( $post->ID, '_yoast_wpseo_meta-robots-noindex', true );
-		if ( '1' === $value ) {
-			return true;
-		}
-		if ( '2' === $value ) {
-			return false;
-		}
+	private static function same_text( $a, $b ) {
+		$normalize = function ( $text ) {
+			return preg_replace( '/[^\p{L}\p{N}]+/u', '', mb_strtolower( remove_accents( self::clean( $text ) ) ) );
+		};
 
-		return (bool) self::yoast_option( 'noindex-' . $post->post_type, false );
+		return $normalize( $a ) === $normalize( $b );
 	}
 
 	/**

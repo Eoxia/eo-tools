@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Audit_Post_Seo extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Audit SEO détaillé d\'une page, d\'un article ou de tout autre contenu, publié ou en brouillon. Indique le contenu par "id" ou par son adresse "url". Renvoie : titre SEO et méta description (avec leur longueur), données Yoast si Yoast est actif (requête cible, scores SEO et lisibilité, noindex, canonique, contenu pilier), nombre de mots, plan des titres H1 à H6, images sans texte alternatif, image mise en avant, liens entrants (contenus, menus et modèles qui pointent vers la page), liens sortants internes et externes (y compris les liens vers des contenus non publiés ou des adresses inconnues), titres et descriptions en double avec d\'autres contenus, présence de la requête cible (titre, slug, introduction, sous-titres, méta description, textes alternatifs, densité) et balises de la page telle que la voient les moteurs (title, description, robots, canonical, Open Graph, H1, données structurées). Les "findings" sont classés par gravité (critical, warning, info) : ce sont des constats, à toi d\'en faire un bilan priorisé et des recommandations concrètes. Paramètre "keyword" pour vérifier une autre requête que celle de Yoast (ou s\'il n\'y a pas Yoast). Pour corriger : eo-tools/get-post, puis eo-tools/update-draft (brouillon) ou eo-tools/propose-update (contenu publié). Pour le bilan du site entier : eo-tools/audit-site-seo.', 'eo-tools' );
+		return __( 'Audit SEO détaillé d\'une page, d\'un article ou de tout autre contenu, publié ou en brouillon. Indique le contenu par "id" ou par son adresse "url". Renvoie : titre SEO et méta description (avec leur longueur), données de l\'extension SEO active, Yoast SEO ou SEOKEY (requête cible, noindex, titre et description saisis ou automatiques ; scores, canonique et contenu pilier avec Yoast ; problèmes relevés par l\'audit SEOKEY avec SEOKEY), longueurs recommandées par cette extension, nombre de mots, plan des titres H1 à H6, images sans texte alternatif, image mise en avant, liens entrants (contenus, menus et modèles qui pointent vers la page), liens sortants internes et externes (y compris les liens vers des contenus non publiés ou des adresses inconnues), titres et descriptions en double avec d\'autres contenus, présence de la requête cible (titre, slug, introduction, sous-titres, méta description, textes alternatifs, densité) et balises de la page telle que la voient les moteurs (title, description, robots, canonical, Open Graph, H1, données structurées). Les "findings" sont classés par gravité (critical, warning, info) : ce sont des constats, à toi d\'en faire un bilan priorisé et des recommandations concrètes. Paramètre "keyword" pour vérifier une autre requête que celle de l\'extension SEO (ou s\'il n\'y en a pas). Pour corriger : eo-tools/get-post, puis eo-tools/update-draft (brouillon) ou eo-tools/propose-update (contenu publié). Pour le bilan du site entier : eo-tools/audit-site-seo.', 'eo-tools' );
 	}
 
 	public function get_group() {
@@ -49,7 +49,7 @@ class Eotools_Mcp_Ability_Audit_Post_Seo extends Eotools_Mcp_Ability {
 				),
 				'keyword' => array(
 					'type'        => 'string',
-					'description' => __( 'Requête cible à vérifier. Par défaut : la requête cible Yoast du contenu.', 'eo-tools' ),
+					'description' => __( 'Requête cible à vérifier. Par défaut : la requête cible (mot-clé principal) enregistrée dans l\'extension SEO.', 'eo-tools' ),
 				),
 				'refresh' => array(
 					'type'        => 'boolean',

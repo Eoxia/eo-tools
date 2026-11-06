@@ -30,7 +30,7 @@ class Eotools_Mcp_Ability_List_Seo_Issues extends Eotools_Mcp_Ability {
 		}
 
 		/* translators: %s: list of issue types. */
-		return sprintf( __( 'Liste paginée de tous les contenus publiés touchés par un problème SEO trouvé par eo-tools/audit-site-seo, avec pour chacun son titre SEO, sa méta description, sa requête cible, son score Yoast, son nombre de mots, ses images sans texte alternatif et ses liens internes. Pour les doublons, "same_as" donne les identifiants des contenus identiques. Types de problèmes : %s.', 'eo-tools' ), implode( ', ', $types ) );
+		return sprintf( __( 'Liste paginée de tous les contenus publiés touchés par un problème SEO trouvé par eo-tools/audit-site-seo, avec pour chacun son titre SEO, sa méta description, sa requête cible, son score Yoast le cas échéant, son nombre de mots, ses images sans texte alternatif et ses liens internes. Pour les doublons, "same_as" donne les identifiants des contenus identiques. Types de problèmes : %s.', 'eo-tools' ), implode( ', ', $types ) );
 	}
 
 	public function get_group() {
