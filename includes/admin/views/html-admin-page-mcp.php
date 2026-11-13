@@ -9,6 +9,7 @@ use EoTools\Includes\Admin\Eotools_Mcp_Page;
 use EoTools\Includes\Mcp\Eotools_Mcp_Abilities;
 use EoTools\Includes\Mcp\Eotools_Mcp_Adapter;
 use EoTools\Includes\Mcp\Eotools_Mcp_Ai_Drafts;
+use EoTools\Includes\Mcp\Eotools_Mcp_Elevation;
 use EoTools\Includes\Mcp\Eotools_Mcp_Proposals;
 use EoTools\Includes\Mcp\Eotools_Mcp_Templates;
 use EoTools\Includes\Mcp\Eotools_Mcp_Snippets;
@@ -31,6 +32,7 @@ $pending_styles     = current_user_can( Eotools_Mcp_Styles::CAPABILITY ) ? Eotoo
 $ai_drafts          = Eotools_Mcp_Ai_Drafts::get_waiting();
 $pending_count      = count( $ai_drafts ) + count( $pending_proposals ) + count( $pending_templates ) + ( $pending_styles ? 1 : 0 );
 $waiting_snippets   = Eotools_Mcp_Snippets::user_can() ? Eotools_Mcp_Snippets::count_waiting() : 0;
+$waiting_elevations = Eotools_Mcp_Elevation::user_can() ? count( Eotools_Mcp_Elevation::get_by_status( Eotools_Mcp_Elevation::STATUS_PENDING ) ) : 0;
 $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' ) : admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' );
 ?>
 <div class="wrap eo-mcp-admin-wrapper">
@@ -52,9 +54,21 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 				<span class="eo-mcp-count"><?php echo esc_html( $pending_count ); ?></span>
 			<?php endif; ?>
 		</a>
+		<?php if ( Eotools_Mcp_Elevation::user_can() ) : ?>
+			<a href="?page=eo-tools-mcp&tab=elevation" class="nav-tab <?php echo 'elevation' === $active_tab ? 'nav-tab-active' : ''; ?>">
+				<?php esc_html_e( 'Autorisations', 'eo-tools' ); ?>
+				<?php if ( $waiting_elevations ) : ?>
+					<span class="eo-mcp-count"><?php echo esc_html( $waiting_elevations ); ?></span>
+				<?php endif; ?>
+			</a>
+		<?php endif; ?>
 	</h2>
 
-	<?php if ( 'proposals' === $active_tab ) : ?>
+	<?php if ( 'elevation' === $active_tab && Eotools_Mcp_Elevation::user_can() ) : ?>
+
+		<?php include EO_TOOLS_PATH . 'includes/admin/views/html-admin-mcp-elevation.php'; ?>
+
+	<?php elseif ( 'proposals' === $active_tab ) : ?>
 
 		<?php include EO_TOOLS_PATH . 'includes/admin/views/html-admin-mcp-proposals.php'; ?>
 

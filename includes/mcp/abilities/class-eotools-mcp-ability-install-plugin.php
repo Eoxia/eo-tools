@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Install_Plugin extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Installe une extension du répertoire officiel wordpress.org, SANS l\'activer : seul l\'utilisateur peut l\'activer, depuis la page Extensions (vous ne pouvez pas l\'activer). N\'installez qu\'avec l\'accord explicite de l\'utilisateur, après lui avoir présenté l\'extension (trouvée avec eo-tools/search-plugins). Les extensions incompatibles avec ce site sont refusées. Une extension installée ne s\'exécute pas tant qu\'elle n\'est pas activée.', 'eo-tools' );
+		return __( 'Installe une extension du répertoire officiel wordpress.org, SANS l\'activer : l\'utilisateur l\'active depuis la page Extensions, ou vous autorise temporairement à le faire (eo-tools/request-elevation puis eo-tools/activate-plugin). N\'installez qu\'avec l\'accord explicite de l\'utilisateur, après lui avoir présenté l\'extension (trouvée avec eo-tools/search-plugins). Les extensions incompatibles avec ce site sont refusées. Une extension installée ne s\'exécute pas tant qu\'elle n\'est pas activée.', 'eo-tools' );
 	}
 
 	public function get_group() {

@@ -73,7 +73,7 @@ class Eotools_Mcp_Abilities {
 			),
 			Eotools_Mcp_Ability::RISK_SENSITIVE => array(
 				'label'       => __( 'Sensible', 'eo-tools' ),
-				'description' => __( 'L\'IA touche au site en ligne : elle prépare des modifications que vous validez (contenus publiés, modèles, styles, code), installe des extensions sans les activer, modifie les réglages WordPress (en gardant l\'ancienne valeur), et fait les mises à jour avec retour automatique en cas de problème.', 'eo-tools' ),
+				'description' => __( 'L\'IA touche au site en ligne : elle prépare des modifications que vous validez (contenus publiés, modèles, styles, code), installe des extensions (elle ne les active ou désactive qu\'avec votre autorisation temporaire), modifie les réglages WordPress (en gardant l\'ancienne valeur), et fait les mises à jour avec retour automatique en cas de problème.', 'eo-tools' ),
 			),
 		);
 	}
@@ -106,6 +106,9 @@ class Eotools_Mcp_Abilities {
 			'eo-tools/list-plugins'            => __( 'Liste les extensions installées et leur état.', 'eo-tools' ),
 			'eo-tools/search-plugins'          => __( 'Cherche des extensions gratuites sur wordpress.org.', 'eo-tools' ),
 			'eo-tools/install-plugin'          => __( 'Installe une extension de wordpress.org, sans l\'activer : vous l\'activez vous-même.', 'eo-tools' ),
+			'eo-tools/request-elevation'       => __( 'Demande le droit d\'activer ou de désactiver des extensions pour un temps limité. Rien ne se passe sans votre validation.', 'eo-tools' ),
+			'eo-tools/activate-plugin'         => __( 'Active une extension, seulement pendant une autorisation que vous avez validée.', 'eo-tools' ),
+			'eo-tools/deactivate-plugin'       => __( 'Désactive une extension, seulement pendant une autorisation que vous avez validée.', 'eo-tools' ),
 			'eo-tools/check-updates'           => __( 'Liste les mises à jour disponibles (WordPress, extensions, thèmes).', 'eo-tools' ),
 			'eo-tools/update-site'             => __( 'Met à jour le site, avec retour automatique à l\'ancienne version en cas de problème.', 'eo-tools' ),
 			'eo-tools/list-snippets'           => __( 'Liste les snippets de code du site et leur état.', 'eo-tools' ),
@@ -166,6 +169,9 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_List_Plugins::class,
 			Abilities\Eotools_Mcp_Ability_Search_Plugins::class,
 			Abilities\Eotools_Mcp_Ability_Install_Plugin::class,
+			Abilities\Eotools_Mcp_Ability_Request_Elevation::class,
+			Abilities\Eotools_Mcp_Ability_Activate_Plugin::class,
+			Abilities\Eotools_Mcp_Ability_Deactivate_Plugin::class,
 			Abilities\Eotools_Mcp_Ability_Check_Updates::class,
 			Abilities\Eotools_Mcp_Ability_Update_Site::class,
 			Abilities\Eotools_Mcp_Ability_List_Snippets::class,
