@@ -222,7 +222,7 @@ class Eotools_Mcp_Elevation {
 		$duration = max( 5, min( self::MAX_DURATION, (int) $duration ) );
 
 		$request = array(
-			'id'         => wp_generate_password( 12, false ),
+			'id'         => strtolower( wp_generate_password( 12, false ) ),
 			'connection' => $connection,
 			'label'      => self::connection_label( $connection ),
 			'user'       => get_current_user_id(),
@@ -409,7 +409,8 @@ class Eotools_Mcp_Elevation {
 	 * Approve, reject, revoke or undo (form posted to admin-post.php).
 	 */
 	public static function handle_action() {
-		$id = isset( $_POST['id'] ) ? sanitize_key( wp_unslash( $_POST['id'] ) ) : '';
+		// Not sanitize_key(): it lowercases, and the first IDs had capital letters.
+		$id = isset( $_POST['id'] ) ? preg_replace( '/[^A-Za-z0-9]/', '', (string) wp_unslash( $_POST['id'] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- reduced to letters and digits.
 		check_admin_referer( self::ACTION . '_' . $id );
 
 		if ( ! self::user_can() ) {
