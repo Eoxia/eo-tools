@@ -39,16 +39,17 @@ class Eotools_Mcp_Abilities {
 	 */
 	public static function get_groups() {
 		return array(
-			'content' => __( 'Contenus', 'eo-tools' ),
-			'site'    => __( 'Modèles du site', 'eo-tools' ),
-			'styles'  => __( 'Styles et polices', 'eo-tools' ),
-			'preview' => __( 'Aperçu et vérification', 'eo-tools' ),
-			'media'   => __( 'Médias', 'eo-tools' ),
-			'blocks'  => __( 'Blocs', 'eo-tools' ),
-			'plugins' => __( 'Extensions', 'eo-tools' ),
-			'updates' => __( 'Mises à jour', 'eo-tools' ),
-			'code'    => __( 'Code (snippets)', 'eo-tools' ),
-			'seo'     => __( 'SEO', 'eo-tools' ),
+			'content'  => __( 'Contenus', 'eo-tools' ),
+			'site'     => __( 'Modèles du site', 'eo-tools' ),
+			'styles'   => __( 'Styles et polices', 'eo-tools' ),
+			'preview'  => __( 'Aperçu et vérification', 'eo-tools' ),
+			'media'    => __( 'Médias', 'eo-tools' ),
+			'blocks'   => __( 'Blocs', 'eo-tools' ),
+			'plugins'  => __( 'Extensions', 'eo-tools' ),
+			'updates'  => __( 'Mises à jour', 'eo-tools' ),
+			'code'     => __( 'Code (snippets)', 'eo-tools' ),
+			'seo'      => __( 'SEO', 'eo-tools' ),
+			'settings' => __( 'Réglages WordPress', 'eo-tools' ),
 		);
 	}
 
@@ -72,7 +73,7 @@ class Eotools_Mcp_Abilities {
 			),
 			Eotools_Mcp_Ability::RISK_SENSITIVE => array(
 				'label'       => __( 'Sensible', 'eo-tools' ),
-				'description' => __( 'L\'IA touche au site en ligne : elle prépare des modifications que vous validez (contenus publiés, modèles, styles, code), installe des extensions (elle ne les active qu\'avec votre autorisation temporaire), et fait les mises à jour avec retour automatique en cas de problème.', 'eo-tools' ),
+				'description' => __( 'L\'IA touche au site en ligne : elle prépare des modifications que vous validez (contenus publiés, modèles, styles, code), installe des extensions (elle ne les active qu\'avec votre autorisation temporaire), modifie les réglages WordPress (en gardant l\'ancienne valeur), et fait les mises à jour avec retour automatique en cas de problème.', 'eo-tools' ),
 			),
 		);
 	}
@@ -117,6 +118,8 @@ class Eotools_Mcp_Abilities {
 			'eo-tools/audit-site-seo'          => __( 'Fait le bilan SEO du site : réglages, indexation, contenus, erreurs 404.', 'eo-tools' ),
 			'eo-tools/audit-post-seo'          => __( 'Fait l\'audit SEO détaillé d\'une page ou d\'un article : balises, titres, liens, requête cible.', 'eo-tools' ),
 			'eo-tools/list-seo-issues'         => __( 'Liste les contenus touchés par un problème SEO (méta description absente, contenu orphelin…).', 'eo-tools' ),
+			'eo-tools/get-settings'            => __( 'Lit les réglages WordPress : titre, langue, fuseau horaire, lecture, permaliens…', 'eo-tools' ),
+			'eo-tools/update-settings'         => __( 'Modifie les réglages WordPress. Les adresses du site et les rôles d\'administration restent protégés.', 'eo-tools' ),
 		);
 	}
 
@@ -177,6 +180,8 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_Audit_Site_Seo::class,
 			Abilities\Eotools_Mcp_Ability_Audit_Post_Seo::class,
 			Abilities\Eotools_Mcp_Ability_List_Seo_Issues::class,
+			Abilities\Eotools_Mcp_Ability_Get_Settings::class,
+			Abilities\Eotools_Mcp_Ability_Update_Settings::class,
 		);
 
 		/**
