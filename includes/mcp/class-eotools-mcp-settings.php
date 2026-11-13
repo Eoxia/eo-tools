@@ -304,7 +304,8 @@ class Eotools_Mcp_Settings {
 				$offset = (float) get_option( 'gmt_offset' );
 				return 'UTC' . ( $offset >= 0 ? '+' : '' ) . $offset;
 			default:
-				return is_scalar( $value ) ? (string) $value : '';
+				// Core stores some texts (site title, tagline) HTML-escaped.
+				return is_scalar( $value ) ? html_entity_decode( (string) $value, ENT_QUOTES, get_bloginfo( 'charset' ) ) : '';
 		}
 	}
 
