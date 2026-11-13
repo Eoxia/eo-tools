@@ -587,7 +587,7 @@ class Eotools_Mcp_Elevation {
 			return;
 		}
 
-		$screen = get_current_screen();
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 		if ( $screen && false !== strpos( $screen->id, 'eo-tools-mcp' ) ) {
 			return;
 		}
