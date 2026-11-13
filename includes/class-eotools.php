@@ -42,6 +42,7 @@ class Eotools {
 		\EoTools\Includes\Mcp\Eotools_Mcp_Styles::init();
 		\EoTools\Includes\Mcp\Eotools_Mcp_Snippets::init();
 		\EoTools\Includes\Mcp\Eotools_Mcp_Plugins::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Elevation::init();
 		\EoTools\Includes\Mcp\Eotools_Mcp_Preview::init();
 
 		// Cookie Interceptor

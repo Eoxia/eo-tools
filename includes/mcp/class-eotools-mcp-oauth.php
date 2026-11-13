@@ -36,6 +36,13 @@ class Eotools_Mcp_Oauth {
 	 */
 	private static $invalid_token = false;
 
+	/**
+	 * Grant (connection) that authenticated the current MCP request.
+	 *
+	 * @var int
+	 */
+	private static $current_grant_id = 0;
+
 	public static function init() {
 		add_action( 'init', array( Eotools_Mcp_Oauth_Store::class, 'maybe_create_tables' ) );
 		add_action( 'parse_request', array( __CLASS__, 'handle_public_paths' ), 0 );
@@ -482,7 +489,20 @@ class Eotools_Mcp_Oauth {
 			return $user_id;
 		}
 
+		self::$current_grant_id = (int) $grant->id;
+
 		return (int) $grant->user_id;
+	}
+
+	/**
+	 * Grant (connection) that authenticated the current MCP request.
+	 *
+	 * The ID does not change when the tokens are refreshed.
+	 *
+	 * @return int 0 when the request does not come from an OAuth connection.
+	 */
+	public static function get_current_grant_id() {
+		return self::$current_grant_id;
 	}
 
 	/**

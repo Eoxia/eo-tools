@@ -2,8 +2,8 @@
 /**
  * Plugins: list the installed plugins, search and install plugins from wordpress.org.
  *
- * The AI never activates a plugin: an installed plugin stays inactive until a
- * human activates it from the Plugins screen. Only plugins of the official
+ * An installed plugin stays inactive until a human activates it from the
+ * Plugins screen, or lets the AI do it for a limited time (Eotools_Mcp_Elevation). Only plugins of the official
  * wordpress.org directory can be installed, after a compatibility check.
  * Plugins installed by the AI are marked on the Plugins screen.
  *
@@ -100,7 +100,7 @@ class Eotools_Mcp_Plugins {
 	 * @param string $file Plugin file, e.g. "contact-form-7/wp-contact-form-7.php".
 	 * @return string
 	 */
-	private static function slug_of( $file ) {
+	public static function slug_of( $file ) {
 		return false === strpos( $file, '/' ) ? basename( $file, '.php' ) : dirname( $file );
 	}
 
@@ -110,7 +110,7 @@ class Eotools_Mcp_Plugins {
 	 * @param string $slug Slug.
 	 * @return string Empty when not installed.
 	 */
-	private static function file_of( $slug ) {
+	public static function file_of( $slug ) {
 		self::load_admin_files();
 		foreach ( array_keys( get_plugins() ) as $file ) {
 			if ( self::slug_of( $file ) === $slug ) {
@@ -343,7 +343,7 @@ class Eotools_Mcp_Plugins {
 		$data['file']      = $file;
 		$data['active']    = false;
 		$data['admin_url'] = admin_url( 'plugins.php?plugin_status=inactive&s=' . rawurlencode( $slug ) );
-		$data['message']   = __( 'Extension installée mais PAS activée : vous ne pouvez pas l\'activer. Dites à l\'utilisateur ce qu\'elle fait et pourquoi vous la proposez, et donnez-lui le lien "admin_url" pour l\'activer lui-même s\'il le souhaite. Rappelez-lui qu\'il peut la supprimer s\'il n\'en veut pas.', 'eo-tools' );
+		$data['message']   = __( 'Extension installée mais PAS activée. Pour l\'activer vous-même, demandez une autorisation temporaire avec eo-tools/request-elevation ; sinon, dites à l\'utilisateur ce qu\'elle fait et pourquoi vous la proposez, et donnez-lui le lien "admin_url" pour l\'activer lui-même s\'il le souhaite. Rappelez-lui qu\'il peut la supprimer s\'il n\'en veut pas.', 'eo-tools' );
 
 		return $data;
 	}
