@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Request_Elevation extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Demande à un administrateur le droit temporaire d\'activer des extensions déjà installées (par ex. après eo-tools/install-plugin). La demande indique les extensions, la raison (affichée à l\'administrateur, soyez précis) et la durée souhaitée. Elle ne donne aucun droit tant qu\'un administrateur ne l\'a pas validée dans WordPress, en retapant son mot de passe, via le lien "approval_url" renvoyé : donnez ce lien à l\'utilisateur. Ne demandez jamais de code, de mot de passe ou de validation dans la conversation. L\'autorisation ne vaut que pour cette connexion, pour ces extensions, et expire d\'elle-même ; activez ensuite chaque extension avec eo-tools/activate-plugin.', 'eo-tools' );
+		return __( 'Demande à un administrateur le droit temporaire d\'activer des extensions déjà installées (par ex. après eo-tools/install-plugin) et/ou d\'en désactiver (par ex. une extension en conflit). La demande indique les extensions à activer ("activate") et à désactiver ("deactivate"), la raison (affichée à l\'administrateur, soyez précis) et la durée souhaitée. Elle ne donne aucun droit tant qu\'un administrateur ne l\'a pas validée dans WordPress, en retapant son mot de passe, via le lien "approval_url" renvoyé : donnez ce lien à l\'utilisateur. Ne demandez jamais de code, de mot de passe ou de validation dans la conversation. L\'autorisation ne vaut que pour cette connexion, pour ces extensions, et expire d\'elle-même ; activez ou désactivez ensuite chaque extension avec eo-tools/activate-plugin ou eo-tools/deactivate-plugin.', 'eo-tools' );
 	}
 
 	public function get_group() {
@@ -39,18 +39,23 @@ class Eotools_Mcp_Ability_Request_Elevation extends Eotools_Mcp_Ability {
 		return array(
 			'type'                 => 'object',
 			'properties'           => array(
-				'plugins'  => array(
+				'activate'   => array(
 					'type'        => 'array',
 					'items'       => array( 'type' => 'string' ),
-					'minItems'    => 1,
 					'maxItems'    => Eotools_Mcp_Elevation::MAX_PLUGINS,
-					'description' => __( 'Identifiants ("slug") des extensions installées à activer, ex. ["contact-form-7", "flamingo"].', 'eo-tools' ),
+					'description' => __( 'Identifiants ("slug") des extensions installées et inactives à activer, ex. ["contact-form-7", "flamingo"].', 'eo-tools' ),
 				),
-				'reason'   => array(
+				'deactivate' => array(
+					'type'        => 'array',
+					'items'       => array( 'type' => 'string' ),
+					'maxItems'    => Eotools_Mcp_Elevation::MAX_PLUGINS,
+					'description' => __( 'Identifiants ("slug") des extensions actives à désactiver (par ex. une extension en conflit). EO Tools et MCP Adapter ne peuvent pas être désactivées.', 'eo-tools' ),
+				),
+				'reason'     => array(
 					'type'        => 'string',
 					'description' => __( 'Pourquoi ces extensions doivent être activées, en une ou deux phrases, pour l\'administrateur.', 'eo-tools' ),
 				),
-				'duration' => array(
+				'duration'   => array(
 					'type'        => 'integer',
 					'minimum'     => 5,
 					'maximum'     => Eotools_Mcp_Elevation::MAX_DURATION,
@@ -58,7 +63,7 @@ class Eotools_Mcp_Ability_Request_Elevation extends Eotools_Mcp_Ability {
 					'description' => __( 'Durée souhaitée en minutes. L\'administrateur peut la réduire.', 'eo-tools' ),
 				),
 			),
-			'required'             => array( 'plugins', 'reason' ),
+			'required'             => array( 'reason' ),
 			'additionalProperties' => false,
 		);
 	}
@@ -69,7 +74,8 @@ class Eotools_Mcp_Ability_Request_Elevation extends Eotools_Mcp_Ability {
 
 	public function execute( $input ) {
 		return Eotools_Mcp_Elevation::request(
-			$input['plugins'],
+			isset( $input['activate'] ) ? $input['activate'] : array(),
+			isset( $input['deactivate'] ) ? $input['deactivate'] : array(),
 			$input['reason'],
 			isset( $input['duration'] ) ? $input['duration'] : Eotools_Mcp_Elevation::DEFAULT_DURATION
 		);

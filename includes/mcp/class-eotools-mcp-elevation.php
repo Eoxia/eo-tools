@@ -1,15 +1,16 @@
 <?php
 /**
- * Temporary elevation: a human lets one AI connection activate given plugins
+ * Temporary elevation: a human lets one AI connection activate or deactivate given plugins
  * for a limited time.
  *
- * 1. The AI asks (eo-tools/request-elevation): which plugins, why, for how long.
+ * 1. The AI asks (eo-tools/request-elevation): which plugins to activate or
+ *    deactivate, why, for how long.
  * 2. An administrator approves in EO Tools > MCP > Autorisations, after typing
  *    their password again. Nothing is ever approved from the chat: anything
  *    written in a conversation can be read and reused by the AI.
  * 3. The grant only works for the connection that asked, only for the listed
  *    plugins, and expires on its own. It can be revoked at any time.
- * 4. Every activation is logged, and can be undone in one click.
+ * 4. Every change is logged, and can be undone in one click.
  *
  * @package EoTools
  */
@@ -196,14 +197,15 @@ class Eotools_Mcp_Elevation {
 	 * ------------------------------------------------------------------ */
 
 	/**
-	 * Asks a human for the right to activate plugins.
+	 * Asks a human for the right to activate and/or deactivate plugins.
 	 *
-	 * @param string[] $slugs    Plugin slugs.
-	 * @param string   $reason   Why the AI needs it.
-	 * @param int      $duration Minutes.
+	 * @param string[] $activate   Slugs of inactive plugins to activate.
+	 * @param string[] $deactivate Slugs of active plugins to deactivate.
+	 * @param string   $reason     Why the AI needs it.
+	 * @param int      $duration   Minutes.
 	 * @return array|\WP_Error
 	 */
-	public static function request( $slugs, $reason, $duration ) {
+	public static function request( $activate, $deactivate, $reason, $duration ) {
 		$connection = self::get_current_connection();
 		if ( '' === $connection ) {
 			return new \WP_Error( 'eo_tools_elevation_no_connection', __( 'Cette demande doit venir d\'une connexion IA EO Tools.', 'eo-tools' ) );
@@ -211,10 +213,10 @@ class Eotools_Mcp_Elevation {
 
 		$reason = sanitize_textarea_field( (string) $reason );
 		if ( '' === trim( $reason ) ) {
-			return new \WP_Error( 'eo_tools_elevation_reason', __( 'Expliquez pourquoi ces extensions doivent être activées.', 'eo-tools' ) );
+			return new \WP_Error( 'eo_tools_elevation_reason', __( 'Expliquez pourquoi ces extensions doivent être activées ou désactivées.', 'eo-tools' ) );
 		}
 
-		$plugins = self::check_plugins( $slugs );
+		$plugins = self::check_plugins( $activate, $deactivate );
 		if ( is_wp_error( $plugins ) ) {
 			return $plugins;
 		}
@@ -226,7 +228,7 @@ class Eotools_Mcp_Elevation {
 			'connection' => $connection,
 			'label'      => self::connection_label( $connection ),
 			'user'       => get_current_user_id(),
-			'scope'      => 'activate_plugins',
+			'scope'      => 'plugins',
 			'plugins'    => $plugins,
 			'reason'     => $reason,
 			'duration'   => $duration,
@@ -240,30 +242,85 @@ class Eotools_Mcp_Elevation {
 
 		self::save( $request );
 
+		$lists = self::split_plugins( $plugins );
+
 		return array(
 			'request_id'   => $request['id'],
 			'status'       => $request['status'],
-			'plugins'      => array_values( wp_list_pluck( $plugins, 'name' ) ),
+			'activate'     => array_values( wp_list_pluck( $lists['activate'], 'name' ) ),
+			'deactivate'   => array_values( wp_list_pluck( $lists['deactivate'], 'name' ) ),
 			'duration'     => $duration,
 			'approval_url' => self::admin_url( $request['id'] ),
-			'message'      => __( 'Demande enregistrée, en attente de validation humaine. Donnez à l\'utilisateur le lien "approval_url" : un administrateur doit la valider dans WordPress en retapant son mot de passe (jamais dans cette conversation : ne demandez aucun code ni mot de passe). Une fois validée, utilisez eo-tools/activate-plugin pour chaque extension, avant la fin du délai.', 'eo-tools' ),
+			'message'      => __( 'Demande enregistrée, en attente de validation humaine. Donnez à l\'utilisateur le lien "approval_url" : un administrateur doit la valider dans WordPress en retapant son mot de passe (jamais dans cette conversation : ne demandez aucun code ni mot de passe). Une fois validée, utilisez eo-tools/activate-plugin et eo-tools/deactivate-plugin pour chaque extension, avant la fin du délai.', 'eo-tools' ),
 		);
 	}
 
 	/**
-	 * Checks the plugins of a request: installed, not active, not network-only.
+	 * Action allowed on a plugin of a request.
 	 *
-	 * @param string[] $slugs Plugin slugs.
-	 * @return array[]|\WP_Error Plugins keyed by file (slug, name, version, author).
+	 * @param array $plugin Plugin of a request.
+	 * @return string "activate" or "deactivate".
 	 */
-	private static function check_plugins( $slugs ) {
+	public static function plugin_action( $plugin ) {
+		return isset( $plugin['action'] ) && 'deactivate' === $plugin['action'] ? 'deactivate' : 'activate';
+	}
+
+	/**
+	 * Plugins of a request, by action.
+	 *
+	 * @param array[] $plugins Plugins keyed by file.
+	 * @return array[] { activate: array[], deactivate: array[] }.
+	 */
+	public static function split_plugins( $plugins ) {
+		$lists = array(
+			'activate'   => array(),
+			'deactivate' => array(),
+		);
+		foreach ( $plugins as $file => $plugin ) {
+			$lists[ self::plugin_action( $plugin ) ][ $file ] = $plugin;
+		}
+
+		return $lists;
+	}
+
+	/**
+	 * Plugins the AI may never deactivate: it would cut its own connection.
+	 *
+	 * @return string[] Slugs.
+	 */
+	private static function get_protected_slugs() {
+		return array(
+			Eotools_Mcp_Plugins::slug_of( plugin_basename( EO_TOOLS_PATH . 'eo-tools.php' ) ),
+			'mcp-adapter',
+		);
+	}
+
+	/**
+	 * Checks the plugins of a request.
+	 *
+	 * Plugins to activate must be installed and inactive, plugins to deactivate
+	 * installed and active on this site (not network-wide, not EO Tools itself).
+	 *
+	 * @param string[] $activate   Slugs.
+	 * @param string[] $deactivate Slugs.
+	 * @return array[]|\WP_Error Plugins keyed by file (slug, name, version, author, action).
+	 */
+	private static function check_plugins( $activate, $deactivate ) {
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
-		$slugs = array_values( array_unique( array_filter( array_map( 'sanitize_key', (array) $slugs ) ) ) );
-		if ( ! $slugs ) {
-			return new \WP_Error( 'eo_tools_elevation_plugins', __( 'Indiquez au moins une extension.', 'eo-tools' ) );
+		$clean = function ( $slugs ) {
+			return array_values( array_unique( array_filter( array_map( 'sanitize_key', (array) $slugs ) ) ) );
+		};
+		$lists = array(
+			'activate'   => $clean( $activate ),
+			'deactivate' => $clean( $deactivate ),
+		);
+
+		$count = count( $lists['activate'] ) + count( $lists['deactivate'] );
+		if ( ! $count ) {
+			return new \WP_Error( 'eo_tools_elevation_plugins', __( 'Indiquez au moins une extension à activer ou à désactiver.', 'eo-tools' ) );
 		}
-		if ( count( $slugs ) > self::MAX_PLUGINS ) {
+		if ( $count > self::MAX_PLUGINS ) {
 			/* translators: %d: maximum number of plugins */
 			return new \WP_Error( 'eo_tools_elevation_plugins', sprintf( __( '%d extensions au maximum par demande.', 'eo-tools' ), self::MAX_PLUGINS ) );
 		}
@@ -272,34 +329,61 @@ class Eotools_Mcp_Elevation {
 		$plugins   = array();
 		$errors    = array();
 
-		foreach ( $slugs as $slug ) {
-			$file = Eotools_Mcp_Plugins::file_of( $slug );
-			if ( '' === $file ) {
-				/* translators: %s: plugin slug */
-				$errors[] = sprintf( __( '« %s » n\'est pas installée (installez-la d\'abord avec eo-tools/install-plugin).', 'eo-tools' ), $slug );
-				continue;
-			}
-			if ( is_plugin_active( $file ) ) {
-				/* translators: %s: plugin slug */
-				$errors[] = sprintf( __( '« %s » est déjà active.', 'eo-tools' ), $slug );
-				continue;
-			}
-			if ( is_multisite() && is_network_only_plugin( $file ) ) {
-				/* translators: %s: plugin slug */
-				$errors[] = sprintf( __( '« %s » ne peut être activée que sur tout le réseau, par l\'administrateur du réseau.', 'eo-tools' ), $slug );
-				continue;
-			}
+		foreach ( array_intersect( $lists['activate'], $lists['deactivate'] ) as $slug ) {
+			/* translators: %s: plugin slug */
+			$errors[] = sprintf( __( '« %s » ne peut pas être à la fois activée et désactivée.', 'eo-tools' ), $slug );
+		}
 
-			$plugins[ $file ] = array(
-				'slug'    => $slug,
-				'name'    => wp_strip_all_tags( $installed[ $file ]['Name'] ),
-				'version' => $installed[ $file ]['Version'],
-				'author'  => wp_strip_all_tags( $installed[ $file ]['Author'] ),
-			);
+		foreach ( $lists as $action => $slugs ) {
+			foreach ( $slugs as $slug ) {
+				$file = Eotools_Mcp_Plugins::file_of( $slug );
+				if ( '' === $file ) {
+					/* translators: %s: plugin slug */
+					$errors[] = sprintf( __( '« %s » n\'est pas installée (installez-la d\'abord avec eo-tools/install-plugin).', 'eo-tools' ), $slug );
+					continue;
+				}
+
+				if ( 'activate' === $action ) {
+					if ( is_plugin_active( $file ) ) {
+						/* translators: %s: plugin slug */
+						$errors[] = sprintf( __( '« %s » est déjà active.', 'eo-tools' ), $slug );
+						continue;
+					}
+					if ( is_multisite() && is_network_only_plugin( $file ) ) {
+						/* translators: %s: plugin slug */
+						$errors[] = sprintf( __( '« %s » ne peut être activée que sur tout le réseau, par l\'administrateur du réseau.', 'eo-tools' ), $slug );
+						continue;
+					}
+				} else {
+					if ( in_array( $slug, self::get_protected_slugs(), true ) ) {
+						/* translators: %s: plugin slug */
+						$errors[] = sprintf( __( '« %s » relie l\'IA au site : elle ne peut pas être désactivée par l\'IA.', 'eo-tools' ), $slug );
+						continue;
+					}
+					if ( ! is_plugin_active( $file ) ) {
+						/* translators: %s: plugin slug */
+						$errors[] = sprintf( __( '« %s » est déjà désactivée.', 'eo-tools' ), $slug );
+						continue;
+					}
+					if ( is_multisite() && is_plugin_active_for_network( $file ) ) {
+						/* translators: %s: plugin slug */
+						$errors[] = sprintf( __( '« %s » est activée sur tout le réseau : seul l\'administrateur du réseau peut la désactiver.', 'eo-tools' ), $slug );
+						continue;
+					}
+				}
+
+				$plugins[ $file ] = array(
+					'slug'    => $slug,
+					'name'    => wp_strip_all_tags( $installed[ $file ]['Name'] ),
+					'version' => $installed[ $file ]['Version'],
+					'author'  => wp_strip_all_tags( $installed[ $file ]['Author'] ),
+					'action'  => $action,
+				);
+			}
 		}
 
 		if ( $errors ) {
-			return new \WP_Error( 'eo_tools_elevation_plugins', implode( ' ', $errors ) );
+			return new \WP_Error( 'eo_tools_elevation_plugins', implode( ' ', array_unique( $errors ) ) );
 		}
 
 		return $plugins;
@@ -312,20 +396,42 @@ class Eotools_Mcp_Elevation {
 	 * @return array|\WP_Error
 	 */
 	public static function activate_plugin( $slug ) {
+		return self::change_plugin( $slug, 'activate' );
+	}
+
+	/**
+	 * Deactivates a plugin under an active grant of the current connection.
+	 *
+	 * @param string $slug Plugin slug.
+	 * @return array|\WP_Error
+	 */
+	public static function deactivate_plugin( $slug ) {
+		return self::change_plugin( $slug, 'deactivate' );
+	}
+
+	/**
+	 * Activates or deactivates a plugin under an active grant of the current connection.
+	 *
+	 * @param string $slug   Plugin slug.
+	 * @param string $action "activate" or "deactivate".
+	 * @return array|\WP_Error
+	 */
+	private static function change_plugin( $slug, $action ) {
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
 		$slug       = sanitize_key( $slug );
 		$connection = self::get_current_connection();
 		$file       = Eotools_Mcp_Plugins::file_of( $slug );
+		$activate   = 'activate' === $action;
 
 		if ( '' === $file ) {
 			return new \WP_Error( 'eo_tools_plugin_missing', __( 'Cette extension n\'est pas installée.', 'eo-tools' ) );
 		}
-		if ( is_plugin_active( $file ) ) {
+		if ( is_plugin_active( $file ) === $activate ) {
 			return array(
 				'slug'    => $slug,
-				'active'  => true,
-				'message' => __( 'Cette extension est déjà active.', 'eo-tools' ),
+				'active'  => $activate,
+				'message' => $activate ? __( 'Cette extension est déjà active.', 'eo-tools' ) : __( 'Cette extension est déjà désactivée.', 'eo-tools' ),
 			);
 		}
 
@@ -333,7 +439,7 @@ class Eotools_Mcp_Elevation {
 		$pending = false;
 		if ( '' !== $connection ) {
 			foreach ( self::get_all() as $request ) {
-				if ( $request['connection'] !== $connection || ! isset( $request['plugins'][ $file ] ) ) {
+				if ( $request['connection'] !== $connection || ! isset( $request['plugins'][ $file ] ) || self::plugin_action( $request['plugins'][ $file ] ) !== $action ) {
 					continue;
 				}
 				if ( self::STATUS_ACTIVE === $request['status'] ) {
@@ -355,13 +461,23 @@ class Eotools_Mcp_Elevation {
 				);
 			}
 
-			return new \WP_Error( 'eo_tools_elevation_required', __( 'Vous n\'avez pas d\'autorisation en cours pour activer cette extension. Demandez-la avec eo-tools/request-elevation, puis attendez qu\'un administrateur la valide dans WordPress.', 'eo-tools' ) );
+			return new \WP_Error(
+				'eo_tools_elevation_required',
+				$activate
+					? __( 'Vous n\'avez pas d\'autorisation en cours pour activer cette extension. Demandez-la avec eo-tools/request-elevation, puis attendez qu\'un administrateur la valide dans WordPress.', 'eo-tools' )
+					: __( 'Vous n\'avez pas d\'autorisation en cours pour désactiver cette extension. Demandez-la avec eo-tools/request-elevation, puis attendez qu\'un administrateur la valide dans WordPress.', 'eo-tools' )
+			);
 		}
 
-		$result = activate_plugin( $file, '', false, false );
+		if ( $activate ) {
+			$result = activate_plugin( $file, '', false, false );
+		} else {
+			deactivate_plugins( $file );
+			$result = is_plugin_active( $file ) ? new \WP_Error( 'eo_tools_plugin_still_active', __( 'L\'extension n\'a pas pu être désactivée.', 'eo-tools' ) ) : null;
+		}
 
 		$grant['actions'][] = array(
-			'type'   => 'activate',
+			'type'   => $action,
 			'file'   => $file,
 			'time'   => time(),
 			'result' => is_wp_error( $result ) ? $result->get_error_message() : 'ok',
@@ -377,7 +493,9 @@ class Eotools_Mcp_Elevation {
 			'name'       => $grant['plugins'][ $file ]['name'],
 			'active'     => is_plugin_active( $file ),
 			'expires_at' => gmdate( 'c', $grant['expires'] ),
-			'message'    => __( 'Extension activée. Elle est notée dans le journal de cette autorisation : l\'administrateur peut la désactiver en un clic.', 'eo-tools' ),
+			'message'    => $activate
+				? __( 'Extension activée. Elle est notée dans le journal de cette autorisation : l\'administrateur peut annuler en un clic.', 'eo-tools' )
+				: __( 'Extension désactivée. Elle est notée dans le journal de cette autorisation : l\'administrateur peut annuler en un clic.', 'eo-tools' ),
 		);
 	}
 
@@ -479,7 +597,8 @@ class Eotools_Mcp_Elevation {
 		delete_transient( $lock_key );
 
 		// The plugins may have changed since the request.
-		$plugins = self::check_plugins( wp_list_pluck( $request['plugins'], 'slug' ) );
+		$lists   = self::split_plugins( $request['plugins'] );
+		$plugins = self::check_plugins( wp_list_pluck( $lists['activate'], 'slug' ), wp_list_pluck( $lists['deactivate'], 'slug' ) );
 		if ( is_wp_error( $plugins ) ) {
 			return $plugins;
 		}
@@ -524,44 +643,67 @@ class Eotools_Mcp_Elevation {
 	}
 
 	/**
-	 * Plugins activated by the AI under a grant and still active.
+	 * Changes made by the AI under a grant that are still in place.
+	 *
+	 * Only the last action on each plugin counts: once a human has undone it
+	 * (an action carrying a "user"), there is nothing left to undo.
 	 *
 	 * @param array $request Request.
-	 * @return string[] Plugin files.
+	 * @return string[] What undoing does, keyed by plugin file: "activate" or "deactivate".
 	 */
 	public static function get_undoable( $request ) {
 		require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
-		$files = array();
+		$last = array();
 		foreach ( $request['actions'] as $action ) {
-			if ( 'activate' === $action['type'] && 'ok' === $action['result'] && is_plugin_active( $action['file'] ) ) {
-				$files[] = $action['file'];
+			$last[ $action['file'] ] = $action;
+		}
+
+		$undo = array();
+		foreach ( $last as $file => $action ) {
+			if ( isset( $action['user'] ) || 'ok' !== $action['result'] ) {
+				continue;
+			}
+			if ( 'activate' === $action['type'] && is_plugin_active( $file ) ) {
+				$undo[ $file ] = 'deactivate';
+			} elseif ( 'deactivate' === $action['type'] && ! is_plugin_active( $file ) ) {
+				$undo[ $file ] = 'activate';
 			}
 		}
 
-		return array_values( array_unique( $files ) );
+		return $undo;
 	}
 
 	/**
-	 * Deactivates every plugin activated under a grant, and ends the grant.
+	 * Undoes every change made by the AI under a grant, and ends the grant.
 	 *
 	 * @param array $request Request.
 	 * @return true|\WP_Error
 	 */
 	private static function undo( $request ) {
-		$files = self::get_undoable( $request );
-		if ( ! $files ) {
-			return new \WP_Error( 'eo_tools_elevation_nothing', __( 'Aucune extension activée par l\'IA n\'est encore active.', 'eo-tools' ) );
+		$undo = self::get_undoable( $request );
+		if ( ! $undo ) {
+			return new \WP_Error( 'eo_tools_elevation_nothing', __( 'Les changements faits par l\'IA ont déjà été annulés.', 'eo-tools' ) );
 		}
 
-		deactivate_plugins( $files );
+		$failed = array();
+		foreach ( $undo as $file => $type ) {
+			if ( 'deactivate' === $type ) {
+				deactivate_plugins( $file );
+				$result = is_plugin_active( $file ) ? __( 'toujours active', 'eo-tools' ) : 'ok';
+			} else {
+				$activated = activate_plugin( $file, '', false, false );
+				$result    = is_wp_error( $activated ) ? $activated->get_error_message() : 'ok';
+			}
+			if ( 'ok' !== $result ) {
+				$failed[] = ( isset( $request['plugins'][ $file ]['name'] ) ? $request['plugins'][ $file ]['name'] : $file ) . ' : ' . $result;
+			}
 
-		foreach ( $files as $file ) {
 			$request['actions'][] = array(
-				'type'   => 'deactivate',
+				'type'   => $type,
 				'file'   => $file,
 				'time'   => time(),
-				'result' => 'ok',
+				'result' => $result,
 				'user'   => get_current_user_id(),
 			);
 		}
@@ -572,6 +714,11 @@ class Eotools_Mcp_Elevation {
 		}
 
 		self::save( $request );
+
+		if ( $failed ) {
+			/* translators: %s: plugins that could not be restored */
+			return new \WP_Error( 'eo_tools_elevation_undo', sprintf( __( 'Certaines extensions n\'ont pas pu être remises dans leur état d\'origine : %s', 'eo-tools' ), implode( ' ; ', $failed ) ) );
+		}
 
 		return true;
 	}

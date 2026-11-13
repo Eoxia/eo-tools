@@ -788,3 +788,22 @@
 	flex-wrap: wrap;
 	gap: 8px;
 }
+
+.eo-mcp-elevation-action {
+	display: inline-block;
+	margin-right: 6px;
+	padding: 1px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.eo-mcp-elevation-action.is-activate {
+	background: #edfaef;
+	color: #007017;
+}
+
+.eo-mcp-elevation-action.is-deactivate {
+	background: #fcf0f1;
+	color: #b32d2e;
+}

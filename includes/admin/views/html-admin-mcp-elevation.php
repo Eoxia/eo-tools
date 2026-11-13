@@ -16,8 +16,12 @@ $done     = isset( $_GET['done'] ) ? sanitize_key( wp_unslash( $_GET['done'] ) )
 $messages = array(
 	'approve' => __( 'Autorisation accordée. Elle s\'arrêtera d\'elle-même à la fin du délai.', 'eo-tools' ),
 	'reject'  => __( 'Demande refusée.', 'eo-tools' ),
-	'revoke'  => __( 'Autorisation révoquée : l\'IA ne peut plus activer ces extensions.', 'eo-tools' ),
-	'undo'    => __( 'Les extensions activées par l\'IA ont été désactivées.', 'eo-tools' ),
+	'revoke'  => __( 'Autorisation révoquée : l\'IA ne peut plus modifier ces extensions.', 'eo-tools' ),
+	'undo'    => __( 'Les changements de l\'IA ont été annulés : les extensions sont revenues à leur état d\'origine.', 'eo-tools' ),
+);
+$plugin_actions = array(
+	'activate'   => __( 'À activer', 'eo-tools' ),
+	'deactivate' => __( 'À désactiver', 'eo-tools' ),
 );
 $statuses = array(
 	Eotools_Mcp_Elevation::STATUS_PENDING  => __( 'En attente', 'eo-tools' ),
@@ -50,7 +54,7 @@ $plugin_name = function ( $request, $file ) {
 	<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $messages[ $done ] ); ?></p></div>
 <?php endif; ?>
 
-<p class="eo-mcp-intro"><?php esc_html_e( 'Votre IA peut demander le droit d\'activer des extensions pendant un temps limité. Rien ne se passe sans votre accord : vous validez ici, en retapant votre mot de passe. L\'autorisation ne vaut que pour la connexion IA qui l\'a demandée et pour les extensions listées, puis s\'arrête d\'elle-même.', 'eo-tools' ); ?></p>
+<p class="eo-mcp-intro"><?php esc_html_e( 'Votre IA peut demander le droit d\'activer ou de désactiver des extensions pendant un temps limité. Rien ne se passe sans votre accord : vous validez ici, en retapant votre mot de passe. L\'autorisation ne vaut que pour la connexion IA qui l\'a demandée et pour les extensions listées, puis s\'arrête d\'elle-même.', 'eo-tools' ); ?></p>
 <p class="eo-mcp-status is-warning"><span class="dashicons dashicons-shield"></span><?php esc_html_e( 'Ne donnez jamais de mot de passe ou de code à votre IA dans la conversation : la validation se fait uniquement sur cette page.', 'eo-tools' ); ?></p>
 
 <?php if ( ! $all ) : ?>
@@ -73,7 +77,7 @@ $plugin_name = function ( $request, $file ) {
 		?>
 		<div class="eo-mcp-card eo-mcp-elevation is-<?php echo esc_attr( $status ); ?>" id="elevation-<?php echo esc_attr( $request['id'] ); ?>">
 			<div class="eo-mcp-elevation-header">
-				<h3><?php esc_html_e( 'Activer des extensions', 'eo-tools' ); ?></h3>
+				<h3><?php esc_html_e( 'Modifier des extensions', 'eo-tools' ); ?></h3>
 				<span class="eo-mcp-elevation-status is-<?php echo esc_attr( $status ); ?>"><?php echo esc_html( $statuses[ $status ] ); ?></span>
 			</div>
 
@@ -95,7 +99,9 @@ $plugin_name = function ( $request, $file ) {
 
 			<ul class="eo-mcp-elevation-plugins">
 				<?php foreach ( $request['plugins'] as $plugin ) : ?>
+					<?php $plugin_action = Eotools_Mcp_Elevation::plugin_action( $plugin ); ?>
 					<li>
+						<span class="eo-mcp-elevation-action is-<?php echo esc_attr( $plugin_action ); ?>"><?php echo esc_html( $plugin_actions[ $plugin_action ] ); ?></span>
 						<strong><?php echo esc_html( $plugin['name'] ); ?></strong>
 						<?php
 						/* translators: 1: version, 2: author */
@@ -172,15 +178,33 @@ $plugin_name = function ( $request, $file ) {
 							<li>
 								<?php echo esc_html( wp_date( $date_fmt, $action['time'] ) ); ?> –
 								<?php
-								if ( 'deactivate' === $action['type'] ) {
-									/* translators: %s: plugin name */
-									echo esc_html( sprintf( __( '%s désactivée', 'eo-tools' ), $plugin_name( $request, $action['file'] ) ) );
-								} elseif ( 'ok' === $action['result'] ) {
-									/* translators: %s: plugin name */
-									echo esc_html( sprintf( __( '%s activée par l\'IA', 'eo-tools' ), $plugin_name( $request, $action['file'] ) ) );
+								$name     = $plugin_name( $request, $action['file'] );
+								$by_human = isset( $action['user'] );
+								$activate = 'activate' === $action['type'];
+								if ( 'ok' !== $action['result'] ) {
+									echo esc_html(
+										$activate
+											/* translators: 1: plugin name, 2: error */
+											? sprintf( __( 'Échec de l\'activation de %1$s : %2$s', 'eo-tools' ), $name, $action['result'] )
+											/* translators: 1: plugin name, 2: error */
+											: sprintf( __( 'Échec de la désactivation de %1$s : %2$s', 'eo-tools' ), $name, $action['result'] )
+									);
+								} elseif ( $by_human ) {
+									echo esc_html(
+										$activate
+											/* translators: 1: plugin name, 2: user */
+											? sprintf( __( '%1$s réactivée par %2$s (annulation)', 'eo-tools' ), $name, $user_name( $action['user'] ) )
+											/* translators: 1: plugin name, 2: user */
+											: sprintf( __( '%1$s désactivée par %2$s (annulation)', 'eo-tools' ), $name, $user_name( $action['user'] ) )
+									);
 								} else {
-									/* translators: 1: plugin name, 2: error */
-									echo esc_html( sprintf( __( 'Échec de l\'activation de %1$s : %2$s', 'eo-tools' ), $plugin_name( $request, $action['file'] ), $action['result'] ) );
+									echo esc_html(
+										$activate
+											/* translators: %s: plugin name */
+											? sprintf( __( '%s activée par l\'IA', 'eo-tools' ), $name )
+											/* translators: %s: plugin name */
+											: sprintf( __( '%s désactivée par l\'IA', 'eo-tools' ), $name )
+									);
 								}
 								?>
 							</li>
@@ -201,7 +225,7 @@ $plugin_name = function ( $request, $file ) {
 							<button type="submit" class="button">
 								<?php
 								/* translators: %d: number of plugins */
-								echo esc_html( sprintf( _n( 'Désactiver l\'extension activée par l\'IA', 'Désactiver les %d extensions activées par l\'IA', count( $undoable ), 'eo-tools' ), count( $undoable ) ) );
+								echo esc_html( sprintf( _n( 'Annuler les changements de l\'IA (%d extension)', 'Annuler les changements de l\'IA (%d extensions)', count( $undoable ), 'eo-tools' ), count( $undoable ) ) );
 								?>
 							</button>
 						</form>
@@ -230,16 +254,23 @@ $history = array_filter(
 				<th><?php esc_html_e( 'Connexion', 'eo-tools' ); ?></th>
 				<th><?php esc_html_e( 'Extensions', 'eo-tools' ); ?></th>
 				<th><?php esc_html_e( 'Statut', 'eo-tools' ); ?></th>
-				<th><?php esc_html_e( 'Activées par l\'IA', 'eo-tools' ); ?></th>
+				<th><?php esc_html_e( 'Changements de l\'IA', 'eo-tools' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php foreach ( $history as $request ) : ?>
 				<?php
-				$activated = array();
+				$changes = array();
 				foreach ( $request['actions'] as $action ) {
-					if ( 'activate' === $action['type'] && 'ok' === $action['result'] ) {
-						$activated[] = $plugin_name( $request, $action['file'] );
+					if ( 'ok' === $action['result'] && ! isset( $action['user'] ) ) {
+						$changes[] = sprintf(
+							'activate' === $action['type']
+								/* translators: %s: plugin name */
+								? __( '%s activée', 'eo-tools' )
+								/* translators: %s: plugin name */
+								: __( '%s désactivée', 'eo-tools' ),
+							$plugin_name( $request, $action['file'] )
+						);
 					}
 				}
 				?>
@@ -248,7 +279,7 @@ $history = array_filter(
 					<td><?php echo esc_html( $request['label'] ); ?></td>
 					<td><?php echo esc_html( implode( ', ', wp_list_pluck( $request['plugins'], 'name' ) ) ); ?></td>
 					<td><?php echo esc_html( $statuses[ $request['status'] ] ); ?></td>
-					<td><?php echo esc_html( $activated ? implode( ', ', array_unique( $activated ) ) : '–' ); ?></td>
+					<td><?php echo esc_html( $changes ? implode( ', ', array_unique( $changes ) ) : '–' ); ?></td>
 				</tr>
 			<?php endforeach; ?>
 		</tbody>
