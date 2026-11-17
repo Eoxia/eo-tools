@@ -50,6 +50,7 @@ class Eotools_Mcp_Abilities {
 			'code'     => __( 'Code (snippets)', 'eo-tools' ),
 			'seo'      => __( 'SEO', 'eo-tools' ),
 			'settings' => __( 'Réglages WordPress', 'eo-tools' ),
+			'users'    => __( 'Utilisateurs', 'eo-tools' ),
 		);
 	}
 
@@ -109,6 +110,8 @@ class Eotools_Mcp_Abilities {
 			'eo-tools/request-elevation'       => __( 'Demande le droit d\'activer ou de désactiver des extensions pour un temps limité. Rien ne se passe sans votre validation.', 'eo-tools' ),
 			'eo-tools/activate-plugin'         => __( 'Active une extension, seulement pendant une autorisation que vous avez validée.', 'eo-tools' ),
 			'eo-tools/deactivate-plugin'       => __( 'Désactive une extension, seulement pendant une autorisation que vous avez validée.', 'eo-tools' ),
+			'eo-tools/get-plugin-settings'     => __( 'Lit les réglages d\'une extension prise en charge (Contact Form 7…).', 'eo-tools' ),
+			'eo-tools/update-plugin-settings'  => __( 'Modifie les réglages d\'une extension prise en charge. Les clés secrètes restent saisies par vous.', 'eo-tools' ),
 			'eo-tools/check-updates'           => __( 'Liste les mises à jour disponibles (WordPress, extensions, thèmes).', 'eo-tools' ),
 			'eo-tools/update-site'             => __( 'Met à jour le site, avec retour automatique à l\'ancienne version en cas de problème.', 'eo-tools' ),
 			'eo-tools/list-snippets'           => __( 'Liste les snippets de code du site et leur état.', 'eo-tools' ),
@@ -121,6 +124,7 @@ class Eotools_Mcp_Abilities {
 			'eo-tools/list-seo-issues'         => __( 'Liste les contenus touchés par un problème SEO (méta description absente, contenu orphelin…).', 'eo-tools' ),
 			'eo-tools/get-settings'            => __( 'Lit les réglages WordPress : titre, langue, fuseau horaire, lecture, permaliens…', 'eo-tools' ),
 			'eo-tools/update-settings'         => __( 'Modifie les réglages WordPress. Les adresses du site et les rôles d\'administration restent protégés.', 'eo-tools' ),
+			'eo-tools/create-user'             => __( 'Demande la création d\'un compte (éditeur au maximum), créé seulement après votre validation.', 'eo-tools' ),
 		);
 	}
 
@@ -172,6 +176,8 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_Request_Elevation::class,
 			Abilities\Eotools_Mcp_Ability_Activate_Plugin::class,
 			Abilities\Eotools_Mcp_Ability_Deactivate_Plugin::class,
+			Abilities\Eotools_Mcp_Ability_Get_Plugin_Settings::class,
+			Abilities\Eotools_Mcp_Ability_Update_Plugin_Settings::class,
 			Abilities\Eotools_Mcp_Ability_Check_Updates::class,
 			Abilities\Eotools_Mcp_Ability_Update_Site::class,
 			Abilities\Eotools_Mcp_Ability_List_Snippets::class,
@@ -184,6 +190,7 @@ class Eotools_Mcp_Abilities {
 			Abilities\Eotools_Mcp_Ability_List_Seo_Issues::class,
 			Abilities\Eotools_Mcp_Ability_Get_Settings::class,
 			Abilities\Eotools_Mcp_Ability_Update_Settings::class,
+			Abilities\Eotools_Mcp_Ability_Create_User::class,
 		);
 
 		/**
