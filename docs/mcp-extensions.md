@@ -20,6 +20,7 @@ L'IA connectée à EO Tools peut lire et modifier les réglages de certaines ext
 | `includes/mcp/plugins/class-eotools-mcp-plugin-*.php` | Un adaptateur par extension |
 | `includes/mcp/abilities/class-eotools-mcp-ability-get-plugin-settings.php` | Outil `eo-tools/get-plugin-settings` (lecture) |
 | `includes/mcp/abilities/class-eotools-mcp-ability-update-plugin-settings.php` | Outil `eo-tools/update-plugin-settings` (niveau « Sensible ») |
+| `includes/mcp/class-eotools-mcp-cookies.php` | Scan, liste et validation des cookies d'EO Tools, pour les outils `eo-tools/scan-cookies` et `eo-tools/update-cookies` (le scan lui-même est dans `includes/api-eo-detailed-scan.php`, partagé avec l'écran) |
 | `includes/admin/views/html-admin-mcp-elevation.php` | Onglet « Autorisations », dont la section des clés secrètes |
 
 Le titre SEO, la méta description et la requête cible d'une page ne sont pas des réglages d'extension. Ce sont des champs du contenu : le champ `seo` de `eo-tools/update-draft` (brouillon) et de `eo-tools/propose-update` (page publiée, appliqué par un humain). Ils sont écrits par le fournisseur SEO actif (`includes/mcp/seo/`, Yoast SEO ou SEOKEY).
@@ -28,6 +29,7 @@ Le titre SEO, la méta description et la requête cible d'une page ne sont pas d
 
 | Extension (slug) | L'IA peut régler | Reste à un humain |
 |---|---|---|
+| Cookies d'EO Tools (`eo-tools-cookies`) | Activation du gestionnaire (bandeau et blocage des cookies tiers avant consentement), durée de conservation des choix, icônes. Avec les outils `eo-tools/scan-cookies` (scan détaillé, repris par étapes) et `eo-tools/update-cookies` (liste des cookies et « Validation Admin »), notés dans le rapport de consentements comme depuis l'écran | — |
 | Contact Form 7 (`contact-form-7`) | Par formulaire : destinataire, expéditeur, objet, corps, réponse automatique, modèle, captcha (image Really Simple CAPTCHA, reCAPTCHA v3, Turnstile) et clés de site | Clés secrètes reCAPTCHA / Turnstile (section « Clés secrètes ») |
 | Easy WP SMTP (`easy-wp-smtp`) | Envoi par serveur SMTP : hôte, port, chiffrement, identifiant, adresse et nom d'expéditeur (forcés ou non) | Mot de passe SMTP (section « Clés secrètes »), e-mail de test |
 | GDPR Cookie Consent, WebToffee (`webtoffee-cookie-consent`) | Langue du bandeau, boutons Tout accepter / Tout refuser / Personnaliser, durée du consentement, blocage des scripts avant consentement, journal des consentements | Scan des cookies (compte WebToffee) |

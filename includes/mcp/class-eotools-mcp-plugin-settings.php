@@ -50,6 +50,7 @@ class Eotools_Mcp_Plugin_Settings {
 		$classes = (array) apply_filters(
 			'eo_tools_mcp_plugin_adapters',
 			array(
+				Plugins\Eotools_Mcp_Plugin_Eo_Tools_Cookies::class,
 				Plugins\Eotools_Mcp_Plugin_Cf7::class,
 				Plugins\Eotools_Mcp_Plugin_Easy_Wp_Smtp::class,
 				Plugins\Eotools_Mcp_Plugin_Webtoffee_Cookie_Consent::class,
