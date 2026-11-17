@@ -259,7 +259,7 @@ class Eotools_Mcp_Plugin_Cf7 extends Eotools_Mcp_Plugin_Adapter {
 	 * @param \WPCF7_ContactForm $form Form.
 	 * @return array
 	 */
-	private function read_settings( $form ) {
+	private function read_form( $form ) {
 		$mail   = (array) $form->prop( 'mail' );
 		$mail_2 = (array) $form->prop( 'mail_2' );
 
@@ -296,7 +296,7 @@ class Eotools_Mcp_Plugin_Cf7 extends Eotools_Mcp_Plugin_Adapter {
 			'forms'                 => $forms,
 			'target'                => (string) $form->id(),
 			'shortcode'             => method_exists( $form, 'shortcode' ) ? $form->shortcode() : '[contact-form-7 id="' . $form->id() . '"]',
-			'settings'              => $this->read_settings( $form ),
+			'settings'              => $this->read_form( $form ),
 			'really_simple_captcha' => class_exists( 'ReallySimpleCaptcha' ),
 			'captcha_active'        => array(
 				'recaptcha' => $this->service_active( 'recaptcha' ),
@@ -315,40 +315,18 @@ class Eotools_Mcp_Plugin_Cf7 extends Eotools_Mcp_Plugin_Adapter {
 			return $form;
 		}
 
-		$schema = $this->get_schema();
-		$errors = array();
-		$clean  = array();
-
-		foreach ( $values as $name => $value ) {
-			if ( ! isset( $schema[ $name ] ) ) {
-				$errors[ $name ] = __( 'Réglage inconnu (voir "schema" dans eo-tools/get-plugin-settings).', 'eo-tools' );
-				continue;
-			}
-			$checked = $this->validate( $name, $value, $schema[ $name ] );
-			if ( is_wp_error( $checked ) ) {
-				$errors[ $name ] = $checked->get_error_message();
-				continue;
-			}
-			$clean[ $name ] = $checked;
+		$clean = $this->validate_values( $values );
+		if ( is_wp_error( $clean ) ) {
+			return $clean;
 		}
-
 		if ( isset( $clean['captcha'] ) ) {
 			$error = $this->check_captcha( $clean['captcha'], $clean );
 			if ( is_wp_error( $error ) ) {
-				$errors['captcha'] = $error->get_error_message();
+				return self::invalid( array( 'captcha' => $error->get_error_message() ) );
 			}
 		}
 
-		if ( $errors ) {
-			$lines = array();
-			foreach ( $errors as $name => $reason ) {
-				$lines[] = $name . ' : ' . $reason;
-			}
-
-			return new \WP_Error( 'eo_tools_invalid_settings', __( 'Aucun réglage n\'a été modifié, corrigez les valeurs refusées :', 'eo-tools' ) . "\n" . implode( "\n", $lines ) );
-		}
-
-		$before = $this->read_settings( $form );
+		$before = $this->read_form( $form );
 		$notes  = array();
 
 		// Site-wide keys: a new site key needs its own secret.
@@ -404,17 +382,7 @@ class Eotools_Mcp_Plugin_Cf7 extends Eotools_Mcp_Plugin_Adapter {
 
 		// Read again from the database.
 		$saved   = \WPCF7_ContactForm::get_instance( $form->id() );
-		$after   = $this->read_settings( $saved ? $saved : $form );
-		$changed = array();
-		foreach ( $after as $name => $value ) {
-			if ( $value !== $before[ $name ] ) {
-				$changed[] = array(
-					'name'   => $name,
-					'before' => $before[ $name ],
-					'after'  => $value,
-				);
-			}
-		}
+		$changed = self::diff( $before, $this->read_form( $saved ? $saved : $form ) );
 
 		if ( isset( $clean['captcha'] ) && in_array( $clean['captcha'], array_keys( self::SERVICES ), true ) && ! $this->service_active( $clean['captcha'] ) ) {
 			$notes[] = __( 'Le captcha ne fonctionnera qu\'une fois la clé secrète saisie.', 'eo-tools' );
@@ -435,18 +403,12 @@ class Eotools_Mcp_Plugin_Cf7 extends Eotools_Mcp_Plugin_Adapter {
 	 * @param array  $schema Setting schema.
 	 * @return mixed|\WP_Error
 	 */
-	private function validate( $name, $value, $schema ) {
-		if ( 'bool' === $schema['type'] ) {
-			return is_bool( $value ) ? $value : new \WP_Error( 'invalid', __( 'Valeur attendue : true ou false.', 'eo-tools' ) );
-		}
-		if ( ! is_string( $value ) ) {
-			return new \WP_Error( 'invalid', __( 'Texte attendu.', 'eo-tools' ) );
+	protected function validate_value( $name, $value, $schema ) {
+		if ( ! is_string( $value ) || in_array( $schema['type'], array( 'bool', 'enum' ), true ) ) {
+			return parent::validate_value( $name, $value, $schema );
 		}
 
 		switch ( $name ) {
-			case 'captcha':
-				return in_array( $value, self::CAPTCHAS, true ) ? $value : new \WP_Error( 'invalid', implode( ', ', self::CAPTCHAS ) );
-
 			case 'mail_recipient':
 				$parts = array_filter( array_map( 'trim', explode( ',', $value ) ) );
 				if ( ! $parts ) {
@@ -475,11 +437,8 @@ class Eotools_Mcp_Plugin_Cf7 extends Eotools_Mcp_Plugin_Adapter {
 			case 'mail_body':
 				return wp_kses_post( $value );
 
-			case 'mail_additional_headers':
-				return sanitize_textarea_field( $value );
-
 			default:
-				return sanitize_text_field( $value );
+				return parent::validate_value( $name, $value, $schema );
 		}
 	}
 

@@ -80,7 +80,7 @@ class Eotools_Mcp_Ability_Propose_Update extends Eotools_Mcp_Ability {
 			return new \WP_Error( 'eo_tools_not_published', __( 'Ce contenu n\'est pas publié : modifiez-le directement avec eo-tools/update-draft.', 'eo-tools' ) );
 		}
 
-		$changed = array_values( array_intersect( array( 'title', 'blocks', 'operations', 'excerpt', 'slug', 'featured_image_id', 'categories', 'tags' ), array_keys( $input ) ) );
+		$changed = array_values( array_intersect( array( 'title', 'blocks', 'operations', 'excerpt', 'slug', 'featured_image_id', 'categories', 'tags', 'seo' ), array_keys( $input ) ) );
 		if ( empty( $changed ) ) {
 			return new \WP_Error( 'eo_tools_no_change', __( 'Aucune modification demandée.', 'eo-tools' ) );
 		}

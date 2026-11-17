@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Update_Plugin_Settings extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Modifie des réglages d\'une extension prise en charge par EO Tools, appliqués immédiatement sur le site en ligne. Lisez d\'abord les réglages avec eo-tools/get-plugin-settings (noms dans "schema"). Présentez les changements à l\'utilisateur et obtenez son accord avant de les appliquer ; demandez-lui les valeurs que vous ne connaissez pas (adresse e-mail de réception, clé de site du captcha…), ne les inventez pas. Si une valeur est refusée, rien n\'est modifié. La réponse donne l\'ancienne valeur de chaque réglage changé. Les clés secrètes (clé secrète de captcha, mot de passe…) ne passent JAMAIS par vous : ne les demandez pas, donnez à l\'utilisateur le lien indiqué dans "notes" ou "secrets" pour qu\'il les saisisse lui-même dans WordPress.', 'eo-tools' );
+		return __( 'Modifie des réglages d\'une extension prise en charge par EO Tools, appliqués immédiatement sur le site en ligne. Lisez d\'abord les réglages avec eo-tools/get-plugin-settings (noms dans "schema"). Présentez les changements à l\'utilisateur et obtenez son accord avant de les appliquer ; demandez-lui les valeurs que vous ne connaissez pas (adresse e-mail de réception, clé de site du captcha…), ne les inventez pas. Si une valeur est refusée, rien n\'est modifié. La réponse donne l\'ancienne valeur de chaque réglage changé. Les clés secrètes (clé secrète de captcha, mot de passe…) ne passent JAMAIS par vous : ne les demandez pas, donnez à l\'utilisateur le lien indiqué dans "notes" ou "secrets" pour qu\'il les saisisse lui-même dans WordPress. Ce que l\'extension réserve à un humain (licence, compte, modification des fichiers du serveur) est décrit dans "status" avec le lien de l\'écran à utiliser.', 'eo-tools' );
 	}
 
 	public function get_group() {
@@ -51,9 +51,9 @@ class Eotools_Mcp_Ability_Update_Plugin_Settings extends Eotools_Mcp_Ability {
 				'settings' => array(
 					'type'                 => 'object',
 					'minProperties'        => 1,
-					'description'          => __( 'Nouvelles valeurs par nom de réglage, ex. {"mail_recipient": "contact@exemple.fr", "captcha": "really-simple-captcha"}.', 'eo-tools' ),
+					'description'          => __( 'Nouvelles valeurs par nom de réglage, du type indiqué dans "schema", ex. {"mail_recipient": "contact@exemple.fr", "captcha": "really-simple-captcha"} ou {"smtp_port": 587, "smtp_encryption": "tls"}.', 'eo-tools' ),
 					'additionalProperties' => array(
-						'type' => array( 'string', 'boolean' ),
+						'type' => array( 'string', 'boolean', 'integer', 'array' ),
 					),
 				),
 			),

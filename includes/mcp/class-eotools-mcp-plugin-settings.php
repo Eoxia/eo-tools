@@ -51,6 +51,11 @@ class Eotools_Mcp_Plugin_Settings {
 			'eo_tools_mcp_plugin_adapters',
 			array(
 				Plugins\Eotools_Mcp_Plugin_Cf7::class,
+				Plugins\Eotools_Mcp_Plugin_Easy_Wp_Smtp::class,
+				Plugins\Eotools_Mcp_Plugin_Webtoffee_Cookie_Consent::class,
+				Plugins\Eotools_Mcp_Plugin_Wordfence::class,
+				Plugins\Eotools_Mcp_Plugin_Aios::class,
+				Plugins\Eotools_Mcp_Plugin_Yoast::class,
 			)
 		);
 

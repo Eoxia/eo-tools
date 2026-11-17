@@ -101,6 +101,14 @@ class Eotools_Mcp_Seo_Provider_Seokey extends Eotools_Mcp_Seo_Provider {
 		return 'singular';
 	}
 
+	public function get_meta_keys() {
+		return array(
+			'title'         => self::META_TITLE,
+			'description'   => self::META_DESCRIPTION,
+			'focus_keyword' => self::META_KEYWORD,
+		);
+	}
+
 	public function get_seo_title( $post, $front_page = false ) {
 		// Same steps as seokey_head_get_meta_title(): SEOKEY only keeps the title part.
 		$parts     = array( 'title' => html_entity_decode( seokey_meta_title_value( $this->type( $post ), (int) $post->ID ), ENT_QUOTES, 'UTF-8' ) );

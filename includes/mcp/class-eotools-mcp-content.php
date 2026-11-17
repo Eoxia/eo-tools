@@ -86,6 +86,25 @@ class Eotools_Mcp_Content {
 				'items'       => array( 'type' => 'string' ),
 				'description' => __( 'Articles uniquement : étiquettes (noms). Remplace les étiquettes actuelles.', 'eo-tools' ),
 			),
+			'seo'               => array(
+				'type'                 => 'object',
+				'description'          => __( 'Métadonnées SEO, écrites dans l\'extension SEO active (Yoast SEO, SEOKEY). Chaîne vide pour retirer un champ. Partez de eo-tools/audit-post-seo.', 'eo-tools' ),
+				'properties'           => array(
+					'title'         => array(
+						'type'        => 'string',
+						'description' => __( 'Titre SEO (balise title), environ 30 à 65 caractères.', 'eo-tools' ),
+					),
+					'description'   => array(
+						'type'        => 'string',
+						'description' => __( 'Méta description, 120 à 155 caractères.', 'eo-tools' ),
+					),
+					'focus_keyword' => array(
+						'type'        => 'string',
+						'description' => __( 'Requête cible.', 'eo-tools' ),
+					),
+				),
+				'additionalProperties' => false,
+			),
 		);
 
 		if ( $with_operations ) {
@@ -404,6 +423,15 @@ class Eotools_Mcp_Content {
 		}
 
 		$post_type = get_post_type( $post_id );
+
+		if ( isset( $input['seo'] ) && is_array( $input['seo'] ) ) {
+			$provider = Eotools_Mcp_Seo::get_provider();
+			if ( $provider->get_meta_keys() ) {
+				$provider->set_seo( $post_id, $input['seo'] );
+			} else {
+				$warnings[] = __( 'Métadonnées SEO ignorées : aucune extension SEO prise en charge n\'est active (Yoast SEO, SEOKEY).', 'eo-tools' );
+			}
+		}
 
 		if ( isset( $input['categories'] ) ) {
 			if ( is_object_in_taxonomy( $post_type, 'category' ) ) {

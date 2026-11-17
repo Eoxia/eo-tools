@@ -29,6 +29,14 @@ class Eotools_Mcp_Seo_Provider_Yoast extends Eotools_Mcp_Seo_Provider {
 		return defined( 'WPSEO_VERSION' ) && function_exists( 'wpseo_replace_vars' ) && class_exists( '\WPSEO_Options' );
 	}
 
+	public function get_meta_keys() {
+		return array(
+			'title'         => '_yoast_wpseo_title',
+			'description'   => '_yoast_wpseo_metadesc',
+			'focus_keyword' => '_yoast_wpseo_focuskw',
+		);
+	}
+
 	public function supports( $feature ) {
 		return in_array( $feature, array( 'meta_description', 'focus_keyword', 'seo_score', 'noindex', 'canonical' ), true );
 	}
