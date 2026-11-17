@@ -80,6 +80,16 @@ abstract class Eotools_Mcp_Plugin_Adapter {
 	}
 
 	/**
+	 * Whether a missing secret blocks something the site uses (otherwise it is not worth asking for).
+	 *
+	 * @param string $name Secret name.
+	 * @return bool
+	 */
+	public function is_secret_needed( $name ) {
+		return ! $this->has_secret( $name );
+	}
+
+	/**
 	 * Saves a secret typed by a human.
 	 *
 	 * @param string $name  Secret name.
@@ -101,6 +111,7 @@ abstract class Eotools_Mcp_Plugin_Adapter {
 			$list[ $name ] = array(
 				'label'  => $secret['label'],
 				'filled' => $this->has_secret( $name ),
+				'needed' => $this->is_secret_needed( $name ),
 				'url'    => \EoTools\Includes\Mcp\Eotools_Mcp_Plugin_Settings::secret_url( $this->get_slug(), $name ),
 			);
 		}

@@ -162,6 +162,22 @@ class Eotools_Mcp_Plugin_Cf7 extends Eotools_Mcp_Plugin_Adapter {
 		return '' !== $keys['secret'];
 	}
 
+	/**
+	 * A captcha secret is only needed once its site key is set.
+	 *
+	 * @param string $name Secret name.
+	 * @return bool
+	 */
+	public function is_secret_needed( $name ) {
+		$service = str_replace( '_secret', '', $name );
+		if ( ! isset( self::SERVICES[ $service ] ) ) {
+			return false;
+		}
+		$keys = $this->get_keys( $service );
+
+		return '' !== $keys['sitekey'] && '' === $keys['secret'];
+	}
+
 	public function save_secret( $name, $value ) {
 		$service = str_replace( '_secret', '', $name );
 		if ( ! isset( self::SERVICES[ $service ] ) || ! $this->service_supported( $service ) ) {

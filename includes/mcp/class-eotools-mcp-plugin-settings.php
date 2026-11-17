@@ -150,7 +150,7 @@ class Eotools_Mcp_Plugin_Settings {
 		}
 
 		foreach ( $adapter->describe_secrets() as $secret ) {
-			if ( ! $secret['filled'] ) {
+			if ( $secret['needed'] ) {
 				$result['notes'][] = sprintf(
 					/* translators: 1: secret name, 2: URL */
 					__( 'La clé « %1$s » n\'est pas encore renseignée. Elle ne doit pas passer par la conversation : donnez à l\'utilisateur ce lien pour la saisir lui-même dans WordPress : %2$s', 'eo-tools' ),

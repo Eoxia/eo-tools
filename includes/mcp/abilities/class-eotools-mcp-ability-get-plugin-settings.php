@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Get_Plugin_Settings extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return __( 'Lit les réglages d\'une extension prise en charge par EO Tools (sans "plugin" : liste des extensions prises en charge et si elles sont actives). Renvoie les valeurs actuelles ("settings"), la description des réglages modifiables ("schema") et l\'état des clés secrètes ("secrets" : renseignée ou non, et le lien où un humain la saisit). Les clés secrètes ne sont jamais renvoyées. Pour Contact Form 7, "target" est l\'identifiant du formulaire (par défaut le premier) ; la liste des formulaires est dans "forms".', 'eo-tools' );
+		return __( 'Lit les réglages d\'une extension prise en charge par EO Tools (sans "plugin" : liste des extensions prises en charge et si elles sont actives). Renvoie les valeurs actuelles ("settings"), la description des réglages modifiables ("schema") et l\'état des clés secrètes ("secrets" : renseignée ou non, "needed" si elle manque pour un réglage utilisé, et le lien où un humain la saisit). Les clés secrètes ne sont jamais renvoyées. Pour Contact Form 7, "target" est l\'identifiant du formulaire (par défaut le premier) ; la liste des formulaires est dans "forms".', 'eo-tools' );
 	}
 
 	public function get_group() {
