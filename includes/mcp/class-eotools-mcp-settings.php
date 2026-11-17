@@ -333,7 +333,7 @@ class Eotools_Mcp_Settings {
 	 *
 	 * @return string[]
 	 */
-	private static function get_allowed_roles() {
+	public static function get_allowed_roles() {
 		$allowed = array();
 		foreach ( wp_roles()->role_objects as $slug => $role ) {
 			$privileged = false;
@@ -678,19 +678,24 @@ class Eotools_Mcp_Settings {
 	/**
 	 * Records a change.
 	 *
-	 * @param string $name   Option name.
-	 * @param mixed  $before Previous value.
-	 * @param mixed  $after  New value.
+	 * @param string $name    Option name.
+	 * @param mixed  $before  Previous value.
+	 * @param mixed  $after   New value.
+	 * @param string $context What the option belongs to: empty for WordPress, else a plugin slug (and form…).
 	 */
-	private static function log( $name, $before, $after ) {
+	public static function log( $name, $before, $after, $context = '' ) {
 		$log   = (array) get_option( self::LOG_OPTION, array() );
-		$log[] = array(
+		$entry = array(
 			'option' => $name,
 			'before' => $before,
 			'after'  => $after,
 			'user'   => get_current_user_id(),
 			'time'   => time(),
 		);
+		if ( '' !== $context ) {
+			$entry['context'] = $context;
+		}
+		$log[] = $entry;
 
 		update_option( self::LOG_OPTION, array_slice( $log, -self::LOG_SIZE ), false );
 	}

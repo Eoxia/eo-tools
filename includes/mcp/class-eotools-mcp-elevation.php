@@ -33,6 +33,13 @@ class Eotools_Mcp_Elevation {
 	const STATUS_REJECTED = 'rejected';
 	const STATUS_REVOKED  = 'revoked';
 	const STATUS_EXPIRED  = 'expired';
+	const STATUS_DONE     = 'done';
+
+	/**
+	 * Kinds of request: a time-limited grant on plugins, or a one-off user creation.
+	 */
+	const SCOPE_PLUGINS     = 'plugins';
+	const SCOPE_CREATE_USER = 'create_user';
 
 	/**
 	 * Durations, in minutes.
@@ -206,8 +213,7 @@ class Eotools_Mcp_Elevation {
 	 * @return array|\WP_Error
 	 */
 	public static function request( $activate, $deactivate, $reason, $duration ) {
-		$connection = self::get_current_connection();
-		if ( '' === $connection ) {
+		if ( '' === self::get_current_connection() ) {
 			return new \WP_Error( 'eo_tools_elevation_no_connection', __( 'Cette demande doit venir d\'une connexion IA EO Tools.', 'eo-tools' ) );
 		}
 
@@ -221,26 +227,18 @@ class Eotools_Mcp_Elevation {
 			return $plugins;
 		}
 
-		$duration = max( 5, min( self::MAX_DURATION, (int) $duration ) );
-
-		$request = array(
-			'id'         => strtolower( wp_generate_password( 12, false ) ),
-			'connection' => $connection,
-			'label'      => self::connection_label( $connection ),
-			'user'       => get_current_user_id(),
-			'scope'      => 'plugins',
-			'plugins'    => $plugins,
-			'reason'     => $reason,
-			'duration'   => $duration,
-			'status'     => self::STATUS_PENDING,
-			'created'    => time(),
-			'approver'   => 0,
-			'approved'   => 0,
-			'expires'    => 0,
-			'actions'    => array(),
+		$request = self::create_request(
+			self::SCOPE_PLUGINS,
+			array(
+				'plugins'  => $plugins,
+				'reason'   => $reason,
+				'duration' => max( 5, min( self::MAX_DURATION, (int) $duration ) ),
+			)
 		);
-
-		self::save( $request );
+		if ( is_wp_error( $request ) ) {
+			return $request;
+		}
+		$duration = $request['duration'];
 
 		$lists = self::split_plugins( $plugins );
 
@@ -253,6 +251,56 @@ class Eotools_Mcp_Elevation {
 			'approval_url' => self::admin_url( $request['id'] ),
 			'message'      => __( 'Demande enregistrée, en attente de validation humaine. Donnez à l\'utilisateur le lien "approval_url" : un administrateur doit la valider dans WordPress en retapant son mot de passe (jamais dans cette conversation : ne demandez aucun code ni mot de passe). Une fois validée, utilisez eo-tools/activate-plugin et eo-tools/deactivate-plugin pour chaque extension, avant la fin du délai.', 'eo-tools' ),
 		);
+	}
+
+	/**
+	 * Saves a new pending request of the current connection.
+	 *
+	 * @param string $scope One of the SCOPE_* constants.
+	 * @param array  $data  Fields of the request (plugins, reason, duration, user_data…).
+	 * @return array|\WP_Error The request.
+	 */
+	public static function create_request( $scope, $data ) {
+		$connection = self::get_current_connection();
+		if ( '' === $connection ) {
+			return new \WP_Error( 'eo_tools_elevation_no_connection', __( 'Cette demande doit venir d\'une connexion IA EO Tools.', 'eo-tools' ) );
+		}
+
+		$request = array_merge(
+			array(
+				'plugins'  => array(),
+				'reason'   => '',
+				'duration' => self::DEFAULT_DURATION,
+			),
+			$data,
+			array(
+				'id'         => strtolower( wp_generate_password( 12, false ) ),
+				'connection' => $connection,
+				'label'      => self::connection_label( $connection ),
+				'user'       => get_current_user_id(),
+				'scope'      => $scope,
+				'status'     => self::STATUS_PENDING,
+				'created'    => time(),
+				'approver'   => 0,
+				'approved'   => 0,
+				'expires'    => 0,
+				'actions'    => array(),
+			)
+		);
+
+		self::save( $request );
+
+		return $request;
+	}
+
+	/**
+	 * Kind of a request (requests saved before scopes existed are about plugins).
+	 *
+	 * @param array $request Request.
+	 * @return string One of the SCOPE_* constants.
+	 */
+	public static function scope_of( $request ) {
+		return isset( $request['scope'] ) && self::SCOPE_CREATE_USER === $request['scope'] ? self::SCOPE_CREATE_USER : self::SCOPE_PLUGINS;
 	}
 
 	/**
@@ -565,7 +613,8 @@ class Eotools_Mcp_Elevation {
 			set_transient( 'eo_tools_elevation_notice_' . get_current_user_id(), $result->get_error_message(), MINUTE_IN_SECONDS );
 			wp_safe_redirect( self::admin_url( $id, 'error' ) );
 		} else {
-			wp_safe_redirect( self::admin_url( $id, $do ) );
+			$done = 'approve' === $do && self::SCOPE_CREATE_USER === self::scope_of( $request ) ? 'created' : $do;
+			wp_safe_redirect( self::admin_url( $id, $done ) );
 		}
 		exit;
 	}
@@ -595,6 +644,27 @@ class Eotools_Mcp_Elevation {
 			return new \WP_Error( 'eo_tools_elevation_password', __( 'Mot de passe incorrect : la demande n\'a pas été validée.', 'eo-tools' ) );
 		}
 		delete_transient( $lock_key );
+
+		// A user creation is done right away, by the approval itself.
+		if ( self::SCOPE_CREATE_USER === self::scope_of( $request ) ) {
+			$user_id = Eotools_Mcp_Users::create_from_request( $request );
+			if ( is_wp_error( $user_id ) ) {
+				return $user_id;
+			}
+
+			$request['status']    = self::STATUS_DONE;
+			$request['approver']  = $user->ID;
+			$request['approved']  = time();
+			$request['actions'][] = array(
+				'type'    => 'create_user',
+				'user_id' => $user_id,
+				'time'    => time(),
+				'result'  => 'ok',
+			);
+			self::save( $request );
+
+			return true;
+		}
 
 		// The plugins may have changed since the request.
 		$lists   = self::split_plugins( $request['plugins'] );
@@ -656,7 +726,9 @@ class Eotools_Mcp_Elevation {
 
 		$last = array();
 		foreach ( $request['actions'] as $action ) {
-			$last[ $action['file'] ] = $action;
+			if ( in_array( $action['type'], array( 'activate', 'deactivate' ), true ) ) {
+				$last[ $action['file'] ] = $action;
+			}
 		}
 
 		$undo = array();
@@ -750,7 +822,7 @@ class Eotools_Mcp_Elevation {
 			esc_html(
 				sprintf(
 					/* translators: %d: number of requests */
-					_n( 'Votre IA demande une autorisation temporaire (%d demande en attente).', 'Votre IA demande une autorisation temporaire (%d demandes en attente).', $pending, 'eo-tools' ),
+					_n( 'Votre IA attend votre validation (%d demande en attente).', 'Votre IA attend votre validation (%d demandes en attente).', $pending, 'eo-tools' ),
 					$pending
 				)
 			),

@@ -239,6 +239,10 @@ class Eotools_Mcp_Proposals {
 			}
 		}
 
+		if ( in_array( 'seo', $fields, true ) ) {
+			Eotools_Mcp_Seo::get_provider()->copy_seo( $proposal->ID, $source->ID );
+		}
+
 		wp_delete_post( $proposal->ID, true );
 
 		return get_post( $source->ID );

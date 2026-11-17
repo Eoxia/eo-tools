@@ -33,6 +33,54 @@ class Eotools_Mcp_Seo_Provider {
 	const FEATURES = array( 'meta_description', 'auto_description', 'auto_title', 'focus_keyword', 'seo_score', 'noindex', 'canonical' );
 
 	/**
+	 * SEO fields the AI may write on a content, keyed by field: title, description, focus_keyword.
+	 *
+	 * @return string[] Post meta keys. Empty when the provider cannot write SEO fields.
+	 */
+	public function get_meta_keys() {
+		return array();
+	}
+
+	/**
+	 * Writes SEO fields on a content (draft or proposal). An empty value removes the field.
+	 *
+	 * @param int   $post_id Content ID.
+	 * @param array $values  Values keyed by field (see get_meta_keys()).
+	 * @return string[] Fields written.
+	 */
+	public function set_seo( $post_id, $values ) {
+		$written = array();
+		foreach ( $this->get_meta_keys() as $field => $key ) {
+			if ( ! isset( $values[ $field ] ) ) {
+				continue;
+			}
+			$value = sanitize_text_field( (string) $values[ $field ] );
+			if ( '' === $value ) {
+				delete_post_meta( $post_id, $key );
+			} else {
+				update_post_meta( $post_id, $key, wp_slash( $value ) );
+			}
+			$written[] = $field;
+		}
+
+		return $written;
+	}
+
+	/**
+	 * Copies the SEO fields of a proposal onto the published content.
+	 *
+	 * @param int $from_id Proposal ID.
+	 * @param int $to_id   Published content ID.
+	 */
+	public function copy_seo( $from_id, $to_id ) {
+		$values = array();
+		foreach ( $this->get_meta_keys() as $field => $key ) {
+			$values[ $field ] = (string) get_post_meta( $from_id, $key, true );
+		}
+		$this->set_seo( $to_id, $values );
+	}
+
+	/**
 	 * @return string Short identifier (yoast, seokey…).
 	 */
 	public function get_id() {
