@@ -7,7 +7,6 @@
 
 namespace EoTools\Includes\Mcp\Abilities;
 
-use EoTools\Includes\Mcp\Eotools_Mcp_Settings;
 use EoTools\Includes\Mcp\Eotools_Mcp_Users;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -46,7 +45,7 @@ class Eotools_Mcp_Ability_Create_User extends Eotools_Mcp_Ability {
 				),
 				'role'       => array(
 					'type'        => 'string',
-					'enum'        => array_values( Eotools_Mcp_Settings::get_allowed_roles() ),
+					'enum'        => array_values( Eotools_Mcp_Users::get_allowed_roles() ),
 					'default'     => 'editor',
 					'description' => __( 'Rôle du compte.', 'eo-tools' ),
 				),

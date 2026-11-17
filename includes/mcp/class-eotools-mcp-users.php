@@ -20,6 +20,51 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Eotools_Mcp_Users {
 
 	/**
+	 * Capabilities a role given by the AI must not have: managing the site,
+	 * its users, plugins or themes. Editors (who can post HTML) are allowed.
+	 */
+	const PRIVILEGED_CAPS = array(
+		'manage_options',
+		'promote_users',
+		'create_users',
+		'edit_users',
+		'delete_users',
+		'list_users',
+		'install_plugins',
+		'activate_plugins',
+		'edit_plugins',
+		'edit_themes',
+		'switch_themes',
+		'install_themes',
+		'edit_theme_options',
+		'update_core',
+		'manage_network',
+	);
+
+	/**
+	 * Roles the AI may give to a new account.
+	 *
+	 * @return string[]
+	 */
+	public static function get_allowed_roles() {
+		$allowed = array();
+		foreach ( wp_roles()->role_objects as $slug => $role ) {
+			$privileged = false;
+			foreach ( self::PRIVILEGED_CAPS as $cap ) {
+				if ( $role->has_cap( $cap ) ) {
+					$privileged = true;
+					break;
+				}
+			}
+			if ( ! $privileged ) {
+				$allowed[] = $slug;
+			}
+		}
+
+		return $allowed;
+	}
+
+	/**
 	 * Asks for a new account.
 	 *
 	 * @param array $data { email, role, first_name, last_name, reason }.
@@ -85,9 +130,9 @@ class Eotools_Mcp_Users {
 		}
 
 		$role = isset( $data['role'] ) ? sanitize_key( (string) $data['role'] ) : 'editor';
-		if ( ! in_array( $role, Eotools_Mcp_Settings::get_allowed_roles(), true ) ) {
+		if ( ! in_array( $role, self::get_allowed_roles(), true ) ) {
 			/* translators: %s: allowed roles */
-			return new \WP_Error( 'eo_tools_user_role', sprintf( __( 'Ce rôle n\'existe pas ou donne trop de droits. Rôles possibles : %s.', 'eo-tools' ), implode( ', ', Eotools_Mcp_Settings::get_allowed_roles() ) ) );
+			return new \WP_Error( 'eo_tools_user_role', sprintf( __( 'Ce rôle n\'existe pas ou donne trop de droits. Rôles possibles : %s.', 'eo-tools' ), implode( ', ', self::get_allowed_roles() ) ) );
 		}
 
 		return array(
