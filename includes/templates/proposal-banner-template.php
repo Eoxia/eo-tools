@@ -5,6 +5,8 @@
  * Expects: $banner, with proposal_id, title, notice, current_link, conflict
  * (message, empty when none), apply_action and reject_action. Optional: changes,
  * the changes that do not show on the page (each with label, before and after).
+ * Reject (and Apply when there is a conflict) asks for an inline confirmation:
+ * a <details> panel, no browser dialog and no script.
  *
  * @package EoTools
  */
@@ -89,9 +91,12 @@ $nonce_action = 'eo_tools_proposal_' . $banner['proposal_id'];
 			color: #fcd34d;
 		}
 		.eo-tools-proposal-banner form {
+			position: relative;
 			margin: 0;
 		}
-		.eo-tools-proposal-banner button {
+		.eo-tools-proposal-banner button,
+		.eo-tools-proposal-banner .eo-tools-proposal-button {
+			display: inline-block;
 			padding: 10px 18px;
 			border: 1px solid #475569;
 			border-radius: 8px;
@@ -100,9 +105,35 @@ $nonce_action = 'eo_tools_proposal_' . $banner['proposal_id'];
 			font: 600 14px/1 inherit;
 			cursor: pointer;
 		}
-		.eo-tools-proposal-banner button.is-primary {
+		.eo-tools-proposal-banner .is-primary {
 			border-color: #6366f1;
 			background: #6366f1;
+		}
+		/* Inline confirmation: the summary opens a small panel above the button. */
+		.eo-tools-proposal-banner .eo-tools-proposal-confirm summary {
+			list-style: none;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-confirm summary::-webkit-details-marker {
+			display: none;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-confirm[open] summary {
+			border-color: #94a3b8;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-confirm-panel {
+			position: absolute;
+			right: 0;
+			bottom: calc(100% + 10px);
+			width: max-content;
+			max-width: min(320px, calc(100vw - 40px));
+			display: flex;
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 10px;
+			padding: 12px 14px;
+			border: 1px solid #334155;
+			border-radius: 8px;
+			background: #1e293b;
+			box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
 		}
 	</style>
 	<?php if ( ! empty( $banner['changes'] ) ) : ?>
@@ -134,12 +165,28 @@ $nonce_action = 'eo_tools_proposal_' . $banner['proposal_id'];
 		<input type="hidden" name="action" value="<?php echo esc_attr( $banner['reject_action'] ); ?>">
 		<input type="hidden" name="proposal" value="<?php echo esc_attr( $banner['proposal_id'] ); ?>">
 		<?php wp_nonce_field( $nonce_action ); ?>
-		<button type="submit" onclick="return confirm('<?php echo esc_js( __( 'Rejeter cette proposition ? Elle sera supprimée.', 'eo-tools' ) ); ?>');"><?php esc_html_e( 'Rejeter', 'eo-tools' ); ?></button>
+		<details class="eo-tools-proposal-confirm">
+			<summary class="eo-tools-proposal-button"><?php esc_html_e( 'Rejeter', 'eo-tools' ); ?></summary>
+			<div class="eo-tools-proposal-confirm-panel" role="group">
+				<span><?php esc_html_e( 'Rejeter cette proposition ? Elle sera supprimée.', 'eo-tools' ); ?></span>
+				<button type="submit"><?php esc_html_e( 'Oui, rejeter', 'eo-tools' ); ?></button>
+			</div>
+		</details>
 	</form>
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 		<input type="hidden" name="action" value="<?php echo esc_attr( $banner['apply_action'] ); ?>">
 		<input type="hidden" name="proposal" value="<?php echo esc_attr( $banner['proposal_id'] ); ?>">
 		<?php wp_nonce_field( $nonce_action ); ?>
-		<button type="submit" class="is-primary" <?php echo $banner['conflict'] ? 'onclick="return confirm(\'' . esc_js( __( 'La version actuelle a changé depuis la proposition. Appliquer quand même ?', 'eo-tools' ) ) . '\');"' : ''; ?>><?php esc_html_e( 'Appliquer la modification', 'eo-tools' ); ?></button>
+		<?php if ( $banner['conflict'] ) : ?>
+			<details class="eo-tools-proposal-confirm">
+				<summary class="eo-tools-proposal-button is-primary"><?php esc_html_e( 'Appliquer la modification', 'eo-tools' ); ?></summary>
+				<div class="eo-tools-proposal-confirm-panel" role="group">
+					<span><?php esc_html_e( 'La version actuelle a changé depuis la proposition. Appliquer quand même ?', 'eo-tools' ); ?></span>
+					<button type="submit" class="is-primary"><?php esc_html_e( 'Oui, appliquer', 'eo-tools' ); ?></button>
+				</div>
+			</details>
+		<?php else : ?>
+			<button type="submit" class="eo-tools-proposal-button is-primary"><?php esc_html_e( 'Appliquer la modification', 'eo-tools' ); ?></button>
+		<?php endif; ?>
 	</form>
 </div>
