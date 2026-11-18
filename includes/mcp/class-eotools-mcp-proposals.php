@@ -228,6 +228,13 @@ class Eotools_Mcp_Proposals {
 		$moved = isset( $data['post_name'] ) && $data['post_name'] !== $source->post_name && 'publish' === $source->post_status;
 		$links = $moved ? Eotools_Mcp_Redirections::get_links( $source ) : array();
 
+		// The proposal holds the new slug: free it, or WordPress would give the published content "slug-2".
+		if ( isset( $data['post_name'] ) ) {
+			global $wpdb;
+			$wpdb->update( $wpdb->posts, array( 'post_name' => '' ), array( 'ID' => $proposal->ID ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			clean_post_cache( $proposal->ID );
+		}
+
 		$updated = wp_update_post( wp_slash( $data ), true );
 		if ( is_wp_error( $updated ) ) {
 			return $updated;
