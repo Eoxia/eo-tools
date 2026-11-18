@@ -387,9 +387,15 @@ $active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'das
 	<div class="eo-card" style="margin-top: 20px;">
 		<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
 			<h2 style="margin: 0;"><?php esc_html_e( 'Historique des consentements', 'eo-tools' ); ?></h2>
-			<form method="post" action="" onsubmit="return confirm('<?php esc_attr_e( 'Êtes-vous sûr de vouloir supprimer tout l\'historique des consentements ? Cette action est irréversible.', 'eo-tools' ); ?>');">
+			<form method="post" action="">
 				<?php wp_nonce_field( 'eo_tools_clear_log' ); ?>
-				<button type="submit" name="clear_cookie_log" class="button button-secondary" style="color: #dc3232; border-color: #dc3232;"><?php esc_html_e( 'Vider l\'historique', 'eo-tools' ); ?></button>
+				<details style="position: relative;">
+					<summary class="button button-secondary" style="list-style: none; color: #dc3232; border-color: #dc3232;"><?php esc_html_e( 'Vider l\'historique', 'eo-tools' ); ?></summary>
+					<span role="group" style="position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: max-content; max-width: 320px; padding: 10px 12px; background: #fff; border: 1px solid #c3c4c7; border-left: 4px solid #d63638; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);">
+						<span><?php esc_html_e( 'Supprimer tout l\'historique des consentements ? Cette action est irréversible.', 'eo-tools' ); ?></span>
+						<button type="submit" name="clear_cookie_log" class="button button-link-delete"><?php esc_html_e( 'Oui, vider l\'historique', 'eo-tools' ); ?></button>
+					</span>
+				</details>
 			</form>
 		</div>
 		

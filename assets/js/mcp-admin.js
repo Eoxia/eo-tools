@@ -140,28 +140,42 @@
 				$status.addClass( 'is-success' );
 			}
 
+			// Inline confirmation instead of the browser's confirm().
+			var $panel   = $( '<span class="eo-inline-confirm-panel" role="group">' ).hide();
+			var $message = $( '<span>' ).text( labels.revokeConfirm );
+			var $yes     = $( '<button type="button" class="button button-link-delete">' ).text( labels.revokeYes );
+			var $no      = $( '<button type="button" class="button">' ).text( labels.cancel );
+			var $error   = $( '<span class="eo-mcp-inline-error" role="alert">' );
+			var $confirm = $( '<span class="eo-inline-confirm">' ).append( $revoke, $panel.append( $message, $( '<span>' ).append( $yes, ' ', $no ), $error ) );
+
 			$revoke.on( 'click', function () {
-				if ( ! window.confirm( labels.revokeConfirm ) ) {
-					return;
-				}
-				$revoke.prop( 'disabled', true );
+				$error.text( '' );
+				$panel.toggle();
+			} );
+			$no.on( 'click', function () {
+				$panel.hide();
+				$revoke.trigger( 'focus' );
+			} );
+			$yes.on( 'click', function () {
+				$yes.prop( 'disabled', true );
+				$error.text( '' );
 				post( 'eo_tools_mcp_revoke_connection', { uuid: connection.uuid } ).done( function ( response ) {
 					if ( response.success ) {
 						renderConnections( response.data.connections );
 					} else {
-						$revoke.prop( 'disabled', false );
-						window.alert( errorMessage( response ) );
+						$yes.prop( 'disabled', false );
+						$error.text( errorMessage( response ) );
 					}
 				} ).fail( function ( xhr ) {
-					$revoke.prop( 'disabled', false );
-					window.alert( errorMessage( null, xhr ) );
+					$yes.prop( 'disabled', false );
+					$error.text( errorMessage( null, xhr ) );
 				} );
 			} );
 
 			$( '<td>' ).text( connection.name ).appendTo( $row );
 			$( '<td>' ).text( connection.created_label ).appendTo( $row );
 			$( '<td>' ).append( $status ).appendTo( $row );
-			$( '<td class="eo-mcp-actions">' ).append( $revoke ).appendTo( $row );
+			$( '<td class="eo-mcp-actions">' ).append( $confirm ).appendTo( $row );
 			$list.append( $row );
 		} );
 	}
