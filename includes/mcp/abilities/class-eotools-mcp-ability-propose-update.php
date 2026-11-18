@@ -109,6 +109,10 @@ class Eotools_Mcp_Ability_Propose_Update extends Eotools_Mcp_Ability {
 
 		Eotools_Mcp_Content::apply_relations( $proposal->ID, $input, $warnings );
 
+		if ( isset( $input['slug'] ) && get_post_field( 'post_name', $proposal->ID ) !== $source->post_name ) {
+			$warnings[] = __( 'Nouvelle adresse : à l\'application, l\'ancienne adresse du contenu (et celles de ses sous-pages) sera redirigée automatiquement vers la nouvelle (301), dans EO Tools.', 'eo-tools' );
+		}
+
 		$fields = str_replace(
 			array( 'blocks', 'operations', 'featured_image_id' ),
 			array( 'content', 'content', 'featured_image' ),

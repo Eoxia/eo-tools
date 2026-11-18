@@ -57,6 +57,7 @@ class Eotools_Mcp_Plugin_Settings {
 				Plugins\Eotools_Mcp_Plugin_Wordfence::class,
 				Plugins\Eotools_Mcp_Plugin_Aios::class,
 				Plugins\Eotools_Mcp_Plugin_Yoast::class,
+				Plugins\Eotools_Mcp_Plugin_Seokey::class,
 			)
 		);
 

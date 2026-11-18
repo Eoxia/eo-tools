@@ -146,6 +146,122 @@ class Eotools_Mcp_Seo_Provider_Yoast extends Eotools_Mcp_Seo_Provider {
 		$ability->execute( $input );
 	}
 
+	/**
+	 * Yoast keeps the SEO data of terms in its own option (wpseo_taxonomy_meta), keyed by field here.
+	 */
+	public function get_term_meta_keys() {
+		if ( ! class_exists( '\WPSEO_Taxonomy_Meta' ) ) {
+			return array();
+		}
+
+		return array(
+			'title'          => 'wpseo_title',
+			'description'    => 'wpseo_desc',
+			'focus_keyword'  => 'wpseo_focuskw',
+			'noindex'        => 'wpseo_noindex',
+			'canonical'      => 'wpseo_canonical',
+			'og_title'       => 'wpseo_opengraph-title',
+			'og_description' => 'wpseo_opengraph-description',
+			'og_image_id'    => 'wpseo_opengraph-image-id',
+		);
+	}
+
+	/**
+	 * @param \WP_Term $term Term.
+	 * @return array Yoast data of the term, keyed by Yoast key.
+	 */
+	private function term_data( $term ) {
+		$data = \WPSEO_Taxonomy_Meta::get_term_meta( $term, $term->taxonomy );
+
+		return is_array( $data ) ? $data : array();
+	}
+
+	public function get_term_seo_values( $term ) {
+		$data   = $this->term_data( $term );
+		$values = array();
+		foreach ( $this->get_term_meta_keys() as $field => $key ) {
+			$raw              = isset( $data[ $key ] ) ? $data[ $key ] : '';
+			$values[ $field ] = 'noindex' === $field ? 'noindex' === $raw : self::typed_value( $field, $raw );
+		}
+
+		return $values;
+	}
+
+	/**
+	 * Writes with Yoast's own API, then saves the term so that Yoast rebuilds its index.
+	 *
+	 * Every current value is passed again: Yoast resets the fields that are missing.
+	 */
+	public function set_term_seo( $term, $values, &$warnings = array() ) {
+		$keys  = $this->get_term_meta_keys();
+		$clean = $this->clean_values( $values, array_keys( $keys ), $warnings );
+		if ( ! $clean ) {
+			return array();
+		}
+
+		$data = $this->term_data( $term );
+		foreach ( $clean as $field => $value ) {
+			if ( 'noindex' === $field ) {
+				$by_default = (bool) $this->option( 'noindex-tax-' . $term->taxonomy, false );
+				$value      = $value ? 'noindex' : ( $by_default ? 'index' : 'default' );
+			} elseif ( 'og_image_id' === $field ) {
+				$data['wpseo_opengraph-image'] = $value ? (string) wp_get_attachment_image_url( $value, 'full' ) : '';
+				$value                         = $value ? (string) $value : '';
+			} elseif ( is_bool( $value ) ) {
+				$value = $value ? '1' : '0';
+			}
+			$data[ $keys[ $field ] ] = $value;
+		}
+
+		\WPSEO_Taxonomy_Meta::set_values( $term->term_id, $term->taxonomy, $data );
+		wp_update_term( $term->term_id, $term->taxonomy, array() );
+
+		return array_keys( $clean );
+	}
+
+	/**
+	 * @param \WP_Term $term     Term.
+	 * @param string   $template Template stored for the term, or empty.
+	 * @param string   $option   Default template option.
+	 * @return string Template with the variables replaced.
+	 */
+	private function term_template( $term, $template, $option ) {
+		if ( '' === $template ) {
+			$template = (string) $this->option( $option . '-tax-' . $term->taxonomy );
+		}
+
+		return '' === $template ? '' : self::clean( wpseo_replace_vars( $template, $term ) );
+	}
+
+	public function get_term_seo_title( $term ) {
+		$data  = $this->term_data( $term );
+		$title = $this->term_template( $term, isset( $data['wpseo_title'] ) ? (string) $data['wpseo_title'] : '', 'title' );
+
+		return '' !== $title ? $title : parent::get_term_seo_title( $term );
+	}
+
+	public function has_custom_term_title( $term ) {
+		$data = $this->term_data( $term );
+
+		return ! empty( $data['wpseo_title'] );
+	}
+
+	public function get_term_meta_description( $term ) {
+		$data = $this->term_data( $term );
+
+		return $this->term_template( $term, isset( $data['wpseo_desc'] ) ? (string) $data['wpseo_desc'] : '', 'metadesc' );
+	}
+
+	public function is_term_noindex( $term ) {
+		$data  = $this->term_data( $term );
+		$value = isset( $data['wpseo_noindex'] ) ? $data['wpseo_noindex'] : 'default';
+		if ( 'default' !== $value ) {
+			return 'noindex' === $value;
+		}
+
+		return (bool) $this->option( 'noindex-tax-' . $term->taxonomy, false );
+	}
+
 	public function supports( $feature ) {
 		return in_array( $feature, array( 'meta_description', 'focus_keyword', 'seo_score', 'noindex', 'canonical' ), true );
 	}

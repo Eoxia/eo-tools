@@ -83,6 +83,43 @@ class Eotools_Mcp_Seo_Provider {
 	}
 
 	/**
+	 * Short names of the fields, for the humans who validate a change.
+	 *
+	 * @return string[] Labels keyed by field.
+	 */
+	public static function get_field_labels() {
+		return array(
+			'title'          => __( 'Titre SEO', 'eo-tools' ),
+			'description'    => __( 'Méta description', 'eo-tools' ),
+			'focus_keyword'  => __( 'Requête cible', 'eo-tools' ),
+			'noindex'        => __( 'Exclu des moteurs (noindex)', 'eo-tools' ),
+			'canonical'      => __( 'URL canonique', 'eo-tools' ),
+			'og_title'       => __( 'Titre de partage', 'eo-tools' ),
+			'og_description' => __( 'Description de partage', 'eo-tools' ),
+			'og_image_id'    => __( 'Image de partage', 'eo-tools' ),
+			'cornerstone'    => __( 'Contenu pilier', 'eo-tools' ),
+		);
+	}
+
+	/**
+	 * Value of a field as shown to a human.
+	 *
+	 * @param string $field SEO field.
+	 * @param mixed  $value Value.
+	 * @return string
+	 */
+	public static function format_value( $field, $value ) {
+		switch ( self::field_type( $field ) ) {
+			case 'boolean':
+				return $value ? __( 'Oui', 'eo-tools' ) : __( 'Non', 'eo-tools' );
+			case 'integer':
+				return $value ? (string) wp_basename( (string) wp_get_attachment_image_url( (int) $value, 'full' ) ) : '—';
+		}
+
+		return '' === (string) $value ? '—' : (string) $value;
+	}
+
+	/**
 	 * SEO fields the AI may write on a content, with the post meta that stores each one.
 	 *
 	 * @return string[] Post meta keys keyed by field (see get_field_definitions()). Empty when the provider cannot write SEO fields.
@@ -125,19 +162,7 @@ class Eotools_Mcp_Seo_Provider {
 		$keys    = $this->get_meta_keys();
 		$written = array();
 
-		foreach ( (array) $values as $field => $value ) {
-			if ( ! isset( $keys[ $field ] ) ) {
-				/* translators: 1: SEO field, 2: SEO plugin name. */
-				$warnings[] = sprintf( __( 'Champ SEO « %1$s » ignoré : %2$s ne le gère pas.', 'eo-tools' ), $field, $this->get_name() );
-				continue;
-			}
-
-			$value = $this->sanitize_field( $field, $value );
-			if ( is_wp_error( $value ) ) {
-				$warnings[] = $value->get_error_message();
-				continue;
-			}
-
+		foreach ( $this->clean_values( $values, array_keys( $keys ), $warnings ) as $field => $value ) {
 			$this->write_field( $post_id, $field, $keys[ $field ], $value );
 			$written[] = $field;
 		}
@@ -203,14 +228,11 @@ class Eotools_Mcp_Seo_Provider {
 	}
 
 	/**
-	 * @param int    $post_id Content ID.
-	 * @param string $field   SEO field.
-	 * @param string $key     Post meta key.
+	 * @param string $field SEO field.
+	 * @param mixed  $raw   Stored value.
 	 * @return mixed Typed value.
 	 */
-	protected function read_field( $post_id, $field, $key ) {
-		$raw = get_post_meta( $post_id, $key, true );
-
+	protected static function typed_value( $field, $raw ) {
 		switch ( self::field_type( $field ) ) {
 			case 'boolean':
 				return (bool) $raw;
@@ -222,6 +244,30 @@ class Eotools_Mcp_Seo_Provider {
 	}
 
 	/**
+	 * @param string $meta_type post or term.
+	 * @param int    $id        Object ID.
+	 * @param string $key       Meta key.
+	 * @param mixed  $value     Clean value. Empty values remove the meta.
+	 */
+	protected static function write_meta( $meta_type, $id, $key, $value ) {
+		if ( '' === $value || false === $value || 0 === $value || null === $value ) {
+			delete_metadata( $meta_type, $id, $key );
+		} else {
+			update_metadata( $meta_type, $id, $key, wp_slash( true === $value ? '1' : $value ) );
+		}
+	}
+
+	/**
+	 * @param int    $post_id Content ID.
+	 * @param string $field   SEO field.
+	 * @param string $key     Post meta key.
+	 * @return mixed Typed value.
+	 */
+	protected function read_field( $post_id, $field, $key ) {
+		return self::typed_value( $field, get_post_meta( $post_id, $key, true ) );
+	}
+
+	/**
 	 * Stores one field. Empty values remove the post meta.
 	 *
 	 * @param int    $post_id Content ID.
@@ -230,11 +276,129 @@ class Eotools_Mcp_Seo_Provider {
 	 * @param mixed  $value   Clean value.
 	 */
 	protected function write_field( $post_id, $field, $key, $value ) {
-		if ( '' === $value || false === $value || 0 === $value || null === $value ) {
-			delete_post_meta( $post_id, $key );
-		} else {
-			update_post_meta( $post_id, $key, wp_slash( true === $value ? '1' : $value ) );
+		self::write_meta( 'post', $post_id, $key, $value );
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Taxonomy terms (categories, tags, product categories…)
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * SEO fields the AI may write on a taxonomy term, with the term meta that stores each one.
+	 *
+	 * @return string[] Term meta keys keyed by field. Empty when the provider cannot write them.
+	 */
+	public function get_term_meta_keys() {
+		return array();
+	}
+
+	/**
+	 * @return string[] Fields the AI may write on a taxonomy term.
+	 */
+	public function get_term_seo_fields() {
+		return array_keys( $this->get_term_meta_keys() );
+	}
+
+	/**
+	 * Values entered on a term.
+	 *
+	 * @param \WP_Term $term Term.
+	 * @return array Values keyed by field.
+	 */
+	public function get_term_seo_values( $term ) {
+		$values = array();
+		foreach ( $this->get_term_meta_keys() as $field => $key ) {
+			$values[ $field ] = self::typed_value( $field, get_term_meta( $term->term_id, $key, true ) );
 		}
+
+		return $values;
+	}
+
+	/**
+	 * Writes SEO fields on a term. Only the given fields change; an empty value removes the field.
+	 *
+	 * @param \WP_Term $term     Term.
+	 * @param array    $values   Values keyed by field.
+	 * @param string[] $warnings Warnings, completed by reference.
+	 * @return string[] Fields written.
+	 */
+	public function set_term_seo( $term, $values, &$warnings = array() ) {
+		$keys    = $this->get_term_meta_keys();
+		$written = array();
+
+		foreach ( $this->clean_values( $values, array_keys( $keys ), $warnings ) as $field => $value ) {
+			self::write_meta( 'term', $term->term_id, $keys[ $field ], $value );
+			$written[] = $field;
+		}
+
+		return $written;
+	}
+
+	/**
+	 * Keeps the supported fields and sanitizes them.
+	 *
+	 * @param array    $values    Values keyed by field.
+	 * @param string[] $supported Supported fields.
+	 * @param string[] $warnings  Warnings, completed by reference.
+	 * @return array Clean values keyed by field.
+	 */
+	protected function clean_values( $values, $supported, &$warnings ) {
+		$clean = array();
+		foreach ( (array) $values as $field => $value ) {
+			if ( ! in_array( $field, $supported, true ) ) {
+				/* translators: 1: SEO field, 2: SEO plugin name. */
+				$warnings[] = sprintf( __( 'Champ SEO « %1$s » ignoré : %2$s ne le gère pas.', 'eo-tools' ), $field, $this->get_name() );
+				continue;
+			}
+			$value = $this->sanitize_field( $field, $value );
+			if ( is_wp_error( $value ) ) {
+				$warnings[] = $value->get_error_message();
+				continue;
+			}
+			$clean[ $field ] = $value;
+		}
+
+		return $clean;
+	}
+
+	/**
+	 * Title of the term archive in search results.
+	 *
+	 * @param \WP_Term $term Term.
+	 * @return string
+	 */
+	public function get_term_seo_title( $term ) {
+		$separator = apply_filters( 'document_title_separator', '-' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook.
+
+		return self::clean( $term->name . ' ' . $separator . ' ' . get_bloginfo( 'name', 'display' ) );
+	}
+
+	/**
+	 * Whether an SEO title was entered for this term.
+	 *
+	 * @param \WP_Term $term Term.
+	 * @return bool
+	 */
+	public function has_custom_term_title( $term ) {
+		return false;
+	}
+
+	/**
+	 * Meta description of the term archive.
+	 *
+	 * @param \WP_Term $term Term.
+	 * @return string
+	 */
+	public function get_term_meta_description( $term ) {
+		return '';
+	}
+
+	/**
+	 * @param \WP_Term $term Term.
+	 * @return bool Whether the term archive is excluded from search engines.
+	 */
+	public function is_term_noindex( $term ) {
+		return false;
 	}
 
 	/**

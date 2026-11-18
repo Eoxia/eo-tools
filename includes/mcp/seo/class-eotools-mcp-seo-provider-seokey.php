@@ -110,6 +110,52 @@ class Eotools_Mcp_Seo_Provider_Seokey extends Eotools_Mcp_Seo_Provider {
 		);
 	}
 
+	/**
+	 * SEOKEY uses the same keys in term meta (see seokey_meta_boxes_save_all()).
+	 */
+	public function get_term_meta_keys() {
+		return array(
+			'title'       => self::META_TITLE,
+			'description' => self::META_DESCRIPTION,
+			'noindex'     => self::META_VISIBILITY,
+		);
+	}
+
+	public function get_term_seo_title( $term ) {
+		$title = trim( (string) get_term_meta( $term->term_id, self::META_TITLE, true ) );
+		if ( '' === $title ) {
+			$title = $term->name;
+		}
+		$parts     = apply_filters( 'document_title_parts', array( 'title' => $title ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook.
+		$separator = apply_filters( 'document_title_separator', '-' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core hook.
+
+		return self::clean( implode( ' ' . $separator . ' ', array_filter( (array) $parts ) ) );
+	}
+
+	public function has_custom_term_title( $term ) {
+		return '' !== trim( (string) get_term_meta( $term->term_id, self::META_TITLE, true ) );
+	}
+
+	/**
+	 * Entered description, or the term description that SEOKEY uses instead.
+	 */
+	public function get_term_meta_description( $term ) {
+		$description = trim( (string) get_term_meta( $term->term_id, self::META_DESCRIPTION, true ) );
+
+		return self::clean( '' !== $description ? $description : $term->description );
+	}
+
+	public function is_term_noindex( $term ) {
+		if ( (bool) get_term_meta( $term->term_id, self::META_VISIBILITY, true ) ) {
+			return true;
+		}
+
+		// Taxonomy left out in the SEOKEY settings.
+		$indexed = $this->option( 'cct-taxo', array() );
+
+		return is_array( $indexed ) && $indexed && ! in_array( $term->taxonomy, $indexed, true );
+	}
+
 	public function get_seo_title( $post, $front_page = false ) {
 		// Same steps as seokey_head_get_meta_title(): SEOKEY only keeps the title part.
 		$parts     = array( 'title' => html_entity_decode( seokey_meta_title_value( $this->type( $post ), (int) $post->ID ), ENT_QUOTES, 'UTF-8' ) );

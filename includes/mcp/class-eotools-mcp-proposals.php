@@ -224,9 +224,17 @@ class Eotools_Mcp_Proposals {
 			Eotools_Mcp_Seo::get_provider()->copy_seo( $proposal->ID, $source->ID );
 		}
 
+		// A new slug changes the address of the content and of its sub-pages: the old ones are redirected.
+		$moved = isset( $data['post_name'] ) && $data['post_name'] !== $source->post_name && 'publish' === $source->post_status;
+		$links = $moved ? Eotools_Mcp_Redirections::get_links( $source ) : array();
+
 		$updated = wp_update_post( wp_slash( $data ), true );
 		if ( is_wp_error( $updated ) ) {
 			return $updated;
+		}
+
+		if ( $moved ) {
+			Eotools_Mcp_Redirections::redirect_moved( $links );
 		}
 
 		if ( in_array( 'featured_image', $fields, true ) ) {
@@ -301,7 +309,7 @@ class Eotools_Mcp_Proposals {
 		$banner   = array(
 			'proposal_id'   => $proposal->ID,
 			'title'         => __( 'Aperçu d\'une modification proposée par l\'IA', 'eo-tools' ),
-			'notice'        => '',
+			'notice'        => in_array( 'slug', (array) get_post_meta( $proposal->ID, self::META_FIELDS, true ), true ) && $proposal->post_name !== $source->post_name ? __( 'L\'adresse de ce contenu change : l\'ancienne adresse (et celles de ses sous-pages) sera redirigée automatiquement vers la nouvelle (301).', 'eo-tools' ) : '',
 			'current_link'  => get_permalink( $source ),
 			'conflict'      => self::has_conflict( $proposal, $source ) ? __( 'Attention : le contenu publié a été modifié depuis cette proposition. L\'appliquer remplacera ces changements.', 'eo-tools' ) : '',
 			'apply_action'  => 'eo_tools_apply_proposal',

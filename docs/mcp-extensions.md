@@ -23,7 +23,7 @@ L'IA connectée à EO Tools peut lire et modifier les réglages de certaines ext
 | `includes/mcp/class-eotools-mcp-cookies.php` | Scan, liste et validation des cookies d'EO Tools, pour les outils `eo-tools/scan-cookies` et `eo-tools/update-cookies` (le scan lui-même est dans `includes/api-eo-detailed-scan.php`, partagé avec l'écran) |
 | `includes/admin/views/html-admin-mcp-elevation.php` | Onglet « Autorisations », dont la section des clés secrètes |
 
-Le titre SEO, la méta description et la requête cible d'une page ne sont pas des réglages d'extension. Ce sont des champs du contenu : le champ `seo` de `eo-tools/update-draft` (brouillon) et de `eo-tools/propose-update` (page publiée, appliqué par un humain). Ils sont écrits par le fournisseur SEO actif (`includes/mcp/seo/`, Yoast SEO ou SEOKEY).
+Le titre SEO, la méta description et les autres champs SEO d'une page ou d'une catégorie ne sont pas des réglages d'extension. Ils passent par les passerelles SEO (section 5).
 
 ## 3. Extensions prises en charge
 
@@ -36,6 +36,7 @@ Le titre SEO, la méta description et la requête cible d'une page ne sont pas d
 | Wordfence (`wordfence`) | Mode du pare-feu, protection force brute (seuils, durées), adresses des alertes | Assistant de démarrage (licence), « Optimiser le pare-feu » (fichiers du serveur) |
 | All In One WP Security (`all-in-one-wp-security-and-firewall`) | Verrouillage des connexions (essais, période, durées). Désactiver le renommage de la page de connexion et la détection de modification des fichiers. L'état du pare-feu AIOS est signalé, pour éviter un conflit avec Wordfence | Pare-feu AIOS (`.htaccess`), « Disable PHP file editing » (`wp-config.php`) |
 | Yoast SEO (`wordpress-seo`) | Configuration initiale : organisation ou personne, nom, logo, nom du site, réseaux sociaux, suivi d'utilisation, configuration marquée comme terminée | — |
+| SEOKEY (`seo-key-pro`) | Types de contenus et taxonomies montrés aux moteurs, titre et description de l'accueil, type de propriétaire du site (données structurées), Open Graph, optimisations (pagination des auteurs et des commentaires, liens « Répondre », contenus noindex retirés des listes, flux RSS secondaires) | Assistant de démarrage (il crée `robots.txt` sur le serveur), détail des données structurées, licence, Search Console |
 
 Rien à configurer côté site pour MainWP Child (le site est ajouté depuis le tableau de bord MainWP) ni pour Site Kit by Google (il faut un compte Google).
 
@@ -55,3 +56,34 @@ Rien à configurer côté site pour MainWP Child (le site est ajouté depuis le 
 4. Ajouter la classe à la liste de `Eotools_Mcp_Plugin_Settings::get_adapters()`. Une autre extension peut aussi l'ajouter avec le filtre `eo_tools_mcp_plugin_adapters`.
 
 Avant d'exposer un réglage, vérifier dans le code de l'extension comment son écran l'enregistre. Si l'écran écrit dans un fichier du serveur, le réglage ne doit pas être exposé : le signaler dans `status`.
+
+## 5. Passerelles SEO (Yoast SEO, SEOKEY…)
+
+Les extensions SEO ne sont pas des extensions Eoxia : EO Tools ne modifie jamais leur code. Il passe par ses propres **passerelles**, qui écrivent les données comme l'écran de l'extension (mêmes métas, mêmes options, mêmes fonctions publiques).
+
+| Fichier | Rôle |
+|---|---|
+| `includes/mcp/seo/class-eotools-mcp-seo-provider.php` | Classe de base : WordPress sans extension SEO, champs SEO typés (`get_field_definitions()`), lecture et écriture génériques en métas |
+| `includes/mcp/seo/class-eotools-mcp-seo-provider-yoast.php` | Yoast SEO |
+| `includes/mcp/seo/class-eotools-mcp-seo-provider-seokey.php` | SEOKEY |
+| `includes/mcp/class-eotools-mcp-seo.php` | Audits (site, contenus, catégories, 404) |
+| `includes/mcp/class-eotools-mcp-seo-changes.php` | Modifications SEO en attente qui ne sont pas des contenus (redirections, catégories), validées dans l'onglet « À valider » |
+| `includes/mcp/class-eotools-mcp-redirections.php` | Redirections 301 du module 404 d'EO Tools |
+
+Champs SEO écrits par chaque passerelle :
+
+| Champ | Contenus : Yoast | Contenus : SEOKEY | Catégories : Yoast | Catégories : SEOKEY |
+|---|---|---|---|---|
+| `title`, `description` | ✓ | ✓ | ✓ | ✓ |
+| `focus_keyword` | ✓ | ✓ | ✓ | — |
+| `noindex` | ✓ | ✓ | ✓ | ✓ |
+| `canonical`, `og_title`, `og_description`, `og_image_id` | ✓ | — | ✓ | — |
+| `cornerstone` | ✓ | — | — | — |
+
+- **Contenus** : champ `seo` de `eo-tools/update-draft` (brouillon) et `eo-tools/propose-update` (contenu publié, appliqué par un humain). Le schéma ne montre à l'IA que les champs de l'extension active. À l'application d'une proposition, les champs SEO sont copiés avant l'enregistrement du contenu, pour que l'extension mette à jour ses propres données (index, plan de site).
+- **Yoast SEO** : sur un contenu publié, la passerelle réécrit les valeurs avec l'ability de Yoast `yoast-seo/update-post-seo-data` (Yoast 28 et plus), qui reconstruit l'index de Yoast. Ces abilities de Yoast ne sont pas proposées telles quelles à l'IA : elles modifient directement un contenu publié, sans validation. Pour les catégories, la passerelle utilise `WPSEO_Taxonomy_Meta::set_values()` (avec toutes les valeurs actuelles, car Yoast remet à zéro les champs absents), puis enregistre le terme pour que Yoast reconstruise son index.
+- **Catégories, étiquettes…** : section `terms` de `eo-tools/audit-site-seo`, types `term_*` de `eo-tools/list-seo-issues`, corrections avec `eo-tools/propose-term-seo` (niveau « Sensible », appliquées par un humain).
+- **Redirections** : toujours dans EO Tools (table `eotools_redirections`), quelle que soit l'extension SEO. `eo-tools/propose-redirections` les propose, un humain les applique. Quand une proposition change le slug d'un contenu publié, l'ancienne adresse (et celles des sous-pages) est redirigée à l'application. Une redirection vers une adresse déjà redirigée est refusée, et les anciennes redirections vers l'adresse redirigée sont mises à jour (pas de chaîne).
+- **Textes alternatifs** : `eo-tools/list-seo-issues` avec le type `media_without_alt`, correction avec `eo-tools/update-media` (niveau « Écriture » : seule la médiathèque change).
+
+Pour prendre en charge une autre extension SEO : étendre `Eotools_Mcp_Seo_Provider` (au minimum `get_id()`, `get_name()`, `is_active()`, `supports()`, `get_meta_keys()`, les lectures du titre et de la description, et les méthodes `*_term_*` pour les catégories), puis l'ajouter avec le filtre `eo_tools_seo_providers`. Ne jamais tester une extension SEO directement dans `Eotools_Mcp_Seo`.
