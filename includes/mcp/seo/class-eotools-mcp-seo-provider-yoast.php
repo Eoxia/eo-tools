@@ -29,12 +29,121 @@ class Eotools_Mcp_Seo_Provider_Yoast extends Eotools_Mcp_Seo_Provider {
 		return defined( 'WPSEO_VERSION' ) && function_exists( 'wpseo_replace_vars' ) && class_exists( '\WPSEO_Options' );
 	}
 
+	/**
+	 * Yoast's own ability writing the SEO data of a post (Yoast SEO 28 and later).
+	 */
+	const UPDATE_ABILITY = 'yoast-seo/update-post-seo-data';
+
+	/**
+	 * Fields of Yoast's update ability, keyed by EO Tools field.
+	 */
+	const ABILITY_FIELDS = array(
+		'title'          => 'seo_title',
+		'description'    => 'meta_description',
+		'canonical'      => 'canonical',
+		'og_title'       => 'open_graph_title',
+		'og_description' => 'open_graph_description',
+		'cornerstone'    => 'is_cornerstone',
+		'noindex'        => 'noindex',
+	);
+
 	public function get_meta_keys() {
 		return array(
-			'title'         => '_yoast_wpseo_title',
-			'description'   => '_yoast_wpseo_metadesc',
-			'focus_keyword' => '_yoast_wpseo_focuskw',
+			'title'          => '_yoast_wpseo_title',
+			'description'    => '_yoast_wpseo_metadesc',
+			'focus_keyword'  => '_yoast_wpseo_focuskw',
+			'noindex'        => '_yoast_wpseo_meta-robots-noindex',
+			'canonical'      => '_yoast_wpseo_canonical',
+			'og_title'       => '_yoast_wpseo_opengraph-title',
+			'og_description' => '_yoast_wpseo_opengraph-description',
+			'og_image_id'    => '_yoast_wpseo_opengraph-image-id',
+			'cornerstone'    => '_yoast_wpseo_is_cornerstone',
 		);
+	}
+
+	/**
+	 * Whether the content type is excluded from search engines by default.
+	 *
+	 * @param int $post_id Content ID.
+	 * @return bool
+	 */
+	private function type_noindex( $post_id ) {
+		return (bool) $this->option( 'noindex-' . get_post_type( $post_id ), false );
+	}
+
+	/**
+	 * Yoast stores "1" (noindex), "2" (index) or nothing (default of the content type).
+	 */
+	protected function read_field( $post_id, $field, $key ) {
+		if ( 'noindex' === $field ) {
+			return '1' === (string) get_post_meta( $post_id, $key, true );
+		}
+
+		return parent::read_field( $post_id, $field, $key );
+	}
+
+	protected function write_field( $post_id, $field, $key, $value ) {
+		if ( 'noindex' === $field ) {
+			if ( $value ) {
+				update_post_meta( $post_id, $key, '1' );
+			} elseif ( $this->type_noindex( $post_id ) ) {
+				// Back to "index" although the content type is excluded by default.
+				update_post_meta( $post_id, $key, '2' );
+			} else {
+				delete_post_meta( $post_id, $key );
+			}
+
+			return;
+		}
+
+		parent::write_field( $post_id, $field, $key, $value );
+
+		// Yoast also keeps the address of the sharing image.
+		if ( 'og_image_id' === $field ) {
+			$url = $value ? wp_get_attachment_image_url( $value, 'full' ) : '';
+			if ( $url ) {
+				update_post_meta( $post_id, '_yoast_wpseo_opengraph-image', wp_slash( $url ) );
+			} else {
+				delete_post_meta( $post_id, '_yoast_wpseo_opengraph-image' );
+			}
+		}
+	}
+
+	/**
+	 * On a published content, writes again through Yoast's own ability.
+	 *
+	 * A post meta write alone leaves Yoast's index (what it outputs on the
+	 * front) out of date until the next save. Yoast's ability writes the
+	 * values the same way as its editor and rebuilds its index from all the
+	 * post meta, including the fields it does not handle itself (target
+	 * query, sharing image). Without it (older Yoast), the post meta are
+	 * written and Yoast refreshes on the next save.
+	 */
+	protected function after_write( $post_id, $fields ) {
+		if ( ! in_array( get_post_status( $post_id ), array( 'publish', 'private' ), true ) || ! function_exists( 'wp_get_ability' ) ) {
+			return;
+		}
+
+		$ability = wp_get_ability( self::UPDATE_ABILITY );
+		if ( ! $ability ) {
+			return;
+		}
+
+		$values = $this->get_seo_values( $post_id );
+		$input  = array( 'post_id' => (int) $post_id );
+		foreach ( self::ABILITY_FIELDS as $field => $name ) {
+			if ( ! in_array( $field, $fields, true ) ) {
+				continue;
+			}
+			$value = $values[ $field ];
+			if ( 'noindex' === $field ) {
+				// Tri-state for Yoast: null is the default of the content type.
+				$value = $value ? true : ( $this->type_noindex( $post_id ) ? false : null );
+			}
+			$input[ $name ] = $value;
+		}
+
+		$ability->execute( $input );
 	}
 
 	public function supports( $feature ) {

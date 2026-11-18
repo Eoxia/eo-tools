@@ -219,6 +219,11 @@ class Eotools_Mcp_Proposals {
 			}
 		}
 
+		// Before the update: SEO plugins refresh their own data (index, sitemap) when the content is saved.
+		if ( in_array( 'seo', $fields, true ) ) {
+			Eotools_Mcp_Seo::get_provider()->copy_seo( $proposal->ID, $source->ID );
+		}
+
 		$updated = wp_update_post( wp_slash( $data ), true );
 		if ( is_wp_error( $updated ) ) {
 			return $updated;
@@ -237,10 +242,6 @@ class Eotools_Mcp_Proposals {
 			if ( in_array( $field, $fields, true ) ) {
 				wp_set_object_terms( $source->ID, wp_get_object_terms( $proposal->ID, $taxonomy, array( 'fields' => 'ids' ) ), $taxonomy );
 			}
-		}
-
-		if ( in_array( 'seo', $fields, true ) ) {
-			Eotools_Mcp_Seo::get_provider()->copy_seo( $proposal->ID, $source->ID );
 		}
 
 		wp_delete_post( $proposal->ID, true );

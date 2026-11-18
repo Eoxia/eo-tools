@@ -106,6 +106,7 @@ class Eotools_Mcp_Seo_Provider_Seokey extends Eotools_Mcp_Seo_Provider {
 			'title'         => self::META_TITLE,
 			'description'   => self::META_DESCRIPTION,
 			'focus_keyword' => self::META_KEYWORD,
+			'noindex'       => self::META_VISIBILITY,
 		);
 	}
 

@@ -30,7 +30,7 @@ class Eotools_Mcp_Ability_List_Seo_Issues extends Eotools_Mcp_Ability {
 		}
 
 		/* translators: %s: list of issue types. */
-		return sprintf( __( 'Liste paginée de tous les contenus publiés touchés par un problème SEO trouvé par eo-tools/audit-site-seo, avec pour chacun son titre SEO, sa méta description, sa requête cible, son score Yoast le cas échéant, son nombre de mots, ses images sans texte alternatif et ses liens internes. Pour les doublons, "same_as" donne les identifiants des contenus identiques. Types de problèmes : %s.', 'eo-tools' ), implode( ', ', $types ) );
+		return sprintf( __( 'Liste paginée de tous les contenus publiés touchés par un problème SEO trouvé par eo-tools/audit-site-seo, avec pour chacun son titre SEO, sa méta description, sa requête cible, son score Yoast le cas échéant, son nombre de mots, ses images sans texte alternatif et ses liens internes. Pour les doublons, "same_as" donne les identifiants des contenus identiques. Types de problèmes : %s. Le type "media_without_alt" liste à la place les images de la médiathèque sans texte alternatif, à compléter avec eo-tools/update-media.', 'eo-tools' ), implode( ', ', $types ) );
 	}
 
 	public function get_group() {
@@ -47,7 +47,7 @@ class Eotools_Mcp_Ability_List_Seo_Issues extends Eotools_Mcp_Ability {
 			'properties'           => array(
 				'issue'     => array(
 					'type'        => 'string',
-					'enum'        => array_keys( Eotools_Mcp_Seo::get_issue_types() ),
+					'enum'        => array_merge( array_keys( Eotools_Mcp_Seo::get_issue_types() ), array( 'media_without_alt' ) ),
 					'description' => __( 'Type de problème (clé de "content.data.issues" dans eo-tools/audit-site-seo).', 'eo-tools' ),
 				),
 				'post_type' => array(
@@ -82,6 +82,13 @@ class Eotools_Mcp_Ability_List_Seo_Issues extends Eotools_Mcp_Ability {
 	}
 
 	public function execute( $input ) {
+		if ( isset( $input['issue'] ) && 'media_without_alt' === $input['issue'] ) {
+			return Eotools_Mcp_Seo::list_media_without_alt(
+				isset( $input['page'] ) ? max( 1, (int) $input['page'] ) : 1,
+				isset( $input['per_page'] ) ? max( 1, min( 100, (int) $input['per_page'] ) ) : 50
+			);
+		}
+
 		return Eotools_Mcp_Seo::list_issue(
 			isset( $input['issue'] ) ? (string) $input['issue'] : '',
 			isset( $input['post_type'] ) ? (string) $input['post_type'] : '',

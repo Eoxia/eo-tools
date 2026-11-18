@@ -29,6 +29,11 @@ class Eotools_Mcp_Seo {
 	const SEVERITIES  = array( 'critical', 'warning', 'info' );
 
 	/**
+	 * Issues found by comparing contents with each other ("same_as" lists the other contents).
+	 */
+	const DUPLICATE_ISSUES = array( 'duplicate_title', 'duplicate_description', 'duplicate_focus_keyword' );
+
+	/**
 	 * Source of the SEO data: the first active SEO plugin, or WordPress alone.
 	 *
 	 * @return Eotools_Mcp_Seo_Provider
@@ -149,6 +154,12 @@ class Eotools_Mcp_Seo {
 				'label'       => sprintf( __( 'Pas de requête cible (%s)', 'eo-tools' ), $plugin ),
 				/* translators: %s: SEO plugin name. */
 				'description' => sprintf( __( 'Aucune requête cible (mot-clé principal) n\'est renseignée dans %s : l\'optimisation du contenu ne peut pas être analysée.', 'eo-tools' ), $plugin ),
+				'requires'    => 'focus_keyword',
+			),
+			'duplicate_focus_keyword' => array(
+				'severity'    => 'warning',
+				'label'       => __( 'Requête cible en double (cannibalisation)', 'eo-tools' ),
+				'description' => __( 'Plusieurs contenus indexables visent la même requête : ils se concurrencent dans les résultats et aucun ne se positionne bien. Gardez une page par requête (changez la requête des autres, fusionnez-les ou faites-en des pages de soutien qui pointent vers la principale).', 'eo-tools' ),
 				'requires'    => 'focus_keyword',
 			),
 			'low_seo_score'         => array(
@@ -672,7 +683,7 @@ class Eotools_Mcp_Seo {
 		}
 		if ( $scan['images_without_alt_in_library'] ) {
 			/* translators: %d: number of images. */
-			$findings[] = self::finding( 'info', sprintf( __( '%d image(s) de la médiathèque sans texte alternatif.', 'eo-tools' ), $scan['images_without_alt_in_library'] ) );
+			$findings[] = self::finding( 'info', sprintf( __( '%d image(s) de la médiathèque sans texte alternatif (liste : eo-tools/list-seo-issues avec le type "media_without_alt", correction : eo-tools/update-media).', 'eo-tools' ), $scan['images_without_alt_in_library'] ) );
 		}
 		if ( $scan['truncated'] ) {
 			/* translators: %d: number of contents. */
@@ -726,7 +737,7 @@ class Eotools_Mcp_Seo {
 		$items = array();
 		foreach ( array_slice( $ids, ( $page - 1 ) * $per_page, $per_page ) as $id ) {
 			$item = self::public_item( $scan['posts'][ $id ] );
-			if ( in_array( $issue, array( 'duplicate_title', 'duplicate_description' ), true ) ) {
+			if ( in_array( $issue, self::DUPLICATE_ISSUES, true ) ) {
 				$item['same_as'] = $scan['posts'][ $id ][ $issue ];
 			}
 			$items[] = $item;
@@ -751,7 +762,9 @@ class Eotools_Mcp_Seo {
 	 * @return array
 	 */
 	private static function public_item( $post ) {
-		unset( $post['duplicate_title'], $post['duplicate_description'] );
+		foreach ( self::DUPLICATE_ISSUES as $issue ) {
+			unset( $post[ $issue ] );
+		}
 
 		return $post;
 	}
@@ -822,6 +835,7 @@ class Eotools_Mcp_Seo {
 		$issues       = array_fill_keys( array_keys( self::get_issue_types() ), array() );
 		$titles       = array();
 		$descriptions = array();
+		$keywords     = array();
 		foreach ( $posts as $id => &$item ) {
 			$item['internal_links_out'] = $outbound[ $id ];
 			$item['linked_from_site']   = isset( $inbound[ $id ] ) || $id === $context['front_page'];
@@ -835,13 +849,17 @@ class Eotools_Mcp_Seo {
 				if ( ! empty( $item['meta_description'] ) ) {
 					$descriptions[ mb_strtolower( $item['meta_description'] ) ][] = $id;
 				}
+				if ( isset( $item['focus_keyword'] ) && '' !== trim( $item['focus_keyword'] ) ) {
+					$keywords[ self::normalize_keyword( $item['focus_keyword'] ) ][] = $id;
+				}
 			}
 		}
 		unset( $item );
 
 		foreach ( array(
-			'duplicate_title'       => $titles,
-			'duplicate_description' => $descriptions,
+			'duplicate_title'         => $titles,
+			'duplicate_description'   => $descriptions,
+			'duplicate_focus_keyword' => $keywords,
 		) as $issue => $groups ) {
 			if ( ! isset( $issues[ $issue ] ) ) {
 				continue;
@@ -1083,13 +1101,19 @@ class Eotools_Mcp_Seo {
 		$duplicates = array();
 		if ( self::is_indexable( $item ) ) {
 			$scan = self::scan( $refresh );
-			foreach ( array( 'seo_title' => 'duplicate_title', 'meta_description' => 'duplicate_description' ) as $field => $issue ) {
-				if ( empty( $item[ $field ] ) || ! isset( $types[ $issue ] ) ) {
+			$compare = array(
+				'seo_title'        => 'duplicate_title',
+				'meta_description' => 'duplicate_description',
+				'focus_keyword'    => 'duplicate_focus_keyword',
+			);
+			foreach ( $compare as $field => $issue ) {
+				if ( ! isset( $item[ $field ] ) || '' === trim( $item[ $field ] ) || ! isset( $types[ $issue ] ) ) {
 					continue;
 				}
-				$same = array();
+				$normalize = 'focus_keyword' === $field ? array( __CLASS__, 'normalize_keyword' ) : 'mb_strtolower';
+				$same      = array();
 				foreach ( $scan['posts'] as $other ) {
-					if ( $other['id'] !== $post->ID && isset( $other[ $field ] ) && mb_strtolower( $other[ $field ] ) === mb_strtolower( $item[ $field ] ) && self::is_indexable( $other ) ) {
+					if ( $other['id'] !== $post->ID && isset( $other[ $field ] ) && call_user_func( $normalize, $other[ $field ] ) === call_user_func( $normalize, $item[ $field ] ) && self::is_indexable( $other ) ) {
 						$same[] = array(
 							'id'    => $other['id'],
 							'title' => $other['title'],
@@ -1223,6 +1247,8 @@ class Eotools_Mcp_Seo {
 				$data[ $field ] = $item[ $field ];
 			}
 		}
+		// Values entered in the SEO plugin, as eo-tools/update-draft and eo-tools/propose-update write them.
+		$data['seo_fields']          = $context['provider']->get_seo_values( $post->ID );
 		$data['recommended_lengths'] = $context['limits'];
 		$data                        = array_merge( $data, $details['data'] );
 		$data['excerpt']            = $post->post_excerpt;
@@ -1508,6 +1534,16 @@ class Eotools_Mcp_Seo {
 	}
 
 	/**
+	 * Target query compared to find duplicates: case, spaces and accents ignored.
+	 *
+	 * @param string $text Target query.
+	 * @return string
+	 */
+	public static function normalize_keyword( $text ) {
+		return mb_strtolower( remove_accents( trim( preg_replace( '/\s+/u', ' ', (string) $text ) ) ) );
+	}
+
+	/**
 	 * @param string $content Content HTML.
 	 * @return int
 	 */
@@ -1525,17 +1561,76 @@ class Eotools_Mcp_Seo {
 	}
 
 	/**
+	 * SQL selecting the images of the media library without alternative text.
+	 */
+	const LIBRARY_WITHOUT_ALT_SQL = "FROM %posts% p
+		LEFT JOIN %postmeta% m ON m.post_id = p.ID AND m.meta_key = '_wp_attachment_image_alt'
+		WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%' AND p.post_mime_type <> 'image/svg+xml'
+		AND ( m.meta_value IS NULL OR TRIM( m.meta_value ) = '' )";
+
+	/**
+	 * @return string FROM / WHERE part of the query on the images without alternative text.
+	 */
+	private static function library_without_alt_sql() {
+		global $wpdb;
+
+		return str_replace( array( '%posts%', '%postmeta%' ), array( $wpdb->posts, $wpdb->postmeta ), self::LIBRARY_WITHOUT_ALT_SQL );
+	}
+
+	/**
 	 * @return int Images of the media library without alternative text.
 	 */
 	private static function count_library_images_without_alt() {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		return (int) $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->posts} p
-			LEFT JOIN {$wpdb->postmeta} m ON m.post_id = p.ID AND m.meta_key = '_wp_attachment_image_alt'
-			WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%' AND p.post_mime_type <> 'image/svg+xml'
-			AND ( m.meta_value IS NULL OR TRIM( m.meta_value ) = '' )"
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- No variable part.
+		return (int) $wpdb->get_var( 'SELECT COUNT(*) ' . self::library_without_alt_sql() );
+	}
+
+	/**
+	 * Images of the media library without alternative text, newest first.
+	 *
+	 * @param int $page     Page.
+	 * @param int $per_page Items per page.
+	 * @return array
+	 */
+	public static function list_media_without_alt( $page, $per_page ) {
+		global $wpdb;
+
+		$total = self::count_library_images_without_alt();
+		$limit = sprintf( ' ORDER BY p.post_date DESC LIMIT %d OFFSET %d', absint( $per_page ), absint( ( $page - 1 ) * $per_page ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- Only integers are added (prepare() would break the "image/%" pattern).
+		$ids = $wpdb->get_col( 'SELECT p.ID ' . self::library_without_alt_sql() . $limit );
+
+		$items = array();
+		foreach ( array_map( 'intval', $ids ) as $id ) {
+			$media  = get_post( $id );
+			$parent = $media->post_parent ? get_post( $media->post_parent ) : null;
+			$file   = get_attached_file( $id );
+
+			$items[] = array(
+				'id'          => $id,
+				'title'       => $media->post_title,
+				'file'        => $file ? wp_basename( $file ) : '',
+				'url'         => wp_get_attachment_image_url( $id, 'medium' ),
+				'caption'     => $media->post_excerpt,
+				'uploaded'    => get_post_time( 'c', true, $media ),
+				'attached_to' => $parent ? array(
+					'id'    => $parent->ID,
+					'title' => $parent->post_title,
+					'link'  => get_permalink( $parent ),
+				) : null,
+			);
+		}
+
+		return array(
+			'issue'       => 'media_without_alt',
+			'label'       => __( 'Images de la médiathèque sans texte alternatif', 'eo-tools' ),
+			'severity'    => 'info',
+			'description' => __( 'Regardez chaque image ("url") pour écrire un texte alternatif qui la décrit, puis enregistrez-les avec eo-tools/update-media. Le texte de la médiathèque sert pour les images mises en avant et les nouvelles insertions ; les images déjà placées dans un contenu gardent le texte de leur bloc (problème "images_without_alt", à corriger avec eo-tools/propose-update).', 'eo-tools' ),
+			'items'       => $items,
+			'total'       => $total,
+			'total_pages' => (int) ceil( $total / $per_page ),
 		);
 	}
 
