@@ -219,9 +219,29 @@ class Eotools_Mcp_Proposals {
 			}
 		}
 
+		// Before the update: SEO plugins refresh their own data (index, sitemap) when the content is saved.
+		if ( in_array( 'seo', $fields, true ) ) {
+			Eotools_Mcp_Seo::get_provider()->copy_seo( $proposal->ID, $source->ID );
+		}
+
+		// A new slug changes the address of the content and of its sub-pages: the old ones are redirected.
+		$moved = isset( $data['post_name'] ) && $data['post_name'] !== $source->post_name && 'publish' === $source->post_status;
+		$links = $moved ? Eotools_Mcp_Redirections::get_links( $source ) : array();
+
+		// The proposal holds the new slug: free it, or WordPress would give the published content "slug-2".
+		if ( isset( $data['post_name'] ) ) {
+			global $wpdb;
+			$wpdb->update( $wpdb->posts, array( 'post_name' => '' ), array( 'ID' => $proposal->ID ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			clean_post_cache( $proposal->ID );
+		}
+
 		$updated = wp_update_post( wp_slash( $data ), true );
 		if ( is_wp_error( $updated ) ) {
 			return $updated;
+		}
+
+		if ( $moved ) {
+			Eotools_Mcp_Redirections::redirect_moved( $links );
 		}
 
 		if ( in_array( 'featured_image', $fields, true ) ) {
@@ -237,10 +257,6 @@ class Eotools_Mcp_Proposals {
 			if ( in_array( $field, $fields, true ) ) {
 				wp_set_object_terms( $source->ID, wp_get_object_terms( $proposal->ID, $taxonomy, array( 'fields' => 'ids' ) ), $taxonomy );
 			}
-		}
-
-		if ( in_array( 'seo', $fields, true ) ) {
-			Eotools_Mcp_Seo::get_provider()->copy_seo( $proposal->ID, $source->ID );
 		}
 
 		wp_delete_post( $proposal->ID, true );
@@ -300,14 +316,66 @@ class Eotools_Mcp_Proposals {
 		$banner   = array(
 			'proposal_id'   => $proposal->ID,
 			'title'         => __( 'Aperçu d\'une modification proposée par l\'IA', 'eo-tools' ),
-			'notice'        => '',
+			'notice'        => in_array( 'slug', (array) get_post_meta( $proposal->ID, self::META_FIELDS, true ), true ) && $proposal->post_name !== $source->post_name ? __( 'L\'adresse de ce contenu change : l\'ancienne adresse (et celles de ses sous-pages) sera redirigée automatiquement vers la nouvelle (301).', 'eo-tools' ) : '',
 			'current_link'  => get_permalink( $source ),
 			'conflict'      => self::has_conflict( $proposal, $source ) ? __( 'Attention : le contenu publié a été modifié depuis cette proposition. L\'appliquer remplacera ces changements.', 'eo-tools' ) : '',
+			'changes'       => self::get_hidden_changes( $proposal, $source ),
 			'apply_action'  => 'eo_tools_apply_proposal',
 			'reject_action' => 'eo_tools_reject_proposal',
 		);
 
 		include EO_TOOLS_PATH . 'includes/templates/proposal-banner-template.php';
+	}
+
+	/**
+	 * Changes of a proposal that do not show on the page (SEO meta, address, excerpt, terms).
+	 *
+	 * @param \WP_Post $proposal Proposal.
+	 * @param \WP_Post $source   Published content.
+	 * @return array[] Each with label, before and after (text for a human).
+	 */
+	public static function get_hidden_changes( $proposal, $source ) {
+		$fields  = (array) get_post_meta( $proposal->ID, self::META_FIELDS, true );
+		$changes = array();
+		$add     = function ( $label, $before, $after ) use ( &$changes ) {
+			if ( $before !== $after ) {
+				$changes[] = array(
+					'label'  => $label,
+					'before' => '' === $before ? '—' : $before,
+					'after'  => '' === $after ? '—' : $after,
+				);
+			}
+		};
+
+		if ( in_array( 'seo', $fields, true ) ) {
+			$provider = Eotools_Mcp_Seo::get_provider();
+			$labels   = Seo\Eotools_Mcp_Seo_Provider::get_field_labels();
+			$before   = $provider->get_seo_values( $source->ID );
+			foreach ( $provider->get_seo_values( $proposal->ID ) as $field => $value ) {
+				$add(
+					isset( $labels[ $field ] ) ? $labels[ $field ] : $field,
+					Seo\Eotools_Mcp_Seo_Provider::format_value( $field, isset( $before[ $field ] ) ? $before[ $field ] : '' ),
+					Seo\Eotools_Mcp_Seo_Provider::format_value( $field, $value )
+				);
+			}
+		}
+		if ( in_array( 'slug', $fields, true ) ) {
+			$add( __( 'Adresse (slug)', 'eo-tools' ), $source->post_name, $proposal->post_name );
+		}
+		if ( in_array( 'excerpt', $fields, true ) ) {
+			$add( __( 'Extrait', 'eo-tools' ), $source->post_excerpt, $proposal->post_excerpt );
+		}
+		foreach ( array( 'categories' => 'category', 'tags' => 'post_tag' ) as $field => $taxonomy ) {
+			if ( in_array( $field, $fields, true ) && taxonomy_exists( $taxonomy ) ) {
+				$add(
+					get_taxonomy( $taxonomy )->labels->name,
+					implode( ', ', wp_get_object_terms( $source->ID, $taxonomy, array( 'fields' => 'names' ) ) ),
+					implode( ', ', wp_get_object_terms( $proposal->ID, $taxonomy, array( 'fields' => 'names' ) ) )
+				);
+			}
+		}
+
+		return $changes;
 	}
 
 	/**

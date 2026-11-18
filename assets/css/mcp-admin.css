@@ -539,6 +539,14 @@
 	margin: 0;
 }
 
+.eo-mcp-proposals .eo-mcp-changes {
+	margin: 0;
+}
+
+.eo-mcp-proposals .eo-mcp-changes li {
+	margin: 0 0 4px;
+}
+
 /* "À valider" tab */
 .eo-mcp-validate-bar {
 	display: flex;

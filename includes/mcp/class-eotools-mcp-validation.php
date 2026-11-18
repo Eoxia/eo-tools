@@ -45,7 +45,7 @@ class Eotools_Mcp_Validation {
 
 		$decision = isset( $_POST['bulk_action'] ) ? sanitize_key( wp_unslash( $_POST['bulk_action'] ) ) : '';
 		$selected = array();
-		foreach ( array( 'drafts', 'contents', 'templates', 'styles' ) as $key ) {
+		foreach ( array( 'drafts', 'contents', 'templates', 'styles', 'seo_changes' ) as $key ) {
 			$selected[ $key ] = isset( $_POST[ $key ] ) ? array_unique( array_filter( array_map( 'absint', (array) wp_unslash( $_POST[ $key ] ) ) ) ) : array();
 		}
 
@@ -96,6 +96,23 @@ class Eotools_Mcp_Validation {
 				}
 
 				self::count( $result, $apply ? $class::apply( $proposal ) : wp_delete_post( $proposal->ID, true ) );
+			}
+		}
+
+		// SEO changes: redirections and taxonomy terms.
+		foreach ( $selected['seo_changes'] as $id ) {
+			$change = Eotools_Mcp_Seo_Changes::get( $id );
+
+			if ( ! $change || ! Eotools_Mcp_Seo_Changes::user_can( $change ) ) {
+				++$result['failed'];
+				continue;
+			}
+
+			if ( $apply ) {
+				self::count( $result, Eotools_Mcp_Seo_Changes::apply( $change ) );
+			} else {
+				Eotools_Mcp_Seo_Changes::remove( $id );
+				++$result['done'];
 			}
 		}
 

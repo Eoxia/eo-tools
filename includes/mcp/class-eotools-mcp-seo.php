@@ -25,8 +25,15 @@ class Eotools_Mcp_Seo {
 	const CACHE_TTL   = 900;
 	const MAX_POSTS   = 3000;
 	const THIN_WORDS  = 300;
-	const SECTIONS    = array( 'settings', 'indexing', 'content', 'errors' );
+	const SECTIONS    = array( 'settings', 'indexing', 'content', 'terms', 'errors' );
+	const MAX_TERMS   = 1000;
+	const THIN_TERM   = 3;
 	const SEVERITIES  = array( 'critical', 'warning', 'info' );
+
+	/**
+	 * Issues found by comparing contents with each other ("same_as" lists the other contents).
+	 */
+	const DUPLICATE_ISSUES = array( 'duplicate_title', 'duplicate_description', 'duplicate_focus_keyword' );
 
 	/**
 	 * Source of the SEO data: the first active SEO plugin, or WordPress alone.
@@ -52,16 +59,22 @@ class Eotools_Mcp_Seo {
 				)
 			);
 
-			$provider = new Eotools_Mcp_Seo_Provider();
+			$found = new Eotools_Mcp_Seo_Provider();
 			foreach ( (array) $classes as $class ) {
 				if ( is_string( $class ) && is_subclass_of( $class, Eotools_Mcp_Seo_Provider::class ) ) {
 					$candidate = new $class();
 					if ( $candidate->is_active() ) {
-						$provider = $candidate;
+						$found = $candidate;
 						break;
 					}
 				}
 			}
+
+			// Before the plugins are loaded, an SEO plugin may look inactive: do not keep that answer.
+			if ( ! did_action( 'plugins_loaded' ) ) {
+				return $found;
+			}
+			$provider = $found;
 		}
 
 		return $provider;
@@ -90,9 +103,10 @@ class Eotools_Mcp_Seo {
 	/**
 	 * Problems the content scan can find, with what they mean.
 	 *
+	 * @param bool $all Also the types the active SEO plugin cannot check (tool schemas, which MCP clients cache).
 	 * @return array[] Label, severity and description keyed by issue type.
 	 */
-	public static function get_issue_types() {
+	public static function get_issue_types( $all = false ) {
 		$provider = self::get_provider();
 		$limits   = $provider->get_limits();
 		$plugin   = $provider->get_name();
@@ -151,6 +165,12 @@ class Eotools_Mcp_Seo {
 				'description' => sprintf( __( 'Aucune requête cible (mot-clé principal) n\'est renseignée dans %s : l\'optimisation du contenu ne peut pas être analysée.', 'eo-tools' ), $plugin ),
 				'requires'    => 'focus_keyword',
 			),
+			'duplicate_focus_keyword' => array(
+				'severity'    => 'warning',
+				'label'       => __( 'Requête cible en double (cannibalisation)', 'eo-tools' ),
+				'description' => __( 'Plusieurs contenus indexables visent la même requête : ils se concurrencent dans les résultats et aucun ne se positionne bien. Gardez une page par requête (changez la requête des autres, fusionnez-les ou faites-en des pages de soutien qui pointent vers la principale).', 'eo-tools' ),
+				'requires'    => 'focus_keyword',
+			),
 			'low_seo_score'         => array(
 				'severity'    => 'warning',
 				/* translators: %s: SEO plugin name. */
@@ -201,8 +221,8 @@ class Eotools_Mcp_Seo {
 
 		return array_filter(
 			$types,
-			function ( $type ) use ( $provider ) {
-				return empty( $type['requires'] ) || $provider->supports( $type['requires'] );
+			function ( $type ) use ( $provider, $all ) {
+				return $all || empty( $type['requires'] ) || $provider->supports( $type['requires'] );
 			}
 		);
 	}
@@ -238,6 +258,9 @@ class Eotools_Mcp_Seo {
 					break;
 				case 'content':
 					$data = self::audit_content( $examples, $refresh );
+					break;
+				case 'terms':
+					$data = self::audit_terms( $examples, $refresh );
 					break;
 				default:
 					$data = self::audit_errors();
@@ -672,7 +695,7 @@ class Eotools_Mcp_Seo {
 		}
 		if ( $scan['images_without_alt_in_library'] ) {
 			/* translators: %d: number of images. */
-			$findings[] = self::finding( 'info', sprintf( __( '%d image(s) de la médiathèque sans texte alternatif.', 'eo-tools' ), $scan['images_without_alt_in_library'] ) );
+			$findings[] = self::finding( 'info', sprintf( __( '%d image(s) de la médiathèque sans texte alternatif (liste : eo-tools/list-seo-issues avec le type "media_without_alt", correction : eo-tools/update-media).', 'eo-tools' ), $scan['images_without_alt_in_library'] ) );
 		}
 		if ( $scan['truncated'] ) {
 			/* translators: %d: number of contents. */
@@ -726,7 +749,7 @@ class Eotools_Mcp_Seo {
 		$items = array();
 		foreach ( array_slice( $ids, ( $page - 1 ) * $per_page, $per_page ) as $id ) {
 			$item = self::public_item( $scan['posts'][ $id ] );
-			if ( in_array( $issue, array( 'duplicate_title', 'duplicate_description' ), true ) ) {
+			if ( in_array( $issue, self::DUPLICATE_ISSUES, true ) ) {
 				$item['same_as'] = $scan['posts'][ $id ][ $issue ];
 			}
 			$items[] = $item;
@@ -751,7 +774,9 @@ class Eotools_Mcp_Seo {
 	 * @return array
 	 */
 	private static function public_item( $post ) {
-		unset( $post['duplicate_title'], $post['duplicate_description'] );
+		foreach ( self::DUPLICATE_ISSUES as $issue ) {
+			unset( $post[ $issue ] );
+		}
 
 		return $post;
 	}
@@ -822,6 +847,7 @@ class Eotools_Mcp_Seo {
 		$issues       = array_fill_keys( array_keys( self::get_issue_types() ), array() );
 		$titles       = array();
 		$descriptions = array();
+		$keywords     = array();
 		foreach ( $posts as $id => &$item ) {
 			$item['internal_links_out'] = $outbound[ $id ];
 			$item['linked_from_site']   = isset( $inbound[ $id ] ) || $id === $context['front_page'];
@@ -835,13 +861,17 @@ class Eotools_Mcp_Seo {
 				if ( ! empty( $item['meta_description'] ) ) {
 					$descriptions[ mb_strtolower( $item['meta_description'] ) ][] = $id;
 				}
+				if ( isset( $item['focus_keyword'] ) && '' !== trim( $item['focus_keyword'] ) ) {
+					$keywords[ self::normalize_keyword( $item['focus_keyword'] ) ][] = $id;
+				}
 			}
 		}
 		unset( $item );
 
 		foreach ( array(
-			'duplicate_title'       => $titles,
-			'duplicate_description' => $descriptions,
+			'duplicate_title'         => $titles,
+			'duplicate_description'   => $descriptions,
+			'duplicate_focus_keyword' => $keywords,
 		) as $issue => $groups ) {
 			if ( ! isset( $issues[ $issue ] ) ) {
 				continue;
@@ -1026,6 +1056,280 @@ class Eotools_Mcp_Seo {
 		return '' === $text ? 0 : count( preg_split( '/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY ) );
 	}
 
+	/**
+	 * Forgets the cached scans, so that the next audit sees the changes.
+	 */
+	public static function clear_cache() {
+		$id = self::get_provider()->get_id();
+		delete_transient( self::CACHE_KEY . '_' . $id );
+		delete_transient( self::CACHE_KEY . '_terms_' . $id );
+	}
+
+	/* ---------------------------------------------------------------------
+	 * Taxonomy terms (categories, tags, product categories…)
+	 * ------------------------------------------------------------------ */
+
+	/**
+	 * Taxonomies whose term archives visitors (and search engines) can reach.
+	 *
+	 * @return string[]
+	 */
+	public static function get_taxonomies() {
+		$taxonomies = array();
+		foreach ( get_taxonomies( array( 'public' => true ), 'objects' ) as $taxonomy ) {
+			if ( 'post_format' === $taxonomy->name || ! $taxonomy->publicly_queryable || ! $taxonomy->show_ui ) {
+				continue;
+			}
+			if ( array_intersect( (array) $taxonomy->object_type, self::get_post_types() ) ) {
+				$taxonomies[] = $taxonomy->name;
+			}
+		}
+
+		return $taxonomies;
+	}
+
+	/**
+	 * Problems the term scan can find.
+	 *
+	 * @param bool $all Also the types the active SEO plugin cannot check.
+	 * @return array[] Label, severity and description keyed by issue type.
+	 */
+	public static function get_term_issue_types( $all = false ) {
+		$provider = self::get_provider();
+		$types    = array(
+			'term_thin'                => array(
+				'severity'    => 'warning',
+				/* translators: %d: number of contents. */
+				'label'       => sprintf( __( 'Archive pauvre (moins de %d contenus)', 'eo-tools' ), self::THIN_TERM ),
+				'description' => __( 'Archive indexable presque vide : les moteurs la jugent de faible qualité. Rattachez-y des contenus, regroupez-la avec une autre, ou excluez-la des moteurs (noindex).', 'eo-tools' ),
+			),
+			'term_no_archive_text'     => array(
+				'severity'    => 'info',
+				'label'       => __( 'Archive sans texte de présentation', 'eo-tools' ),
+				'description' => __( 'La description du terme est vide : la page d\'archive n\'est qu\'une liste de contenus. Un court texte (2 à 4 phrases avec la requête visée) l\'aide à se positionner, si le thème l\'affiche.', 'eo-tools' ),
+			),
+			'term_missing_description' => array(
+				'severity'    => 'warning',
+				'label'       => __( 'Archive sans méta description', 'eo-tools' ),
+				'description' => __( 'Ni méta description, ni modèle pour cette taxonomie : Google choisit lui-même un extrait.', 'eo-tools' ),
+				'requires'    => 'meta_description',
+			),
+			'term_duplicate_title'     => array(
+				'severity'    => 'warning',
+				'label'       => __( 'Titre SEO d\'archive en double', 'eo-tools' ),
+				'description' => __( 'Plusieurs archives indexables (ou une archive et un contenu) ont le même titre SEO.', 'eo-tools' ),
+			),
+			'term_noindex'             => array(
+				'severity'    => 'info',
+				'label'       => __( 'Archive exclue des moteurs (noindex)', 'eo-tools' ),
+				'description' => __( 'Normal pour les étiquettes ou les petites archives, à vérifier pour les catégories principales.', 'eo-tools' ),
+				'requires'    => 'noindex',
+			),
+		);
+
+		return array_filter(
+			$types,
+			function ( $type ) use ( $provider, $all ) {
+				return $all || empty( $type['requires'] ) || $provider->supports( $type['requires'] );
+			}
+		);
+	}
+
+	/**
+	 * Scans the terms of the public taxonomies, cached for a few minutes.
+	 *
+	 * @param bool $refresh Ignore the cache.
+	 * @return array
+	 */
+	public static function scan_terms( $refresh = false ) {
+		$provider  = self::get_provider();
+		$cache_key = self::CACHE_KEY . '_terms_' . $provider->get_id();
+		if ( ! $refresh ) {
+			$cached = get_transient( $cache_key );
+			if ( is_array( $cached ) ) {
+				return $cached;
+			}
+		}
+
+		$taxonomies = self::get_taxonomies();
+		$terms      = $taxonomies ? get_terms(
+			array(
+				'taxonomy'   => $taxonomies,
+				'hide_empty' => false,
+				'number'     => self::MAX_TERMS + 1,
+				'orderby'    => 'count',
+				'order'      => 'DESC',
+			)
+		) : array();
+		$terms      = is_wp_error( $terms ) ? array() : $terms;
+		$truncated  = count( $terms ) > self::MAX_TERMS;
+		$terms      = array_slice( $terms, 0, self::MAX_TERMS );
+
+		$types  = self::get_term_issue_types();
+		$issues = array_fill_keys( array_keys( $types ), array() );
+		$items  = array();
+		$titles = array();
+		$counts = array_fill_keys( $taxonomies, 0 );
+
+		// Titles of the contents, so that an archive with the same title as a page is found.
+		$content_titles = array();
+		foreach ( self::scan( $refresh )['posts'] as $post ) {
+			if ( self::is_indexable( $post ) ) {
+				$content_titles[ mb_strtolower( $post['seo_title'] ) ] = true;
+			}
+		}
+
+		foreach ( $terms as $term ) {
+			$link = get_term_link( $term );
+			$item = array(
+				'id'           => $term->term_id,
+				'taxonomy'     => $term->taxonomy,
+				'name'         => $term->name,
+				'link'         => is_wp_error( $link ) ? '' : $link,
+				'contents'     => (int) $term->count,
+				'archive_text' => self::count_words( self::plain_text( $term->description ) ),
+				'seo_title'    => $provider->get_term_seo_title( $term ),
+				'noindex'      => $provider->is_term_noindex( $term ),
+			);
+			if ( $provider->supports( 'meta_description' ) ) {
+				$item['meta_description'] = $provider->get_term_meta_description( $term );
+			}
+			if ( $provider->get_term_seo_fields() ) {
+				$item['seo_fields'] = $provider->get_term_seo_values( $term );
+			}
+
+			++$counts[ $term->taxonomy ];
+			$key           = $term->taxonomy . ':' . $term->term_id;
+			$items[ $key ] = $item;
+
+			if ( $item['noindex'] ) {
+				if ( isset( $issues['term_noindex'] ) ) {
+					$issues['term_noindex'][] = $key;
+				}
+				continue;
+			}
+			if ( $item['contents'] < self::THIN_TERM ) {
+				$issues['term_thin'][] = $key;
+			}
+			if ( 0 === $item['archive_text'] ) {
+				$issues['term_no_archive_text'][] = $key;
+			}
+			if ( isset( $issues['term_missing_description'] ) && '' === $item['meta_description'] ) {
+				$issues['term_missing_description'][] = $key;
+			}
+			$titles[ mb_strtolower( $item['seo_title'] ) ][] = $key;
+		}
+
+		foreach ( $titles as $title => $keys ) {
+			if ( count( $keys ) > 1 || isset( $content_titles[ $title ] ) ) {
+				foreach ( $keys as $key ) {
+					$issues['term_duplicate_title'][] = $key;
+				}
+			}
+		}
+
+		$scan = array(
+			'scanned_at' => gmdate( 'c' ),
+			'counts'     => $counts,
+			'truncated'  => $truncated,
+			'terms'      => $items,
+			'issues'     => array_filter( $issues ),
+		);
+
+		set_transient( $cache_key, $scan, self::CACHE_TTL );
+
+		return $scan;
+	}
+
+	/**
+	 * Overview of the term archives: counts, and a few examples per issue.
+	 *
+	 * @param int  $examples Examples per issue.
+	 * @param bool $refresh  Rescan.
+	 * @return array
+	 */
+	public static function audit_terms( $examples, $refresh ) {
+		$scan     = self::scan_terms( $refresh );
+		$findings = array();
+		$issues   = array();
+
+		foreach ( self::get_term_issue_types() as $type => $config ) {
+			$keys = isset( $scan['issues'][ $type ] ) ? $scan['issues'][ $type ] : array();
+			if ( ! $keys ) {
+				continue;
+			}
+			$issues[ $type ] = array(
+				'label'    => $config['label'],
+				'severity' => $config['severity'],
+				'count'    => count( $keys ),
+				'examples' => array_values( array_intersect_key( $scan['terms'], array_flip( array_slice( $keys, 0, $examples ) ) ) ),
+			);
+			/* translators: 1: number of archives, 2: issue label. */
+			$findings[] = self::finding( $config['severity'], sprintf( _n( '%1$d archive : %2$s.', '%1$d archives : %2$s.', count( $keys ), 'eo-tools' ), count( $keys ), $config['label'] ) );
+		}
+
+		if ( $scan['truncated'] ) {
+			/* translators: %d: number of terms. */
+			$findings[] = self::finding( 'info', sprintf( __( 'Beaucoup de termes : seuls les %d plus utilisés ont été analysés.', 'eo-tools' ), self::MAX_TERMS ) );
+		}
+
+		$provider = self::get_provider();
+
+		return array(
+			'data'     => array(
+				'scanned_at'      => $scan['scanned_at'],
+				'taxonomies'      => $scan['counts'],
+				'writable_fields' => $provider->get_term_seo_fields(),
+				'issues'          => $issues,
+				'more'            => __( 'Liste complète d\'un problème : eo-tools/list-seo-issues avec son type (clé de "issues"). Correction : eo-tools/propose-term-seo (validée par l\'utilisateur).', 'eo-tools' ),
+			),
+			'findings' => $findings,
+		);
+	}
+
+	/**
+	 * Term archives affected by one issue, paginated.
+	 *
+	 * @param string $issue    Issue type.
+	 * @param string $taxonomy Taxonomy, or empty for all.
+	 * @param int    $page     Page.
+	 * @param int    $per_page Items per page.
+	 * @param bool   $refresh  Rescan.
+	 * @return array|\WP_Error
+	 */
+	public static function list_term_issue( $issue, $taxonomy, $page, $per_page, $refresh ) {
+		$types = self::get_term_issue_types();
+		if ( ! isset( $types[ $issue ] ) ) {
+			return new \WP_Error( 'eo_tools_seo_issue', __( 'Type de problème inconnu, ou indisponible avec l\'extension SEO de ce site.', 'eo-tools' ) );
+		}
+
+		$scan = self::scan_terms( $refresh );
+		$keys = isset( $scan['issues'][ $issue ] ) ? $scan['issues'][ $issue ] : array();
+		if ( $taxonomy ) {
+			$keys = array_values(
+				array_filter(
+					$keys,
+					function ( $key ) use ( $scan, $taxonomy ) {
+						return $scan['terms'][ $key ]['taxonomy'] === $taxonomy;
+					}
+				)
+			);
+		}
+
+		$total = count( $keys );
+
+		return array(
+			'issue'       => $issue,
+			'label'       => $types[ $issue ]['label'],
+			'severity'    => $types[ $issue ]['severity'],
+			'description' => $types[ $issue ]['description'],
+			'scanned_at'  => $scan['scanned_at'],
+			'items'       => array_values( array_intersect_key( $scan['terms'], array_flip( array_slice( $keys, ( $page - 1 ) * $per_page, $per_page ) ) ) ),
+			'total'       => $total,
+			'total_pages' => (int) ceil( $total / $per_page ),
+		);
+	}
+
 	/* ---------------------------------------------------------------------
 	 * Audit of one content
 	 * ------------------------------------------------------------------ */
@@ -1083,13 +1387,19 @@ class Eotools_Mcp_Seo {
 		$duplicates = array();
 		if ( self::is_indexable( $item ) ) {
 			$scan = self::scan( $refresh );
-			foreach ( array( 'seo_title' => 'duplicate_title', 'meta_description' => 'duplicate_description' ) as $field => $issue ) {
-				if ( empty( $item[ $field ] ) || ! isset( $types[ $issue ] ) ) {
+			$compare = array(
+				'seo_title'        => 'duplicate_title',
+				'meta_description' => 'duplicate_description',
+				'focus_keyword'    => 'duplicate_focus_keyword',
+			);
+			foreach ( $compare as $field => $issue ) {
+				if ( ! isset( $item[ $field ] ) || '' === trim( $item[ $field ] ) || ! isset( $types[ $issue ] ) ) {
 					continue;
 				}
-				$same = array();
+				$normalize = 'focus_keyword' === $field ? array( __CLASS__, 'normalize_keyword' ) : 'mb_strtolower';
+				$same      = array();
 				foreach ( $scan['posts'] as $other ) {
-					if ( $other['id'] !== $post->ID && isset( $other[ $field ] ) && mb_strtolower( $other[ $field ] ) === mb_strtolower( $item[ $field ] ) && self::is_indexable( $other ) ) {
+					if ( $other['id'] !== $post->ID && isset( $other[ $field ] ) && call_user_func( $normalize, $other[ $field ] ) === call_user_func( $normalize, $item[ $field ] ) && self::is_indexable( $other ) ) {
 						$same[] = array(
 							'id'    => $other['id'],
 							'title' => $other['title'],
@@ -1223,6 +1533,8 @@ class Eotools_Mcp_Seo {
 				$data[ $field ] = $item[ $field ];
 			}
 		}
+		// Values entered in the SEO plugin, as eo-tools/update-draft and eo-tools/propose-update write them.
+		$data['seo_fields']          = $context['provider']->get_seo_values( $post->ID );
 		$data['recommended_lengths'] = $context['limits'];
 		$data                        = array_merge( $data, $details['data'] );
 		$data['excerpt']            = $post->post_excerpt;
@@ -1508,6 +1820,16 @@ class Eotools_Mcp_Seo {
 	}
 
 	/**
+	 * Target query compared to find duplicates: case, spaces and accents ignored.
+	 *
+	 * @param string $text Target query.
+	 * @return string
+	 */
+	public static function normalize_keyword( $text ) {
+		return mb_strtolower( remove_accents( trim( preg_replace( '/\s+/u', ' ', (string) $text ) ) ) );
+	}
+
+	/**
 	 * @param string $content Content HTML.
 	 * @return int
 	 */
@@ -1525,17 +1847,76 @@ class Eotools_Mcp_Seo {
 	}
 
 	/**
+	 * SQL selecting the images of the media library without alternative text.
+	 */
+	const LIBRARY_WITHOUT_ALT_SQL = "FROM %posts% p
+		LEFT JOIN %postmeta% m ON m.post_id = p.ID AND m.meta_key = '_wp_attachment_image_alt'
+		WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%' AND p.post_mime_type <> 'image/svg+xml'
+		AND ( m.meta_value IS NULL OR TRIM( m.meta_value ) = '' )";
+
+	/**
+	 * @return string FROM / WHERE part of the query on the images without alternative text.
+	 */
+	private static function library_without_alt_sql() {
+		global $wpdb;
+
+		return str_replace( array( '%posts%', '%postmeta%' ), array( $wpdb->posts, $wpdb->postmeta ), self::LIBRARY_WITHOUT_ALT_SQL );
+	}
+
+	/**
 	 * @return int Images of the media library without alternative text.
 	 */
 	private static function count_library_images_without_alt() {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		return (int) $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->posts} p
-			LEFT JOIN {$wpdb->postmeta} m ON m.post_id = p.ID AND m.meta_key = '_wp_attachment_image_alt'
-			WHERE p.post_type = 'attachment' AND p.post_mime_type LIKE 'image/%' AND p.post_mime_type <> 'image/svg+xml'
-			AND ( m.meta_value IS NULL OR TRIM( m.meta_value ) = '' )"
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- No variable part.
+		return (int) $wpdb->get_var( 'SELECT COUNT(*) ' . self::library_without_alt_sql() );
+	}
+
+	/**
+	 * Images of the media library without alternative text, newest first.
+	 *
+	 * @param int $page     Page.
+	 * @param int $per_page Items per page.
+	 * @return array
+	 */
+	public static function list_media_without_alt( $page, $per_page ) {
+		global $wpdb;
+
+		$total = self::count_library_images_without_alt();
+		$limit = sprintf( ' ORDER BY p.post_date DESC LIMIT %d OFFSET %d', absint( $per_page ), absint( ( $page - 1 ) * $per_page ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- Only integers are added (prepare() would break the "image/%" pattern).
+		$ids = $wpdb->get_col( 'SELECT p.ID ' . self::library_without_alt_sql() . $limit );
+
+		$items = array();
+		foreach ( array_map( 'intval', $ids ) as $id ) {
+			$media  = get_post( $id );
+			$parent = $media->post_parent ? get_post( $media->post_parent ) : null;
+			$file   = get_attached_file( $id );
+
+			$items[] = array(
+				'id'          => $id,
+				'title'       => $media->post_title,
+				'file'        => $file ? wp_basename( $file ) : '',
+				'url'         => wp_get_attachment_image_url( $id, 'medium' ),
+				'caption'     => $media->post_excerpt,
+				'uploaded'    => get_post_time( 'c', true, $media ),
+				'attached_to' => $parent ? array(
+					'id'    => $parent->ID,
+					'title' => $parent->post_title,
+					'link'  => get_permalink( $parent ),
+				) : null,
+			);
+		}
+
+		return array(
+			'issue'       => 'media_without_alt',
+			'label'       => __( 'Images de la médiathèque sans texte alternatif', 'eo-tools' ),
+			'severity'    => 'info',
+			'description' => __( 'Regardez chaque image ("url") pour écrire un texte alternatif qui la décrit, puis enregistrez-les avec eo-tools/update-media. Le texte de la médiathèque sert pour les images mises en avant et les nouvelles insertions ; les images déjà placées dans un contenu gardent le texte de leur bloc (problème "images_without_alt", à corriger avec eo-tools/propose-update).', 'eo-tools' ),
+			'items'       => $items,
+			'total'       => $total,
+			'total_pages' => (int) ceil( $total / $per_page ),
 		);
 	}
 
@@ -1715,7 +2096,7 @@ class Eotools_Mcp_Seo {
 		$findings = array();
 		if ( $untreated ) {
 			/* translators: %d: number of addresses. */
-			$findings[] = self::finding( 'warning', sprintf( __( '%d adresse(s) en erreur 404 ces 30 derniers jours sans redirection : liens cassés ou anciennes adresses, à rediriger depuis EO Tools > 404-Erreur.', 'eo-tools' ), count( $untreated ) ) );
+			$findings[] = self::finding( 'warning', sprintf( __( '%d adresse(s) en erreur 404 ces 30 derniers jours sans redirection : liens cassés ou anciennes adresses, à rediriger vers la page la plus proche (eo-tools/propose-redirections, validé par l\'utilisateur, ou EO Tools > 404-Erreur).', 'eo-tools' ), count( $untreated ) ) );
 		}
 		if ( $probes ) {
 			/* translators: %d: number of addresses. */

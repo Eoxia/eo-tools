@@ -17,7 +17,8 @@
  * special cases and call the parent for the rest.
  *
  * Schema types: bool, int (min, max), enum (choices), string, text, email,
- * emails (comma-separated list), url, urls (list of URLs).
+ * emails (comma-separated list), url, urls (list of URLs). An adapter may add
+ * its own types in validate_value() (e.g. "list" of choices for SEOKEY).
  *
  * @package EoTools
  */
