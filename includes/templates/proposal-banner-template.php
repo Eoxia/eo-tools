@@ -3,7 +3,8 @@
  * Banner displayed on the preview of an AI change proposal.
  *
  * Expects: $banner, with proposal_id, title, notice, current_link, conflict
- * (message, empty when none), apply_action and reject_action.
+ * (message, empty when none), apply_action and reject_action. Optional: changes,
+ * the changes that do not show on the page (each with label, before and after).
  *
  * @package EoTools
  */
@@ -34,6 +35,41 @@ $nonce_action = 'eo_tools_proposal_' . $banner['proposal_id'];
 			color: #f8fafc;
 			box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4);
 			font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-changes {
+			flex: 1 1 100%;
+			max-height: 40vh;
+			overflow: auto;
+			padding: 10px 14px;
+			border: 1px solid #334155;
+			border-radius: 8px;
+			background: #1e293b;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-changes summary {
+			font-weight: 600;
+			color: #ffffff;
+			cursor: pointer;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-changes dl {
+			margin: 8px 0 0;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-changes dt {
+			margin-top: 8px;
+			color: #cbd5e1;
+			font-size: 12px;
+			text-transform: uppercase;
+			letter-spacing: 0.02em;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-changes dd {
+			margin: 2px 0 0;
+			overflow-wrap: anywhere;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-changes del {
+			color: #94a3b8;
+		}
+		.eo-tools-proposal-banner .eo-tools-proposal-changes ins {
+			color: #86efac;
+			text-decoration: none;
 		}
 		.eo-tools-proposal-banner p {
 			flex: 1 1 260px;
@@ -69,6 +105,20 @@ $nonce_action = 'eo_tools_proposal_' . $banner['proposal_id'];
 			background: #6366f1;
 		}
 	</style>
+	<?php if ( ! empty( $banner['changes'] ) ) : ?>
+		<details class="eo-tools-proposal-changes" open>
+			<summary><?php esc_html_e( 'Modifications non visibles sur la page', 'eo-tools' ); ?></summary>
+			<dl>
+				<?php foreach ( $banner['changes'] as $change ) : ?>
+					<dt><?php echo esc_html( $change['label'] ); ?></dt>
+					<dd>
+						<del><?php echo esc_html( $change['before'] ); ?></del>
+						→ <ins><?php echo esc_html( $change['after'] ); ?></ins>
+					</dd>
+				<?php endforeach; ?>
+			</dl>
+		</details>
+	<?php endif; ?>
 	<p>
 		<strong><?php echo esc_html( $banner['title'] ); ?></strong>
 		<?php echo esc_html( $banner['notice'] ); ?>

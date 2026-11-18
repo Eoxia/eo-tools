@@ -48,27 +48,19 @@ class Eotools_Mcp_Content {
 	}
 
 	/**
-	 * Schema of the "seo" field: only the fields the active SEO plugin can write.
+	 * Schema of the "seo" field.
+	 *
+	 * Static on purpose: MCP clients keep the tool list for a long time, so it must not
+	 * depend on which SEO plugin is active when it is generated. The fields the active
+	 * plugin does not handle are ignored with a warning at execution.
 	 *
 	 * @return array
 	 */
 	public static function get_seo_schema() {
-		$provider    = Eotools_Mcp_Seo::get_provider();
-		$definitions = Seo\Eotools_Mcp_Seo_Provider::get_field_definitions();
-		$fields      = $provider->get_seo_fields();
-
-		if ( $fields ) {
-			/* translators: %s: SEO plugin name. */
-			$description = sprintf( __( 'Métadonnées SEO, écrites dans %s. Seuls les champs donnés changent ; une valeur vide retire le champ (l\'extension reprend sa valeur par défaut). Partez de eo-tools/audit-post-seo ("content.seo_fields" donne les valeurs actuelles).', 'eo-tools' ), $provider->get_name() );
-		} else {
-			$fields      = array( 'title', 'description', 'focus_keyword' );
-			$description = __( 'Métadonnées SEO. Aucune extension SEO prise en charge n\'est active (Yoast SEO, SEOKEY) : elles seront ignorées.', 'eo-tools' );
-		}
-
 		return array(
 			'type'                 => 'object',
-			'description'          => $description,
-			'properties'           => array_intersect_key( $definitions, array_flip( $fields ) ),
+			'description'          => __( 'Métadonnées SEO, écrites dans l\'extension SEO active. Seuls les champs donnés changent ; une valeur vide retire le champ (l\'extension reprend sa valeur par défaut). Champs gérés : Yoast SEO = tous ; SEOKEY = title, description, focus_keyword, noindex ; sans extension SEO prise en charge, rien n\'est écrit. Un champ non géré est ignoré et signalé dans "warnings". Partez de eo-tools/audit-post-seo : "seo_plugin" donne l\'extension active, "content.seo_fields" ses champs et leurs valeurs actuelles.', 'eo-tools' ),
+			'properties'           => Seo\Eotools_Mcp_Seo_Provider::get_field_definitions(),
 			'additionalProperties' => false,
 		);
 	}
@@ -436,7 +428,7 @@ class Eotools_Mcp_Content {
 			$provider = Eotools_Mcp_Seo::get_provider();
 			if ( $provider->get_seo_fields() ) {
 				$provider->set_seo( $post_id, $input['seo'], $warnings );
-			} else {
+			} elseif ( $input['seo'] ) {
 				$warnings[] = __( 'Métadonnées SEO ignorées : aucune extension SEO prise en charge n\'est active (Yoast SEO, SEOKEY).', 'eo-tools' );
 			}
 		}

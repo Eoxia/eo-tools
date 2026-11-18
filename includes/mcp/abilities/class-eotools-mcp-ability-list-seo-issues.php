@@ -25,16 +25,16 @@ class Eotools_Mcp_Ability_List_Seo_Issues extends Eotools_Mcp_Ability {
 
 	public function get_description() {
 		$types = array();
-		foreach ( Eotools_Mcp_Seo::get_issue_types() as $type => $config ) {
+		foreach ( Eotools_Mcp_Seo::get_issue_types( true ) as $type => $config ) {
 			$types[] = $type . ' (' . $config['label'] . ')';
 		}
 		$term_types = array();
-		foreach ( Eotools_Mcp_Seo::get_term_issue_types() as $type => $config ) {
+		foreach ( Eotools_Mcp_Seo::get_term_issue_types( true ) as $type => $config ) {
 			$term_types[] = $type . ' (' . $config['label'] . ')';
 		}
 
 		/* translators: 1: list of content issue types, 2: list of term issue types. */
-		return sprintf( __( 'Liste paginée de tous les contenus publiés touchés par un problème SEO trouvé par eo-tools/audit-site-seo, avec pour chacun son titre SEO, sa méta description, sa requête cible, son score Yoast le cas échéant, son nombre de mots, ses images sans texte alternatif et ses liens internes. Pour les doublons, "same_as" donne les identifiants des contenus identiques. Types de problèmes des contenus : %1$s. Types de problèmes des archives de catégories, étiquettes… (section "terms" de l\'audit ; chaque archive avec ses champs SEO saisis, à corriger avec eo-tools/propose-term-seo) : %2$s. Le type "media_without_alt" liste les images de la médiathèque sans texte alternatif, à compléter avec eo-tools/update-media.', 'eo-tools' ), implode( ', ', $types ), implode( ', ', $term_types ) );
+		return sprintf( __( 'Liste paginée de tous les contenus publiés touchés par un problème SEO trouvé par eo-tools/audit-site-seo, avec pour chacun son titre SEO, sa méta description, sa requête cible, son score Yoast le cas échéant, son nombre de mots, ses images sans texte alternatif et ses liens internes. Pour les doublons, "same_as" donne les identifiants des contenus identiques. Types de problèmes des contenus : %1$s. Types de problèmes des archives de catégories, étiquettes… (section "terms" de l\'audit ; chaque archive avec ses champs SEO saisis, à corriger avec eo-tools/propose-term-seo) : %2$s. Le type "media_without_alt" liste les images de la médiathèque sans texte alternatif, à compléter avec eo-tools/update-media. Certains types dépendent de l\'extension SEO active (requête cible, score Yoast, noindex…) : utilisez ceux que renvoie eo-tools/audit-site-seo pour ce site.', 'eo-tools' ), implode( ', ', $types ), implode( ', ', $term_types ) );
 	}
 
 	public function get_group() {
@@ -51,7 +51,7 @@ class Eotools_Mcp_Ability_List_Seo_Issues extends Eotools_Mcp_Ability {
 			'properties'           => array(
 				'issue'     => array(
 					'type'        => 'string',
-					'enum'        => array_merge( array_keys( Eotools_Mcp_Seo::get_issue_types() ), array_keys( Eotools_Mcp_Seo::get_term_issue_types() ), array( 'media_without_alt' ) ),
+					'enum'        => array_merge( array_keys( Eotools_Mcp_Seo::get_issue_types( true ) ), array_keys( Eotools_Mcp_Seo::get_term_issue_types( true ) ), array( 'media_without_alt' ) ),
 					'description' => __( 'Type de problème (clé de "content.data.issues" dans eo-tools/audit-site-seo).', 'eo-tools' ),
 				),
 				'post_type' => array(

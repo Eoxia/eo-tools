@@ -33,6 +33,16 @@ class Eotools_Mcp_Seo_Provider_Seokey extends Eotools_Mcp_Seo_Provider {
 		'4' => 'information',
 	);
 
+	/**
+	 * Rating of each SEOKEY priority, in the format shared with the other SEO plugins.
+	 */
+	const RATINGS = array(
+		'critical'    => 'bad',
+		'error'       => 'bad',
+		'warning'     => 'ok',
+		'information' => 'feedback',
+	);
+
 	public function get_id() {
 		return 'seokey';
 	}
@@ -201,7 +211,12 @@ class Eotools_Mcp_Seo_Provider_Seokey extends Eotools_Mcp_Seo_Provider {
 			'custom_description' => $this->has_custom_description( $post ),
 		);
 
-		if ( ! $this->has_audit_table() ) {
+		if ( ! $this->has_audit_table() || ! get_option( 'seokey_audit_global_last_update' ) ) {
+			$data['analysis'] = array(
+				'available' => false,
+				'note'      => __( 'Aucun audit SEOKEY n\'a encore été lancé : l\'utilisateur le lance depuis SEOKEY > Audit.', 'eo-tools' ),
+			);
+
 			return array(
 				'data'     => $data,
 				'findings' => array(),
@@ -216,23 +231,33 @@ class Eotools_Mcp_Seo_Provider_Seokey extends Eotools_Mcp_Seo_Provider {
 			)
 		);
 
-		$names  = function_exists( 'seokey_audit_get_task_name' ) ? seokey_audit_get_task_name() : array();
-		$issues = array();
+		$names   = function_exists( 'seokey_audit_get_task_name' ) ? seokey_audit_get_task_name() : array();
+		$results = array();
 		foreach ( $rows as $row ) {
-			$details  = '' === (string) $row->datas ? array() : @unserialize( $row->datas, array( 'allowed_classes' => false ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize -- SEOKEY stores serialized arrays.
-			$issues[] = array(
-				'task'         => $row->task,
-				'label'        => isset( $names[ $row->task ] ) ? wp_strip_all_tags( $names[ $row->task ] ) : $row->task,
-				'priority'     => isset( self::PRIORITIES[ $row->priority ] ) ? self::PRIORITIES[ $row->priority ] : $row->priority,
+			$details   = '' === (string) $row->datas ? array() : @unserialize( $row->datas, array( 'allowed_classes' => false ) ); // phpcs:ignore WordPress.PHP.NoSilencedErrors, WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize -- SEOKEY stores serialized arrays.
+			$priority  = isset( self::PRIORITIES[ $row->priority ] ) ? self::PRIORITIES[ $row->priority ] : (string) $row->priority;
+			$results[] = array(
+				'id'           => $row->task,
+				'rating'       => isset( self::RATINGS[ $priority ] ) ? self::RATINGS[ $priority ] : 'ok',
+				'priority'     => $priority,
 				'sub_priority' => $row->sub_priority,
+				'text'         => isset( $names[ $row->task ] ) ? wp_strip_all_tags( $names[ $row->task ] ) : $row->task,
 				'details'      => is_array( $details ) ? $details : array(),
 			);
 		}
 
-		$data['seokey_audit'] = array(
-			'last_update' => $this->get_audit_date(),
-			'issues'      => $issues,
-			'note'        => __( 'Problèmes relevés par le dernier audit SEOKEY (lancé depuis SEOKEY > Audit). Ils peuvent dater : ils ne tiennent pas compte des modifications faites depuis.', 'eo-tools' ),
+		// Same format as the analysis of the other SEO plugins (see Eotools_Mcp_Seo_Analysis::get()).
+		$audited_at       = (int) get_option( 'seokey_audit_global_last_update' );
+		$stale            = strtotime( $post->post_modified ) > $audited_at; // Both in the site's time zone.
+		$data['analysis'] = array(
+			'available'   => true,
+			'source'      => __( 'Dernier audit SEOKEY (lancé depuis SEOKEY > Audit) : il ne liste que les problèmes', 'eo-tools' ),
+			'analyzed_at' => $this->get_audit_date(),
+			'stale'       => $stale,
+			'seo_results' => Eotools_Mcp_Seo_Analysis::sort_results( $results ),
+			'note'        => $stale
+				? __( 'Périmé : le contenu a été modifié depuis le dernier audit SEOKEY. L\'utilisateur peut relancer l\'audit depuis SEOKEY > Audit.', 'eo-tools' )
+				: __( 'Problèmes classés du plus grave au moins grave (rating : bad pour critical et error, ok pour warning, feedback pour information).', 'eo-tools' ),
 		);
 
 		return array(

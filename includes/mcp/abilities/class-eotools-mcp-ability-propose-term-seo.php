@@ -41,21 +41,19 @@ class Eotools_Mcp_Ability_Propose_Term_Seo extends Eotools_Mcp_Ability {
 	}
 
 	/**
-	 * @return array Schema of the "seo" field: the term fields of the active SEO plugin. Empty without one.
+	 * Schema of the "seo" field.
+	 *
+	 * Static on purpose: MCP clients keep the tool list for a long time, so it must not depend
+	 * on which SEO plugin is active when it is generated (see Eotools_Mcp_Content::get_seo_schema()).
+	 *
+	 * @return array
 	 */
 	private function get_seo_schema() {
-		$provider = Eotools_Mcp_Seo::get_provider();
-		$fields   = $provider->get_term_seo_fields();
-		if ( ! $fields ) {
-			return array();
-		}
-
 		return array(
 			'seo' => array(
 				'type'                 => 'object',
-				/* translators: %s: SEO plugin name. */
-				'description'          => sprintf( __( 'Métadonnées SEO de l\'archive, écrites dans %s. Seuls les champs donnés changent ; une valeur vide retire le champ.', 'eo-tools' ), $provider->get_name() ),
-				'properties'           => array_intersect_key( Eotools_Mcp_Seo_Provider::get_field_definitions(), array_flip( $fields ) ),
+				'description'          => __( 'Métadonnées SEO de l\'archive, écrites dans l\'extension SEO active. Seuls les champs donnés changent ; une valeur vide retire le champ. Champs gérés : Yoast SEO = tous sauf cornerstone ; SEOKEY = title, description, noindex ; sans extension SEO prise en charge, rien n\'est écrit. Un champ non géré est ignoré et signalé dans "warnings". La section "terms" de eo-tools/audit-site-seo donne les champs gérés ("writable_fields").', 'eo-tools' ),
+				'properties'           => array_diff_key( Eotools_Mcp_Seo_Provider::get_field_definitions(), array( 'cornerstone' => true ) ),
 				'additionalProperties' => false,
 			),
 		);

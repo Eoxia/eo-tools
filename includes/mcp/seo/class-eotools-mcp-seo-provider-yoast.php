@@ -337,12 +337,22 @@ class Eotools_Mcp_Seo_Provider_Yoast extends Eotools_Mcp_Seo_Provider {
 	public function get_post_details( $post ) {
 		$readability = get_post_meta( $post->ID, '_yoast_wpseo_content_score', true );
 
+		$analysis = Eotools_Mcp_Seo_Analysis::get( $post );
+		$findings = array();
+		if ( ! empty( $analysis['stale'] ) ) {
+			$findings[] = array(
+				'severity' => 'info',
+				'message'  => __( 'Les scores et critères Yoast SEO datent d\'avant la dernière modification du contenu ou de ses métadonnées SEO : ils seront recalculés au prochain enregistrement dans l\'éditeur.', 'eo-tools' ),
+			);
+		}
+
 		return array(
 			'data'     => array(
 				'readability_score' => '' === $readability ? null : (int) $readability,
 				'cornerstone'       => '1' === (string) get_post_meta( $post->ID, '_yoast_wpseo_is_cornerstone', true ),
+				'analysis'          => $analysis,
 			),
-			'findings' => array(),
+			'findings' => $findings,
 		);
 	}
 

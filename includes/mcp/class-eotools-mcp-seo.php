@@ -59,16 +59,22 @@ class Eotools_Mcp_Seo {
 				)
 			);
 
-			$provider = new Eotools_Mcp_Seo_Provider();
+			$found = new Eotools_Mcp_Seo_Provider();
 			foreach ( (array) $classes as $class ) {
 				if ( is_string( $class ) && is_subclass_of( $class, Eotools_Mcp_Seo_Provider::class ) ) {
 					$candidate = new $class();
 					if ( $candidate->is_active() ) {
-						$provider = $candidate;
+						$found = $candidate;
 						break;
 					}
 				}
 			}
+
+			// Before the plugins are loaded, an SEO plugin may look inactive: do not keep that answer.
+			if ( ! did_action( 'plugins_loaded' ) ) {
+				return $found;
+			}
+			$provider = $found;
 		}
 
 		return $provider;
@@ -97,9 +103,10 @@ class Eotools_Mcp_Seo {
 	/**
 	 * Problems the content scan can find, with what they mean.
 	 *
+	 * @param bool $all Also the types the active SEO plugin cannot check (tool schemas, which MCP clients cache).
 	 * @return array[] Label, severity and description keyed by issue type.
 	 */
-	public static function get_issue_types() {
+	public static function get_issue_types( $all = false ) {
 		$provider = self::get_provider();
 		$limits   = $provider->get_limits();
 		$plugin   = $provider->get_name();
@@ -214,8 +221,8 @@ class Eotools_Mcp_Seo {
 
 		return array_filter(
 			$types,
-			function ( $type ) use ( $provider ) {
-				return empty( $type['requires'] ) || $provider->supports( $type['requires'] );
+			function ( $type ) use ( $provider, $all ) {
+				return $all || empty( $type['requires'] ) || $provider->supports( $type['requires'] );
 			}
 		);
 	}
@@ -1084,9 +1091,10 @@ class Eotools_Mcp_Seo {
 	/**
 	 * Problems the term scan can find.
 	 *
+	 * @param bool $all Also the types the active SEO plugin cannot check.
 	 * @return array[] Label, severity and description keyed by issue type.
 	 */
-	public static function get_term_issue_types() {
+	public static function get_term_issue_types( $all = false ) {
 		$provider = self::get_provider();
 		$types    = array(
 			'term_thin'                => array(
@@ -1121,8 +1129,8 @@ class Eotools_Mcp_Seo {
 
 		return array_filter(
 			$types,
-			function ( $type ) use ( $provider ) {
-				return empty( $type['requires'] ) || $provider->supports( $type['requires'] );
+			function ( $type ) use ( $provider, $all ) {
+				return $all || empty( $type['requires'] ) || $provider->supports( $type['requires'] );
 			}
 		);
 	}
