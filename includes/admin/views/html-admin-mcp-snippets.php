@@ -114,9 +114,21 @@ delete_option( Eotools_Mcp_Snippets::ALERT );
 							<?php if ( $snippet['active'] ) : ?>
 								<a class="button" href="<?php echo esc_url( Eotools_Mcp_Snippets::action_url( $snippet['id'], 'off' ) ); ?>"><?php esc_html_e( 'Désactiver', 'eo-tools' ); ?></a>
 							<?php else : ?>
-								<a class="button button-primary" href="<?php echo esc_url( Eotools_Mcp_Snippets::action_url( $snippet['id'], 'on' ) ); ?>" onclick="return confirm('<?php echo esc_js( $confirm ); ?>');"><?php esc_html_e( 'Activer', 'eo-tools' ); ?></a>
+								<details class="eo-inline-confirm">
+									<summary class="button button-primary"><?php esc_html_e( 'Activer', 'eo-tools' ); ?></summary>
+									<span class="eo-inline-confirm-panel" role="group">
+										<span><?php echo esc_html( $confirm ); ?></span>
+										<a class="button button-primary" href="<?php echo esc_url( Eotools_Mcp_Snippets::action_url( $snippet['id'], 'on' ) ); ?>"><?php esc_html_e( 'Oui, activer', 'eo-tools' ); ?></a>
+									</span>
+								</details>
 							<?php endif; ?>
-							<a class="button-link eo-mcp-link-danger" href="<?php echo esc_url( Eotools_Mcp_Snippets::action_url( $snippet['id'], 'delete' ) ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Supprimer ce snippet ? Il est mis à la corbeille et cesse de s\'exécuter.', 'eo-tools' ) ); ?>');"><?php esc_html_e( 'Supprimer', 'eo-tools' ); ?></a>
+							<details class="eo-inline-confirm">
+								<summary class="button-link eo-mcp-link-danger"><?php esc_html_e( 'Supprimer', 'eo-tools' ); ?></summary>
+								<span class="eo-inline-confirm-panel" role="group">
+									<span><?php esc_html_e( 'Supprimer ce snippet ? Il est mis à la corbeille et cesse de s\'exécuter.', 'eo-tools' ); ?></span>
+									<a class="button button-link-delete" href="<?php echo esc_url( Eotools_Mcp_Snippets::action_url( $snippet['id'], 'delete' ) ); ?>"><?php esc_html_e( 'Oui, supprimer', 'eo-tools' ); ?></a>
+								</span>
+							</details>
 						</div>
 					<?php endif; ?>
 				</div>
@@ -152,7 +164,13 @@ delete_option( Eotools_Mcp_Snippets::ALERT );
 						<pre><code><?php echo esc_html( $pending['code'] ); ?></code></pre>
 						<?php if ( $can ) : ?>
 							<p class="eo-mcp-actions">
-								<a class="button button-primary" href="<?php echo esc_url( Eotools_Mcp_Snippets::action_url( $snippet['id'], 'apply' ) ); ?>" onclick="return confirm('<?php echo esc_js( 'php' === $snippet['type'] ? __( 'Appliquer la nouvelle version ? Le site est d\'abord testé avec : en cas d\'erreur, rien ne change.', 'eo-tools' ) : __( 'Appliquer la nouvelle version ?', 'eo-tools' ) ); ?>');"><?php esc_html_e( 'Appliquer la nouvelle version', 'eo-tools' ); ?></a>
+								<details class="eo-inline-confirm">
+									<summary class="button button-primary"><?php esc_html_e( 'Appliquer la nouvelle version', 'eo-tools' ); ?></summary>
+									<span class="eo-inline-confirm-panel" role="group">
+										<span><?php echo esc_html( 'php' === $snippet['type'] ? __( 'Appliquer la nouvelle version ? Le site est d\'abord testé avec : en cas d\'erreur, rien ne change.', 'eo-tools' ) : __( 'Appliquer la nouvelle version ?', 'eo-tools' ) ); ?></span>
+										<a class="button button-primary" href="<?php echo esc_url( Eotools_Mcp_Snippets::action_url( $snippet['id'], 'apply' ) ); ?>"><?php esc_html_e( 'Oui, appliquer', 'eo-tools' ); ?></a>
+									</span>
+								</details>
 								<a class="button" href="<?php echo esc_url( Eotools_Mcp_Snippets::action_url( $snippet['id'], 'reject' ) ); ?>"><?php esc_html_e( 'Rejeter', 'eo-tools' ); ?></a>
 							</p>
 						<?php endif; ?>

@@ -543,14 +543,34 @@ jQuery(document).ready(function($) {
 		});
 	}
 
-	$('#eo-lp-clear-logs-btn').on('click', function(e) {
-		e.preventDefault();
-		if (!confirm('Êtes-vous sûr de vouloir vider l\'historique des tentatives de connexion ? Cette action est irréversible.')) {
-			return;
-		}
+	// Clear the login log: inline confirmation and feedback instead of confirm()/alert().
+	var $clearLogsBtn      = $('#eo-lp-clear-logs-btn');
+	var $clearLogsConfirm  = $('#eo-lp-clear-logs-confirm');
+	var $clearLogsFeedback = $('#eo-lp-clear-logs-feedback');
 
+	function showClearLogsConfirm(show) {
+		$clearLogsConfirm.prop('hidden', !show);
+		$clearLogsBtn.attr('aria-expanded', show ? 'true' : 'false');
+	}
+
+	function showClearLogsFeedback(message, isError) {
+		$clearLogsFeedback.text(message).css('color', isError ? '#d63638' : '#00a32a').prop('hidden', false);
+	}
+
+	$clearLogsBtn.on('click', function(e) {
+		e.preventDefault();
+		$clearLogsFeedback.prop('hidden', true);
+		showClearLogsConfirm($clearLogsConfirm.prop('hidden'));
+	});
+
+	$('#eo-lp-clear-logs-no').on('click', function() {
+		showClearLogsConfirm(false);
+		$clearLogsBtn.trigger('focus');
+	});
+
+	$('#eo-lp-clear-logs-yes').on('click', function() {
 		var $btn = $(this);
-		$btn.prop('disabled', true).css('opacity', '0.5');
+		$btn.prop('disabled', true);
 
 		$.ajax({
 			url: eoToolsLandingPagesAdmin.ajaxUrl,
@@ -560,17 +580,19 @@ jQuery(document).ready(function($) {
 				nonce: eoToolsLandingPagesAdmin.nonce
 			},
 			success: function(response) {
-				$btn.prop('disabled', false).css('opacity', '1');
+				$btn.prop('disabled', false);
+				showClearLogsConfirm(false);
 				if (response.success) {
 					fetchLoginLogs();
-					alert(response.data.message || 'Journal vidé.');
+					showClearLogsFeedback((response.data && response.data.message) || eoToolsLandingPagesAdmin.labels.logsCleared, false);
 				} else {
-					alert(response.data.message || 'Erreur lors de la suppression des logs.');
+					showClearLogsFeedback((response.data && response.data.message) || eoToolsLandingPagesAdmin.labels.logsError, true);
 				}
 			},
 			error: function() {
-				$btn.prop('disabled', false).css('opacity', '1');
-				alert('Impossible de contacter le serveur.');
+				$btn.prop('disabled', false);
+				showClearLogsConfirm(false);
+				showClearLogsFeedback(eoToolsLandingPagesAdmin.labels.serverError, true);
 			}
 		});
 	});

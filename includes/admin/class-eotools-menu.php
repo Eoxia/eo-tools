@@ -390,6 +390,9 @@ class Eotools_Menu {
 					'both'        => __( 'Modes Prochainement & Maintenance actifs', 'eo-tools' ),
 					'coming_soon' => __( 'Mode Prochainement actif', 'eo-tools' ),
 					'maintenance' => __( 'Mode Maintenance actif', 'eo-tools' ),
+					'logsCleared' => __( 'Journal vidé.', 'eo-tools' ),
+					'logsError'   => __( 'Erreur lors de la suppression des logs.', 'eo-tools' ),
+					'serverError' => __( 'Impossible de contacter le serveur.', 'eo-tools' ),
 				),
 			) );
 		}

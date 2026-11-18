@@ -181,6 +181,8 @@ class Eotools_Mcp_Page {
 				'copied'        => __( 'Copié !', 'eo-tools' ),
 				'revoke'        => __( 'Révoquer', 'eo-tools' ),
 				'revokeConfirm' => __( 'Révoquer cette connexion ? L\'IA qui l\'utilise ne pourra plus accéder au site.', 'eo-tools' ),
+				'revokeYes'     => __( 'Oui, révoquer', 'eo-tools' ),
+				'cancel'        => __( 'Annuler', 'eo-tools' ),
 				'noConnection'  => __( 'Aucune connexion pour le moment.', 'eo-tools' ),
 				'endpoint'      => __( 'Adresse du serveur MCP', 'eo-tools' ),
 				'connectorUrl'  => __( 'Adresse du connecteur', 'eo-tools' ),

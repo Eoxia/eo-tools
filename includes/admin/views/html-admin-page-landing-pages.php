@@ -356,11 +356,19 @@ $pages_data = array(
 								<h4 style="margin: 0; font-size: 14px; font-weight: 600; color: #1e293b;">
 									<?php esc_html_e( 'Journal des tentatives de connexion', 'eo-tools' ); ?>
 								</h4>
-								<button type="button" id="eo-lp-clear-logs-btn" class="button button-link-delete" style="color: #d63638; text-decoration: none;">
-									<span class="dashicons dashicons-trash" style="vertical-align: middle; font-size: 16px;"></span>
-									<?php esc_html_e( 'Vider le journal', 'eo-tools' ); ?>
-								</button>
+								<span style="position: relative; display: inline-block;">
+									<button type="button" id="eo-lp-clear-logs-btn" class="button button-link-delete" style="color: #d63638; text-decoration: none;" aria-expanded="false" aria-controls="eo-lp-clear-logs-confirm">
+										<span class="dashicons dashicons-trash" style="vertical-align: middle; font-size: 16px;"></span>
+										<?php esc_html_e( 'Vider le journal', 'eo-tools' ); ?>
+									</button>
+									<span id="eo-lp-clear-logs-confirm" role="group" hidden style="position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; width: max-content; max-width: 320px; padding: 10px 12px; background: #fff; border: 1px solid #c3c4c7; border-left: 4px solid #d63638; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);">
+										<span style="display: block; margin-bottom: 8px;"><?php esc_html_e( 'Vider l\'historique des tentatives de connexion ? Cette action est irréversible.', 'eo-tools' ); ?></span>
+										<button type="button" id="eo-lp-clear-logs-yes" class="button button-link-delete"><?php esc_html_e( 'Oui, vider le journal', 'eo-tools' ); ?></button>
+										<button type="button" id="eo-lp-clear-logs-no" class="button"><?php esc_html_e( 'Annuler', 'eo-tools' ); ?></button>
+									</span>
+								</span>
 							</div>
+							<p id="eo-lp-clear-logs-feedback" role="status" style="margin: 0 0 12px;" hidden></p>
 							
 							<div class="eo-lp-logs-table-wrapper" style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
 								<table class="wp-list-table widefat fixed striped eo-lp-logs-table" style="border: none;">
