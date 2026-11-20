@@ -101,7 +101,7 @@ class Eotools_Mcp_Abilities {
 			'eo-tools/search-fonts'            => __( 'Cherche une police dans Google Fonts.', 'eo-tools' ),
 			'eo-tools/install-font'            => __( 'Installe une police Google Fonts, hébergée sur le site (RGPD).', 'eo-tools' ),
 			'eo-tools/check-render'            => __( 'Vérifie le rendu d\'une page et signale les erreurs visibles.', 'eo-tools' ),
-			'eo-tools/search-images'           => __( 'Cherche des photos libres et gratuites sur Openverse.', 'eo-tools' ),
+			'eo-tools/search-images'           => __( 'Cherche des photos libres et gratuites (Openverse, sinon Wikimedia Commons).', 'eo-tools' ),
 			'eo-tools/import-image'            => __( 'Ajoute une image à la médiathèque (Openverse, adresse, SVG, image générée).', 'eo-tools' ),
 			'eo-tools/update-media'            => __( 'Complète le texte alternatif, le titre et la légende des images de la médiathèque.', 'eo-tools' ),
 			'eo-tools/list-blocks'             => __( 'Liste les blocs disponibles (WordPress et EO Blocks).', 'eo-tools' ),

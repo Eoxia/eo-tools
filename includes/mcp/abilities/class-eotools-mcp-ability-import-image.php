@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Import_Image extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return Eotools_Mcp_Media::get_source_rule() . ' ' . __( 'Cet outil ajoute une image à la médiathèque, depuis une photo Openverse ("openverse_id", trouvée avec eo-tools/search-images), une adresse publique ("url", par exemple une image générée par un autre outil), un SVG que vous dessinez ("svg" : formes, dégradés, motifs, icônes ; il est nettoyé) ou une image encodée en base64 ("data"). Renseignez toujours "alt". Renvoie l\'identifiant du média et un bloc core/image prêt à insérer.', 'eo-tools' );
+		return Eotools_Mcp_Media::get_source_rule() . ' ' . __( 'Cet outil ajoute une image à la médiathèque, depuis une photo Openverse ("openverse_id") ou Wikimedia Commons ("commons_id"), trouvée avec eo-tools/search-images, une adresse publique ("url", par exemple une image générée par un autre outil), un SVG que vous dessinez ("svg" : formes, dégradés, motifs, icônes ; il est nettoyé) ou une image encodée en base64 ("data"). Renseignez toujours "alt". Renvoie l\'identifiant du média et un bloc core/image prêt à insérer.', 'eo-tools' );
 	}
 
 	public function get_group() {
@@ -42,6 +42,11 @@ class Eotools_Mcp_Ability_Import_Image extends Eotools_Mcp_Ability {
 				'openverse_id' => array(
 					'type'        => 'string',
 					'description' => __( 'Identifiant Openverse de l\'image.', 'eo-tools' ),
+				),
+				'commons_id'   => array(
+					'type'        => 'integer',
+					'minimum'     => 1,
+					'description' => __( 'Identifiant Wikimedia Commons de l\'image.', 'eo-tools' ),
 				),
 				'url'          => array(
 					'type'        => 'string',
@@ -61,7 +66,7 @@ class Eotools_Mcp_Ability_Import_Image extends Eotools_Mcp_Ability {
 				),
 				'caption'      => array(
 					'type'        => 'string',
-					'description' => __( 'Légende. Pour Openverse, le crédit de l\'auteur est ajouté automatiquement.', 'eo-tools' ),
+					'description' => __( 'Légende. Pour Openverse et Wikimedia Commons, le crédit de l\'auteur est ajouté automatiquement.', 'eo-tools' ),
 				),
 				'title'        => array( 'type' => 'string' ),
 				'filename'     => array(

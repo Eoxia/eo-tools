@@ -24,7 +24,7 @@ class Eotools_Mcp_Ability_Search_Images extends Eotools_Mcp_Ability {
 	}
 
 	public function get_description() {
-		return Eotools_Mcp_Media::get_source_rule() . ' ' . __( 'Cet outil cherche des photos et illustrations sous licence libre sur Openverse (la banque d\'images libres de WordPress), gratuitement. Rédigez la recherche en anglais pour de meilleurs résultats. Importez ensuite l\'image choisie avec eo-tools/import-image et son "openverse_id" : le crédit de l\'auteur est ajouté automatiquement.', 'eo-tools' );
+		return Eotools_Mcp_Media::get_source_rule() . ' ' . __( 'Cet outil cherche des photos et illustrations sous licence libre, gratuitement : sur Openverse (la banque d\'images libres de WordPress), puis automatiquement sur Wikimedia Commons si Openverse ne répond pas ou ne trouve rien ("source" et "notice" le précisent). Rédigez la recherche en anglais pour de meilleurs résultats. Importez ensuite l\'image choisie avec eo-tools/import-image et son "openverse_id" ou son "commons_id" : le crédit de l\'auteur est ajouté automatiquement. Si la recherche échoue, ne la relancez pas plus d\'une fois : proposez une autre source à l\'utilisateur.', 'eo-tools' );
 	}
 
 	public function get_group() {
@@ -48,13 +48,14 @@ class Eotools_Mcp_Ability_Search_Images extends Eotools_Mcp_Ability {
 					'enum' => array( 'wide', 'tall', 'square' ),
 				),
 				'category'    => array(
-					'type' => 'string',
-					'enum' => array( 'photograph', 'illustration', 'digitized_artwork' ),
+					'type'        => 'string',
+					'enum'        => array( 'photograph', 'illustration', 'digitized_artwork' ),
+					'description' => __( 'Openverse seulement.', 'eo-tools' ),
 				),
 				'commercial'  => array(
 					'type'        => 'boolean',
 					'default'     => true,
-					'description' => __( 'Uniquement les images utilisables sur un site commercial et modifiables.', 'eo-tools' ),
+					'description' => __( 'Uniquement les images utilisables sur un site commercial et modifiables (toujours le cas sur Wikimedia Commons).', 'eo-tools' ),
 				),
 				'per_page'    => array(
 					'type'    => 'integer',
