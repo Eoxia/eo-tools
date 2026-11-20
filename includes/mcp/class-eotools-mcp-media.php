@@ -63,16 +63,9 @@ class Eotools_Mcp_Media {
 			$params['category'] = $args['category'];
 		}
 
-		$response = wp_remote_get(
-			add_query_arg( rawurlencode_deep( $params ), self::OPENVERSE_API ),
-			array(
-				'timeout'    => 20,
-				'user-agent' => self::user_agent(),
-			)
-		);
-
-		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return new \WP_Error( 'eo_tools_openverse', __( 'La recherche Openverse a échoué. Réessayez plus tard.', 'eo-tools' ) );
+		$response = self::openverse_request( add_query_arg( rawurlencode_deep( $params ), self::OPENVERSE_API ) );
+		if ( is_wp_error( $response ) ) {
+			return $response;
 		}
 
 		$data   = json_decode( wp_remote_retrieve_body( $response ), true );
@@ -98,19 +91,69 @@ class Eotools_Mcp_Media {
 			return new \WP_Error( 'eo_tools_openverse_id', __( 'Identifiant Openverse invalide.', 'eo-tools' ) );
 		}
 
-		$response = wp_remote_get(
-			self::OPENVERSE_API . $id . '/',
-			array(
-				'timeout'    => 20,
-				'user-agent' => self::user_agent(),
-			)
-		);
-
-		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return new \WP_Error( 'eo_tools_openverse', __( 'Image Openverse introuvable.', 'eo-tools' ) );
+		$response = self::openverse_request( self::OPENVERSE_API . $id . '/' );
+		if ( is_wp_error( $response ) ) {
+			return $response;
 		}
 
 		return self::format_openverse( json_decode( wp_remote_retrieve_body( $response ), true ) );
+	}
+
+	/**
+	 * GET on the Openverse API, retried once when Openverse is momentarily unavailable.
+	 *
+	 * The error tells the AI what happened (not found, rate limit, service unavailable),
+	 * so that it does not take an outage for a limit, and offers the user another source.
+	 *
+	 * @param string $url API URL.
+	 * @return array|\WP_Error Response, or error.
+	 */
+	private static function openverse_request( $url ) {
+		$args = array(
+			'timeout'    => 20,
+			'user-agent' => self::user_agent(),
+		);
+
+		$response = wp_remote_get( $url, $args );
+		$code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
+
+		// Timeout or server error: Openverse is often only briefly overloaded.
+		if ( 0 === $code || $code >= 500 ) {
+			sleep( 2 );
+			$response = wp_remote_get( $url, $args );
+			$code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
+		}
+
+		if ( 200 === $code ) {
+			return $response;
+		}
+
+		if ( 404 === $code ) {
+			return new \WP_Error( 'eo_tools_openverse_not_found', __( 'Image Openverse introuvable.', 'eo-tools' ) );
+		}
+
+		$other_source = __( 'Proposez à l\'utilisateur une autre source : une image générée, ou une image qu\'il fournit (adresse ou médiathèque).', 'eo-tools' );
+
+		if ( 429 === $code ) {
+			$wait = (int) wp_remote_retrieve_header( $response, 'retry-after' );
+
+			return new \WP_Error(
+				'eo_tools_openverse_rate_limit',
+				$wait > 0
+					/* translators: %d: seconds to wait. */
+					? sprintf( __( 'Openverse limite le nombre de recherches : réessayez dans %d secondes.', 'eo-tools' ), $wait ) . ' ' . $other_source
+					: __( 'Openverse limite le nombre de recherches : réessayez dans quelques minutes.', 'eo-tools' ) . ' ' . $other_source
+			);
+		}
+
+		return new \WP_Error(
+			'eo_tools_openverse_unavailable',
+			( $code
+				/* translators: %d: HTTP status code. */
+				? sprintf( __( 'Openverse est indisponible pour le moment (erreur %d de son côté, ce n\'est pas une limite de recherches).', 'eo-tools' ), $code )
+				: __( 'Openverse ne répond pas pour le moment (ce n\'est pas une limite de recherches).', 'eo-tools' )
+			) . ' ' . $other_source
+		);
 	}
 
 	private static function format_openverse( $item ) {
