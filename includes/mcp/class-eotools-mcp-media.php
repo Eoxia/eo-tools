@@ -18,6 +18,13 @@ class Eotools_Mcp_Media {
 
 	const OPENVERSE_API = 'https://api.openverse.org/v1/images/';
 
+	const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
+
+	/**
+	 * Timeout of the image library APIs, in seconds: short, so that the AI does not wait.
+	 */
+	const TIMEOUT = 10;
+
 	const RASTER_MIMES = array( 'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif' );
 
 	const MAX_BYTES = 10485760;
@@ -29,7 +36,7 @@ class Eotools_Mcp_Media {
 	 * @return string
 	 */
 	public static function get_source_rule() {
-		return __( 'AVANT d\'ajouter des images, demandez TOUJOURS à l\'utilisateur quelle source il souhaite : (1) des photos libres et gratuites d\'Openverse (eo-tools/search-images), ou (2) des images que vous générez vous-même ou avec un autre outil connecté (Figma, générateur d\'images…), ce qui peut consommer des crédits. N\'utilisez que la source qu\'il a choisie, et redemandez pour chaque nouvelle demande d\'images.', 'eo-tools' );
+		return __( 'AVANT d\'ajouter des images, demandez TOUJOURS à l\'utilisateur quelle source il souhaite : (1) des photos libres et gratuites (eo-tools/search-images : Openverse, puis Wikimedia Commons automatiquement si Openverse ne répond pas), ou (2) des images que vous générez vous-même ou avec un autre outil connecté (Figma, générateur d\'images…), ce qui peut consommer des crédits. N\'utilisez que la source qu\'il a choisie, et redemandez pour chaque nouvelle demande d\'images.', 'eo-tools' );
 	}
 
 	/**
@@ -48,6 +55,38 @@ class Eotools_Mcp_Media {
 	 * @return array|\WP_Error
 	 */
 	public static function search( $args ) {
+		$openverse = self::search_openverse( $args );
+		if ( ! is_wp_error( $openverse ) && ! empty( $openverse['images'] ) ) {
+			return $openverse;
+		}
+
+		// Openverse failed, or found nothing: Wikimedia Commons takes over, so the AI does not have to.
+		$commons = self::search_commons( $args );
+		if ( is_wp_error( $commons ) ) {
+			if ( ! is_wp_error( $openverse ) ) {
+				return $openverse;
+			}
+
+			return new \WP_Error(
+				'eo_tools_images_unavailable',
+				__( 'Ni Openverse ni Wikimedia Commons ne répondent pour le moment (panne de leur côté, ce n\'est pas une limite de recherches). Ne relancez pas la recherche plus d\'une fois : proposez à l\'utilisateur une autre source (image générée, ou image qu\'il fournit : adresse ou médiathèque).', 'eo-tools' )
+			);
+		}
+
+		$commons['notice'] = is_wp_error( $openverse )
+			? __( 'Openverse ne répond pas pour le moment : résultats de Wikimedia Commons à la place, à importer avec leur "commons_id".', 'eo-tools' )
+			: __( 'Rien trouvé sur Openverse : résultats de Wikimedia Commons, à importer avec leur "commons_id".', 'eo-tools' );
+
+		return $commons;
+	}
+
+	/**
+	 * Searches Openverse. Short timeout and no retry: Wikimedia Commons takes over when it fails.
+	 *
+	 * @param array $args { query, per_page, orientation, category, commercial }.
+	 * @return array|\WP_Error
+	 */
+	private static function search_openverse( $args ) {
 		$params = array(
 			'q'         => $args['query'],
 			'page_size' => max( 1, min( 20, (int) $args['per_page'] ) ),
@@ -63,16 +102,9 @@ class Eotools_Mcp_Media {
 			$params['category'] = $args['category'];
 		}
 
-		$response = wp_remote_get(
-			add_query_arg( rawurlencode_deep( $params ), self::OPENVERSE_API ),
-			array(
-				'timeout'    => 20,
-				'user-agent' => self::user_agent(),
-			)
-		);
-
-		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return new \WP_Error( 'eo_tools_openverse', __( 'La recherche Openverse a échoué. Réessayez plus tard.', 'eo-tools' ) );
+		$response = self::openverse_request( add_query_arg( rawurlencode_deep( $params ), self::OPENVERSE_API ), false );
+		if ( is_wp_error( $response ) ) {
+			return $response;
 		}
 
 		$data   = json_decode( wp_remote_retrieve_body( $response ), true );
@@ -82,9 +114,183 @@ class Eotools_Mcp_Media {
 		}
 
 		return array(
+			'source' => 'openverse',
 			'total'  => isset( $data['result_count'] ) ? (int) $data['result_count'] : count( $images ),
 			'images' => $images,
 		);
+	}
+
+	/**
+	 * Searches Wikimedia Commons (free media of Wikipedia, no key). Every file there
+	 * is under a free license that allows commercial use and modification.
+	 *
+	 * @param array $args { query, per_page, orientation }.
+	 * @return array|\WP_Error
+	 */
+	private static function search_commons( $args ) {
+		$per_page = max( 1, min( 20, (int) $args['per_page'] ) );
+		$data     = self::commons_request(
+			array(
+				'generator'    => 'search',
+				'gsrsearch'    => $args['query'] . ' filetype:bitmap',
+				'gsrnamespace' => 6,
+				// More than asked: the orientation and file types are filtered afterwards.
+				'gsrlimit'     => min( 50, $per_page * 2 ),
+			)
+		);
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
+		$pages = isset( $data['query']['pages'] ) ? $data['query']['pages'] : array();
+		uasort(
+			$pages,
+			function ( $a, $b ) {
+				return ( isset( $a['index'] ) ? $a['index'] : 0 ) - ( isset( $b['index'] ) ? $b['index'] : 0 );
+			}
+		);
+
+		$images = array();
+		foreach ( $pages as $page ) {
+			$image = self::format_commons( $page );
+			if ( ! $image || ! self::matches_orientation( $image, isset( $args['orientation'] ) ? $args['orientation'] : '' ) ) {
+				continue;
+			}
+			$images[] = $image;
+			if ( count( $images ) >= $per_page ) {
+				break;
+			}
+		}
+
+		return array(
+			'source' => 'commons',
+			'total'  => count( $images ),
+			'images' => $images,
+		);
+	}
+
+	/**
+	 * Details of a Wikimedia Commons image.
+	 *
+	 * @param int $page_id Commons file page ID.
+	 * @return array|\WP_Error
+	 */
+	public static function get_commons_image( $page_id ) {
+		$page_id = absint( $page_id );
+		if ( ! $page_id ) {
+			return new \WP_Error( 'eo_tools_commons_id', __( 'Identifiant Wikimedia Commons invalide.', 'eo-tools' ) );
+		}
+
+		$data = self::commons_request( array( 'pageids' => $page_id ) );
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
+		$image = ! empty( $data['query']['pages'][ $page_id ] ) ? self::format_commons( $data['query']['pages'][ $page_id ] ) : null;
+		if ( ! $image ) {
+			return new \WP_Error( 'eo_tools_commons_not_found', __( 'Image Wikimedia Commons introuvable, ou pas au format JPEG, PNG, GIF ou WebP.', 'eo-tools' ) );
+		}
+
+		return $image;
+	}
+
+	/**
+	 * Query on the Wikimedia Commons API, with the image details.
+	 *
+	 * @param array $params Query parameters (generator or pageids).
+	 * @return array|\WP_Error Decoded answer.
+	 */
+	private static function commons_request( $params ) {
+		$params = array_merge(
+			array(
+				'action'              => 'query',
+				'format'              => 'json',
+				'prop'                => 'imageinfo',
+				'iiprop'              => 'url|size|mime|extmetadata',
+				// A resized copy: originals can be very large.
+				'iiurlwidth'          => 1600,
+				'iiextmetadatafilter' => 'Artist|LicenseShortName|ObjectName',
+			),
+			$params
+		);
+
+		$response = wp_remote_get(
+			add_query_arg( rawurlencode_deep( $params ), self::COMMONS_API ),
+			array(
+				'timeout'    => self::TIMEOUT,
+				'user-agent' => self::user_agent(),
+			)
+		);
+		$code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
+
+		if ( 200 !== $code ) {
+			return new \WP_Error(
+				'eo_tools_commons_unavailable',
+				$code
+					/* translators: %d: HTTP status code. */
+					? sprintf( __( 'Wikimedia Commons est indisponible pour le moment (erreur %d).', 'eo-tools' ), $code )
+					: __( 'Wikimedia Commons ne répond pas pour le moment.', 'eo-tools' )
+			);
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		return is_array( $data ) ? $data : array();
+	}
+
+	/**
+	 * Commons file page to the format of search results, or null if it cannot be imported.
+	 *
+	 * @param array $page Page from the Commons API.
+	 * @return array|null
+	 */
+	private static function format_commons( $page ) {
+		$info = isset( $page['imageinfo'][0] ) ? $page['imageinfo'][0] : null;
+		if ( ! $info || empty( $info['mime'] ) || ! in_array( $info['mime'], array( 'image/jpeg', 'image/png', 'image/gif', 'image/webp' ), true ) ) {
+			return null;
+		}
+
+		$meta    = isset( $info['extmetadata'] ) ? $info['extmetadata'] : array();
+		$creator = isset( $meta['Artist']['value'] ) ? trim( wp_strip_all_tags( $meta['Artist']['value'] ) ) : '';
+		$license = isset( $meta['LicenseShortName']['value'] ) ? trim( wp_strip_all_tags( $meta['LicenseShortName']['value'] ) ) : '';
+		$title   = isset( $meta['ObjectName']['value'] ) ? trim( wp_strip_all_tags( $meta['ObjectName']['value'] ) ) : preg_replace( '/^File:|\.[a-z0-9]+$/i', '', $page['title'] );
+		$url     = ! empty( $info['thumburl'] ) ? $info['thumburl'] : $info['url'];
+
+		return array(
+			'commons_id'  => (int) $page['pageid'],
+			'title'       => $title,
+			'thumbnail'   => $url,
+			'url'         => $url,
+			'width'       => ! empty( $info['thumbwidth'] ) ? (int) $info['thumbwidth'] : (int) $info['width'],
+			'height'      => ! empty( $info['thumbheight'] ) ? (int) $info['thumbheight'] : (int) $info['height'],
+			'creator'     => $creator,
+			'license'     => $license,
+			'source_page' => isset( $info['descriptionurl'] ) ? $info['descriptionurl'] : '',
+			'credit'      => self::credit( array( 'creator' => $creator ), '' !== $license ? $license . ' (Wikimedia Commons)' : 'Wikimedia Commons' ),
+		);
+	}
+
+	/**
+	 * Whether an image has the orientation asked for (wide, tall, square, or none).
+	 *
+	 * @param array  $image       Image with width and height.
+	 * @param string $orientation Orientation.
+	 * @return bool
+	 */
+	private static function matches_orientation( $image, $orientation ) {
+		if ( '' === $orientation || ! $image['width'] || ! $image['height'] ) {
+			return true;
+		}
+
+		$ratio = $image['width'] / $image['height'];
+		if ( 'wide' === $orientation ) {
+			return $ratio > 1.1;
+		}
+		if ( 'tall' === $orientation ) {
+			return $ratio < 0.9;
+		}
+
+		return $ratio >= 0.9 && $ratio <= 1.1;
 	}
 
 	/**
@@ -98,19 +304,70 @@ class Eotools_Mcp_Media {
 			return new \WP_Error( 'eo_tools_openverse_id', __( 'Identifiant Openverse invalide.', 'eo-tools' ) );
 		}
 
-		$response = wp_remote_get(
-			self::OPENVERSE_API . $id . '/',
-			array(
-				'timeout'    => 20,
-				'user-agent' => self::user_agent(),
-			)
-		);
-
-		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return new \WP_Error( 'eo_tools_openverse', __( 'Image Openverse introuvable.', 'eo-tools' ) );
+		$response = self::openverse_request( self::OPENVERSE_API . $id . '/' );
+		if ( is_wp_error( $response ) ) {
+			return $response;
 		}
 
 		return self::format_openverse( json_decode( wp_remote_retrieve_body( $response ), true ) );
+	}
+
+	/**
+	 * GET on the Openverse API, retried once when Openverse is momentarily unavailable.
+	 *
+	 * The error tells the AI what happened (not found, rate limit, service unavailable),
+	 * so that it does not take an outage for a limit, and offers the user another source.
+	 *
+	 * @param string $url   API URL.
+	 * @param bool   $retry Retry once on timeout or server error (when no other source takes over).
+	 * @return array|\WP_Error Response, or error.
+	 */
+	private static function openverse_request( $url, $retry = true ) {
+		$args = array(
+			'timeout'    => self::TIMEOUT,
+			'user-agent' => self::user_agent(),
+		);
+
+		$response = wp_remote_get( $url, $args );
+		$code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
+
+		// Timeout or server error: Openverse is often only briefly overloaded.
+		if ( $retry && ( 0 === $code || $code >= 500 ) ) {
+			sleep( 2 );
+			$response = wp_remote_get( $url, $args );
+			$code     = is_wp_error( $response ) ? 0 : (int) wp_remote_retrieve_response_code( $response );
+		}
+
+		if ( 200 === $code ) {
+			return $response;
+		}
+
+		if ( 404 === $code ) {
+			return new \WP_Error( 'eo_tools_openverse_not_found', __( 'Image Openverse introuvable.', 'eo-tools' ) );
+		}
+
+		$other_source = __( 'Proposez à l\'utilisateur une autre source : une image générée, ou une image qu\'il fournit (adresse ou médiathèque).', 'eo-tools' );
+
+		if ( 429 === $code ) {
+			$wait = (int) wp_remote_retrieve_header( $response, 'retry-after' );
+
+			return new \WP_Error(
+				'eo_tools_openverse_rate_limit',
+				$wait > 0
+					/* translators: %d: seconds to wait. */
+					? sprintf( __( 'Openverse limite le nombre de recherches : réessayez dans %d secondes.', 'eo-tools' ), $wait ) . ' ' . $other_source
+					: __( 'Openverse limite le nombre de recherches : réessayez dans quelques minutes.', 'eo-tools' ) . ' ' . $other_source
+			);
+		}
+
+		return new \WP_Error(
+			'eo_tools_openverse_unavailable',
+			( $code
+				/* translators: %d: HTTP status code. */
+				? sprintf( __( 'Openverse est indisponible pour le moment (erreur %d de son côté, ce n\'est pas une limite de recherches).', 'eo-tools' ), $code )
+				: __( 'Openverse ne répond pas pour le moment (ce n\'est pas une limite de recherches).', 'eo-tools' )
+			) . ' ' . $other_source
+		);
 	}
 
 	private static function format_openverse( $item ) {
@@ -173,6 +430,14 @@ class Eotools_Mcp_Media {
 			$input['url'] = $image['url'];
 			$caption      = '' !== $caption ? $caption . ' – ' . $image['credit'] : $image['credit'];
 			$title        = '' !== $title ? $title : $image['title'];
+		} elseif ( ! empty( $input['commons_id'] ) ) {
+			$image = self::get_commons_image( $input['commons_id'] );
+			if ( is_wp_error( $image ) ) {
+				return $image;
+			}
+			$input['url'] = $image['url'];
+			$caption      = '' !== $caption ? $caption . ' – ' . $image['credit'] : $image['credit'];
+			$title        = '' !== $title ? $title : $image['title'];
 		}
 
 		if ( ! empty( $input['svg'] ) ) {
@@ -182,7 +447,7 @@ class Eotools_Mcp_Media {
 		} elseif ( ! empty( $input['url'] ) ) {
 			$attachment_id = self::import_url( $input['url'], $name, $title );
 		} else {
-			return new \WP_Error( 'eo_tools_image_source', __( 'Indiquez une source : "openverse_id", "url", "svg" ou "data".', 'eo-tools' ) );
+			return new \WP_Error( 'eo_tools_image_source', __( 'Indiquez une source : "openverse_id", "commons_id", "url", "svg" ou "data".', 'eo-tools' ) );
 		}
 
 		if ( is_wp_error( $attachment_id ) ) {
