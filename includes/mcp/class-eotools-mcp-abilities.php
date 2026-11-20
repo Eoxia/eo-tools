@@ -22,9 +22,14 @@ class Eotools_Mcp_Abilities {
 	const STATE_OPTION = 'eo_tools_mcp_abilities_state';
 
 	/**
-	 * @var Eotools_Mcp_Ability[]|null Keyed by ability name.
+	 * @var Eotools_Mcp_Ability[]|null EO Tools abilities, keyed by ability name.
 	 */
 	private static $abilities = null;
+
+	/**
+	 * @var Abilities\Eotools_Mcp_Ability_Third_Party[]|null Abilities of other plugins, keyed by ability name.
+	 */
+	private static $third_party = null;
 
 	public static function init() {
 		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_category' ) );
@@ -38,7 +43,7 @@ class Eotools_Mcp_Abilities {
 	 * @return array Labels keyed by group slug.
 	 */
 	public static function get_groups() {
-		return array(
+		$groups = array(
 			'content'  => __( 'Contenus', 'eo-tools' ),
 			'site'     => __( 'Modèles du site', 'eo-tools' ),
 			'styles'   => __( 'Styles et polices', 'eo-tools' ),
@@ -53,6 +58,29 @@ class Eotools_Mcp_Abilities {
 			'users'    => __( 'Utilisateurs', 'eo-tools' ),
 			'cookies'  => __( 'Cookies', 'eo-tools' ),
 		);
+
+		/**
+		 * Filters the admin groups of the EO Tools abilities, in display order.
+		 *
+		 * The abilities of other plugins have their own groups (see get_third_party_groups()).
+		 *
+		 * @param string[] $groups Labels keyed by group slug.
+		 */
+		return (array) apply_filters( 'eo_tools_mcp_ability_groups', $groups );
+	}
+
+	/**
+	 * Admin groups of the abilities of other plugins: one per ability category.
+	 *
+	 * @return string[] Labels keyed by group slug ("ext:<category>").
+	 */
+	public static function get_third_party_groups() {
+		$groups = array();
+		foreach ( self::get_third_party() as $ability ) {
+			$groups[ $ability->get_group() ] = $ability->get_group_label();
+		}
+
+		return $groups;
 	}
 
 	/**
@@ -150,9 +178,63 @@ class Eotools_Mcp_Abilities {
 	}
 
 	/**
+	 * Every ability the administrator manages: EO Tools' own, then those of other plugins.
+	 *
 	 * @return Eotools_Mcp_Ability[] Keyed by ability name.
 	 */
 	public static function get_all() {
+		return array_merge( self::get_own(), self::get_third_party() );
+	}
+
+	/**
+	 * Abilities of other plugins relayed by EO Tools.
+	 *
+	 * A plugin registers its abilities itself with the Abilities API. EO Tools relays
+	 * those that declare `meta.eo_tools`:
+	 *
+	 *     'meta' => array(
+	 *         'mcp'      => array( 'public' => false ), // Served by EO Tools only.
+	 *         'eo_tools' => array(
+	 *             'risk'     => 'read', // read | write | sensitive (anything else counts as sensitive).
+	 *             'summary'  => '…',    // One or two lines for the administrator.
+	 *             'provider' => 'WPshop',
+	 *         ),
+	 *     ),
+	 *
+	 * They are shown in the Abilities tab (one group per ability category), follow
+	 * the toggles and risk levels, and are served on the EO Tools MCP server when
+	 * enabled. Abilities without `meta.eo_tools` are never relayed.
+	 *
+	 * Empty while the abilities are being registered (the other plugins may not have
+	 * registered theirs yet): not cached then.
+	 *
+	 * @return Abilities\Eotools_Mcp_Ability_Third_Party[] Keyed by ability name.
+	 */
+	public static function get_third_party() {
+		if ( null !== self::$third_party ) {
+			return self::$third_party;
+		}
+
+		if ( ! function_exists( 'wp_get_abilities' ) || doing_action( 'wp_abilities_api_init' ) ) {
+			return array();
+		}
+
+		self::$third_party = array();
+		foreach ( wp_get_abilities() as $name => $ability ) {
+			if ( $ability instanceof \WP_Ability && Abilities\Eotools_Mcp_Ability_Third_Party::is_relayed( $ability ) ) {
+				self::$third_party[ $name ] = new Abilities\Eotools_Mcp_Ability_Third_Party( $ability );
+			}
+		}
+
+		return self::$third_party;
+	}
+
+	/**
+	 * Abilities shipped by EO Tools (and added with the `eo_tools_mcp_ability_classes` filter).
+	 *
+	 * @return Eotools_Mcp_Ability[] Keyed by ability name.
+	 */
+	public static function get_own() {
 		if ( null !== self::$abilities ) {
 			return self::$abilities;
 		}
@@ -278,8 +360,11 @@ class Eotools_Mcp_Abilities {
 		);
 	}
 
+	/**
+	 * Registers the enabled EO Tools abilities. Those of other plugins are registered by their plugin.
+	 */
 	public static function register_abilities() {
-		foreach ( self::get_enabled() as $ability ) {
+		foreach ( array_filter( self::get_own(), array( __CLASS__, 'is_enabled' ) ) as $ability ) {
 			wp_register_ability( $ability->get_name(), $ability->get_registration_args( self::CATEGORY ) );
 		}
 	}

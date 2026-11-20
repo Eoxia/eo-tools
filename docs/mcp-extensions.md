@@ -92,3 +92,72 @@ Champs SEO écrits par chaque passerelle :
 - **Textes alternatifs** : `eo-tools/list-seo-issues` avec le type `media_without_alt`, correction avec `eo-tools/update-media` (niveau « Écriture » : seule la médiathèque change).
 
 Pour prendre en charge une autre extension SEO : étendre `Eotools_Mcp_Seo_Provider` (au minimum `get_id()`, `get_name()`, `is_active()`, `supports()`, `get_meta_keys()`, les lectures du titre et de la description, et les méthodes `*_term_*` pour les catégories), puis l'ajouter avec le filtre `eo_tools_seo_providers`. Ne jamais tester une extension SEO directement dans `Eotools_Mcp_Seo`.
+
+## 6. Abilities et propositions d'autres extensions
+
+Une autre extension (WPshop, EO SEO…) peut donner ses propres outils à l'IA connectée à EO Tools, et faire valider ses propositions dans l'onglet « À valider ». Le code de l'extension reste chez elle : EO Tools affiche, relaie et compte.
+
+### 6.1 Abilities
+
+L'extension enregistre ses abilities elle-même, avec l'API Abilities de WordPress (6.9+), sur le hook `wp_abilities_api_init`. Elle les déclare à EO Tools avec `meta.eo_tools` :
+
+```php
+wp_register_ability(
+	'wpshop/list-sync-status',
+	array(
+		'label'               => __( 'État des synchros', 'wpshop' ),
+		'description'         => '…', // Lu par l'IA.
+		'category'            => 'wpshop', // Catégorie enregistrée par l'extension : un groupe dans l'onglet Abilities.
+		'input_schema'        => array( … ),
+		'execute_callback'    => …,
+		'permission_callback' => …,
+		'meta'                => array(
+			'mcp'      => array( 'public' => false ), // Servie par EO Tools seulement.
+			'eo_tools' => array(
+				'risk'     => 'read', // read | write | sensitive. Absent ou inconnu : sensitive.
+				'summary'  => __( 'Une ou deux lignes pour l\'administrateur.', 'wpshop' ),
+				'provider' => 'WPshop',
+			),
+		),
+	)
+);
+```
+
+- Elle apparaît dans l'onglet **Abilities**, section « Autres extensions », dans le groupe de sa catégorie, avec « Fournie par … ».
+- Les interrupteurs et les boutons par niveau de risque s'appliquent comme pour les abilities d'EO Tools. Désactivée, elle n'est plus servie sur le serveur MCP d'EO Tools.
+- Une ability sans `meta.eo_tools` n'est jamais relayée (par exemple celles de Yoast, utilisées seulement en interne par la passerelle Yoast).
+- Code : `Eotools_Mcp_Abilities::get_third_party()` et `Abilities\Eotools_Mcp_Ability_Third_Party`.
+
+### 6.2 Propositions à valider
+
+Une ability qui prépare un changement à faire valider par un humain enregistre la proposition **chez son extension**, puis l'extension déclare le type de proposition avec le filtre `eo_tools_mcp_proposal_types` :
+
+```php
+add_filter( 'eo_tools_mcp_proposal_types', function ( $types ) {
+	$types['wpshop-dolibarr-product'] = array(
+		'label'       => __( 'Produits à créer dans Dolibarr', 'wpshop' ),
+		'description' => __( 'Créés dans Dolibarr puis synchronisés sur la boutique à la validation.', 'wpshop' ),
+		'provider'    => 'WPshop',
+		'capability'  => 'manage_options',
+		'items'       => function () { // Éléments en attente.
+			return array(
+				array(
+					'id'      => 'abc123',
+					'title'   => 'Gants de chantier T9',
+					'details' => '<ul><li>Réf. : GANT-T9</li>…</ul>', // HTML, filtré par wp_kses_post().
+					'created' => time(),
+					'warning' => 'Doublon possible : GANT-T9 existe déjà', // Facultatif.
+				),
+			);
+		},
+		'apply'       => function ( $id ) { return true; },  // true ou WP_Error.
+		'reject'      => function ( $id ) { return true; },
+	);
+	return $types;
+} );
+```
+
+- Les éléments sont affichés dans « À valider », groupés par type, avec leurs boutons Valider / Rejeter, et ils entrent dans la validation en lot.
+- EO Tools vérifie la capacité et que l'élément est toujours en attente avant d'appeler `apply` ou `reject`. Un échec est compté dans « éléments non traités » avec son message ; les autres éléments du lot continuent.
+- Aucune ability ne doit appeler `apply` : la validation reste humaine.
+- Code : `Eotools_Mcp_Proposal_Types`, branché dans `Eotools_Mcp_Validation::handle_bulk()`.

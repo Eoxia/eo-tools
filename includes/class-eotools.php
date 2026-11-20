@@ -39,6 +39,7 @@ class Eotools {
 		\EoTools\Includes\Mcp\Eotools_Mcp_Ai_Drafts::init();
 		\EoTools\Includes\Mcp\Eotools_Mcp_Validation::init();
 		\EoTools\Includes\Mcp\Eotools_Mcp_Seo_Changes::init();
+		\EoTools\Includes\Mcp\Eotools_Mcp_Proposal_Types::init();
 		\EoTools\Includes\Mcp\Seo\Eotools_Mcp_Seo_Analysis::init();
 		\EoTools\Includes\Mcp\Eotools_Mcp_Templates::init();
 		\EoTools\Includes\Mcp\Eotools_Mcp_Styles::init();
