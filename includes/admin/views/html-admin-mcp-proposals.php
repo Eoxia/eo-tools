@@ -6,12 +6,13 @@
  * has a checkbox linked to a single bulk form; changes also keep their own
  * Apply / Reject buttons.
  *
- * Expects: $ai_drafts, $pending_proposals, $pending_templates, $pending_styles, $pending_seo.
+ * Expects: $ai_drafts, $pending_proposals, $pending_templates, $pending_styles, $pending_seo, $pending_ext.
  *
  * @package EoTools
  */
 
 use EoTools\Includes\Mcp\Eotools_Mcp_Ai_Drafts;
+use EoTools\Includes\Mcp\Eotools_Mcp_Proposal_Types;
 use EoTools\Includes\Mcp\Eotools_Mcp_Proposals;
 use EoTools\Includes\Mcp\Eotools_Mcp_Redirections;
 use EoTools\Includes\Mcp\Eotools_Mcp_Seo;
@@ -33,7 +34,8 @@ $failed = isset( $_GET['failed'] ) ? absint( $_GET['failed'] ) : 0;
 
 $form_id     = Eotools_Mcp_Validation::FORM_ID;
 $date_format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
-$has_items   = $ai_drafts || $pending_proposals || $pending_templates || ! empty( $pending_styles ) || ! empty( $pending_seo );
+$has_items   = $ai_drafts || $pending_proposals || $pending_templates || ! empty( $pending_styles ) || ! empty( $pending_seo ) || ! empty( $pending_ext );
+$ext_errors  = Eotools_Mcp_Proposal_Types::pop_errors();
 
 /**
  * Header cell that (un)checks every row of its table (handled by WordPress' common.js).
@@ -57,7 +59,7 @@ $select_all = function ( $id ) {
  * @param string $label Accessible label.
  */
 $select_row = function ( $name, $id, $label ) use ( $form_id ) {
-	$field_id = 'eo-mcp-' . $name . '-' . $id;
+	$field_id = 'eo-mcp-' . sanitize_html_class( str_replace( array( '[', ']' ), '-', $name . '-' . $id ) );
 	?>
 	<th scope="row" class="check-column">
 		<input type="checkbox" name="<?php echo esc_attr( $name ); ?>[]" value="<?php echo esc_attr( $id ); ?>" id="<?php echo esc_attr( $field_id ); ?>" form="<?php echo esc_attr( $form_id ); ?>">
@@ -69,6 +71,8 @@ $select_row = function ( $name, $id, $label ) use ( $form_id ) {
 
 <?php if ( 'applied' === $done ) : ?>
 	<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'La modification a été appliquée. La version précédente reste disponible dans les révisions.', 'eo-tools' ); ?></p></div>
+<?php elseif ( 'ext-applied' === $done ) : ?>
+	<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'La proposition a été validée.', 'eo-tools' ); ?></p></div>
 <?php elseif ( 'seo-applied' === $done ) : ?>
 	<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'La modification SEO a été appliquée.', 'eo-tools' ); ?></p></div>
 <?php elseif ( 'rejected' === $done ) : ?>
@@ -96,7 +100,15 @@ $select_row = function ( $name, $id, $label ) use ( $form_id ) {
 		/* translators: %d: number of items not processed. */
 		echo esc_html( sprintf( _n( '%d élément n\'a pas pu être traité (droits insuffisants ou élément déjà traité).', '%d éléments n\'ont pas pu être traités (droits insuffisants ou éléments déjà traités).', $failed, 'eo-tools' ), $failed ) );
 		?>
-	</p></div>
+	</p>
+	<?php if ( $ext_errors ) : ?>
+		<ul class="eo-mcp-errors">
+			<?php foreach ( $ext_errors as $ext_error ) : ?>
+				<li><?php echo esc_html( $ext_error ); ?></li>
+			<?php endforeach; ?>
+		</ul>
+	<?php endif; ?>
+	</div>
 <?php endif; ?>
 
 <p class="eo-mcp-intro"><?php esc_html_e( 'Tout ce que l\'IA a préparé attend ici votre validation : nouveaux contenus, modifications de contenus publiés, modèles, styles, redirections et SEO des catégories. Rien n\'est publié tant que vous ne validez pas.', 'eo-tools' ); ?></p>
@@ -505,6 +517,65 @@ if ( ! empty( $pending_seo ) ) :
 	<?php endif; ?>
 
 <?php endif; ?>
+
+<?php foreach ( $pending_ext as $ext_type_id => $ext_group ) : ?>
+	<?php $ext_type = $ext_group['type']; ?>
+	<h2 class="eo-mcp-group-title">
+		<?php echo esc_html( $ext_type['label'] ); ?>
+		<?php if ( $ext_type['provider'] ) : ?>
+			<span class="eo-mcp-badge">
+				<?php
+				/* translators: %s: name of the plugin that made the proposals. */
+				echo esc_html( sprintf( __( 'Proposé via %s', 'eo-tools' ), $ext_type['provider'] ) );
+				?>
+			</span>
+		<?php endif; ?>
+	</h2>
+	<?php if ( $ext_type['description'] ) : ?>
+		<p class="description"><?php echo esc_html( $ext_type['description'] ); ?></p>
+	<?php endif; ?>
+	<table class="widefat striped eo-mcp-proposals">
+		<thead>
+			<tr>
+				<?php $select_all( 'eo-mcp-select-ext-' . $ext_type_id ); ?>
+				<th><?php esc_html_e( 'Proposition', 'eo-tools' ); ?></th>
+				<th><?php esc_html_e( 'Détails', 'eo-tools' ); ?></th>
+				<th><?php esc_html_e( 'Proposée le', 'eo-tools' ); ?></th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach ( $ext_group['items'] as $ext_item ) : ?>
+				<?php $ext_nonce = Eotools_Mcp_Proposal_Types::nonce_action( $ext_type_id, $ext_item['id'] ); ?>
+				<tr>
+					<?php $select_row( Eotools_Mcp_Proposal_Types::FIELD . '[' . $ext_type_id . ']', $ext_item['id'], $ext_item['title'] ); ?>
+					<td>
+						<strong><?php echo esc_html( $ext_item['title'] ); ?></strong>
+						<?php if ( $ext_item['warning'] ) : ?>
+							<br><span class="eo-mcp-badge is-warning"><?php echo esc_html( $ext_item['warning'] ); ?></span>
+						<?php endif; ?>
+					</td>
+					<td><?php echo wp_kses_post( $ext_item['details'] ); ?></td>
+					<td><?php echo esc_html( $ext_item['created'] ? wp_date( $date_format, $ext_item['created'] ) : '' ); ?></td>
+					<td class="eo-mcp-actions">
+						<?php if ( $ext_item['link'] ) : ?>
+							<a class="button" href="<?php echo esc_url( $ext_item['link'] ); ?>" target="_blank"><?php echo esc_html( $ext_item['link_label'] ? $ext_item['link_label'] : __( 'Voir', 'eo-tools' ) ); ?></a>
+						<?php endif; ?>
+						<?php foreach ( array( 'reject' => __( 'Rejeter', 'eo-tools' ), 'apply' => __( 'Valider', 'eo-tools' ) ) as $ext_button => $ext_button_label ) : ?>
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+								<input type="hidden" name="action" value="<?php echo esc_attr( 'eo_tools_' . $ext_button . '_ext_proposal' ); ?>">
+								<input type="hidden" name="type" value="<?php echo esc_attr( $ext_type_id ); ?>">
+								<input type="hidden" name="item" value="<?php echo esc_attr( $ext_item['id'] ); ?>">
+								<?php wp_nonce_field( $ext_nonce ); ?>
+								<button type="submit" class="button<?php echo 'apply' === $ext_button ? ' button-primary' : ''; ?>"><?php echo esc_html( $ext_button_label ); ?></button>
+							</form>
+						<?php endforeach; ?>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+<?php endforeach; ?>
 
 <?php if ( $has_items ) : ?>
 	<div class="eo-mcp-validate-bar">

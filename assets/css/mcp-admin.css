@@ -331,10 +331,25 @@
 	gap: 8px;
 }
 
+.eo-mcp-ability-meta {
+	flex-wrap: wrap;
+}
+
 .eo-mcp-ability-meta code {
 	font-size: 11px;
 	background: #f1f5f9;
 	border-radius: 4px;
+}
+
+.eo-mcp-ability-provider {
+	font-size: 11px;
+	color: #64748b;
+}
+
+h2.eo-mcp-group-title-ext {
+	margin-top: 32px;
+	padding-top: 16px;
+	border-top: 1px solid #e2e8f0;
 }
 
 .eo-mcp-risk {

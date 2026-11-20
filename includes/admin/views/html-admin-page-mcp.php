@@ -10,6 +10,7 @@ use EoTools\Includes\Mcp\Eotools_Mcp_Abilities;
 use EoTools\Includes\Mcp\Eotools_Mcp_Adapter;
 use EoTools\Includes\Mcp\Eotools_Mcp_Ai_Drafts;
 use EoTools\Includes\Mcp\Eotools_Mcp_Elevation;
+use EoTools\Includes\Mcp\Eotools_Mcp_Proposal_Types;
 use EoTools\Includes\Mcp\Eotools_Mcp_Proposals;
 use EoTools\Includes\Mcp\Eotools_Mcp_Seo_Changes;
 use EoTools\Includes\Mcp\Eotools_Mcp_Templates;
@@ -32,7 +33,8 @@ $pending_templates  = current_user_can( Eotools_Mcp_Templates::CAPABILITY ) ? Eo
 $pending_styles     = current_user_can( Eotools_Mcp_Styles::CAPABILITY ) ? Eotools_Mcp_Styles::get_pending() : null;
 $ai_drafts          = Eotools_Mcp_Ai_Drafts::get_waiting();
 $pending_seo        = Eotools_Mcp_Seo_Changes::get_all_for_user();
-$pending_count      = count( $ai_drafts ) + count( $pending_proposals ) + count( $pending_templates ) + ( $pending_styles ? 1 : 0 ) + count( $pending_seo );
+$pending_ext        = Eotools_Mcp_Proposal_Types::get_all_pending();
+$pending_count      = count( $ai_drafts ) + count( $pending_proposals ) + count( $pending_templates ) + ( $pending_styles ? 1 : 0 ) + count( $pending_seo ) + Eotools_Mcp_Proposal_Types::count_pending( $pending_ext );
 $waiting_snippets   = Eotools_Mcp_Snippets::user_can() ? Eotools_Mcp_Snippets::count_waiting() : 0;
 $waiting_elevations = Eotools_Mcp_Elevation::user_can() ? count( Eotools_Mcp_Elevation::get_by_status( Eotools_Mcp_Elevation::STATUS_PENDING ) ) : 0;
 $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' ) : admin_url( 'plugin-install.php?s=mcp-adapter&tab=search&type=term' );
@@ -125,8 +127,15 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 
 		<p class="eo-mcp-feedback" id="eo-mcp-abilities-feedback" role="status" aria-live="polite"></p>
 
-		<?php foreach ( Eotools_Mcp_Abilities::get_groups() as $group_slug => $group_label ) : ?>
-			<?php
+		<?php
+		/**
+		 * Cards of the abilities of one group.
+		 *
+		 * @param string $group_slug  Group slug.
+		 * @param string $group_label Group label.
+		 * @param string $heading     Heading tag (h2 for EO Tools groups, h3 under "Autres extensions").
+		 */
+		$render_group = function ( $group_slug, $group_label, $heading ) use ( $risk_levels ) {
 			$group_abilities = array_filter(
 				Eotools_Mcp_Abilities::get_all(),
 				function ( $ability ) use ( $group_slug ) {
@@ -134,13 +143,16 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 				}
 			);
 			if ( empty( $group_abilities ) ) {
-				continue;
+				return;
 			}
 			?>
-			<h2 class="eo-mcp-group-title"><?php echo esc_html( $group_label ); ?></h2>
+			<<?php echo esc_attr( $heading ); ?> class="eo-mcp-group-title"><?php echo esc_html( $group_label ); ?></<?php echo esc_attr( $heading ); ?>>
 			<div class="eo-mcp-abilities">
 				<?php foreach ( $group_abilities as $ability ) : ?>
-					<?php $risk = $ability->get_risk(); ?>
+					<?php
+					$risk     = $ability->get_risk();
+					$provider = $ability instanceof \EoTools\Includes\Mcp\Abilities\Eotools_Mcp_Ability_Third_Party ? $ability->get_provider() : '';
+					?>
 					<label class="eo-mcp-card eo-mcp-ability">
 						<span class="eo-mcp-ability-header">
 							<span class="eo-mcp-ability-title"><?php echo esc_html( $ability->get_label() ); ?></span>
@@ -160,11 +172,36 @@ $manual_url         = is_multisite() ? network_admin_url( 'plugin-install.php?s=
 						<span class="eo-mcp-ability-meta">
 							<span class="eo-mcp-risk is-<?php echo esc_attr( $risk ); ?>" title="<?php echo esc_attr( $risk_levels[ $risk ]['description'] ); ?>"><?php echo esc_html( $risk_levels[ $risk ]['label'] ); ?></span>
 							<code><?php echo esc_html( $ability->get_name() ); ?></code>
+							<?php if ( $provider ) : ?>
+								<span class="eo-mcp-ability-provider">
+									<?php
+									/* translators: %s: name of the plugin that provides the ability. */
+									echo esc_html( sprintf( __( 'Fournie par %s', 'eo-tools' ), $provider ) );
+									?>
+								</span>
+							<?php endif; ?>
 						</span>
 					</label>
 				<?php endforeach; ?>
 			</div>
-		<?php endforeach; ?>
+			<?php
+		};
+
+		foreach ( Eotools_Mcp_Abilities::get_groups() as $group_slug => $group_label ) {
+			$render_group( $group_slug, $group_label, 'h2' );
+		}
+
+		$third_party_groups = Eotools_Mcp_Abilities::get_third_party_groups();
+		if ( $third_party_groups ) :
+			?>
+			<h2 class="eo-mcp-group-title eo-mcp-group-title-ext"><?php esc_html_e( 'Autres extensions', 'eo-tools' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Abilities fournies par d\'autres extensions de ce site. Elles suivent les mêmes réglages que celles d\'EO Tools : désactivées, elles sont invisibles pour l\'IA.', 'eo-tools' ); ?></p>
+			<?php
+			foreach ( $third_party_groups as $group_slug => $group_label ) {
+				$render_group( $group_slug, $group_label, 'h3' );
+			}
+		endif;
+		?>
 
 	<?php else : ?>
 

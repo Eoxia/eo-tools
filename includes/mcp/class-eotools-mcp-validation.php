@@ -49,7 +49,9 @@ class Eotools_Mcp_Validation {
 			$selected[ $key ] = isset( $_POST[ $key ] ) ? array_unique( array_filter( array_map( 'absint', (array) wp_unslash( $_POST[ $key ] ) ) ) ) : array();
 		}
 
-		if ( ! in_array( $decision, array( 'apply', 'reject' ), true ) || ! array_filter( $selected ) ) {
+		$selected_ext = Eotools_Mcp_Proposal_Types::get_selected();
+
+		if ( ! in_array( $decision, array( 'apply', 'reject' ), true ) || ( ! array_filter( $selected ) && ! $selected_ext ) ) {
 			wp_safe_redirect( Eotools_Mcp_Proposals::admin_url( 'none' ) );
 			exit;
 		}
@@ -113,6 +115,18 @@ class Eotools_Mcp_Validation {
 			} else {
 				Eotools_Mcp_Seo_Changes::remove( $id );
 				++$result['done'];
+			}
+		}
+
+		// Proposals of other plugins: each item is processed by its plugin; a failure does not stop the others.
+		foreach ( $selected_ext as $type_id => $item_ids ) {
+			$items = Eotools_Mcp_Proposal_Types::get_items( $type_id );
+			foreach ( $item_ids as $item_id ) {
+				$outcome = Eotools_Mcp_Proposal_Types::process( $type_id, $item_id, $apply );
+				if ( is_wp_error( $outcome ) ) {
+					Eotools_Mcp_Proposal_Types::add_error( isset( $items[ $item_id ] ) ? $items[ $item_id ]['title'] : '', $outcome->get_error_message() );
+				}
+				self::count( $result, $outcome );
 			}
 		}
 
